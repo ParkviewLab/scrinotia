@@ -14,10 +14,14 @@ const MODEL_LIMIT = 200 * 1024 * 1024
 
 const BACKGROUNDS = { dark: 0x17181a, light: 0xf4f5f7 }
 
-// Where the directional light sits beside the camera, as fractions of the
-// camera's distance from what it looks at: right and up, together about 31°
-// off the line of sight.
-const KEY_LIGHT_OFFSET = { x: 0.4, y: 0.45 }
+// The directional light is orbited round the point the camera looks at:
+// KEY_LIGHT.angle degrees off the line of sight, towards KEY_LIGHT.toward
+// degrees (0 = right, 90 = up, as seen on screen).
+const KEY_LIGHT = { angle: 45, toward: 45 }
+
+// The even fill light, kept low so that shadowed sides stay dark enough to
+// read.
+const AMBIENT = 0.3
 
 export const DEFAULT_MODEL_COLOUR = { h: 225, s: 40, l: 62 }
 
@@ -121,6 +125,9 @@ function show(container, three, geometry) {
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(window.devicePixelRatio)
+  // Shadows: relief such as a raised mark casts a shadow beside its edges.
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
   renderer.setClearColor(background)
   container.append(renderer.domElement)
 
@@ -128,8 +135,11 @@ function show(container, three, geometry) {
   const material = new THREE.MeshStandardMaterial({ metalness: 0.1, roughness: 0.6 })
   material.color.setHSL(modelColour.h / 360, modelColour.s / 100, modelColour.l / 100, 'srgb')
   geometry.center()
-  scene.add(new THREE.Mesh(geometry, material))
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+  const mesh = new THREE.Mesh(geometry, material)
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  scene.add(mesh)
+  scene.add(new THREE.AmbientLight(0xffffff, AMBIENT))
 
   // STL files are usually drawn with Z up; the camera looks from the front
   // right and above, at a distance that fits the bounding sphere in view.
@@ -140,11 +150,17 @@ function show(container, three, geometry) {
   const distance = (radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.15
   camera.position.set(1, -1.4, 0.9).normalize().multiplyScalar(distance)
   // The directional light rides with the camera, so the side in view is lit,
-  // but from about 30° above and to the right of the line of sight (in
-  // proportion to the camera's distance, so the angle is the same for every
-  // model and zoom), so that relief facing the viewer still shows. It points
-  // where the camera looks.
+  // but from above and to the right of the line of sight (KEY_LIGHT), the
+  // same angle for every model and zoom, so that relief facing the viewer
+  // still shows. It points where the camera looks.
   const light = new THREE.DirectionalLight(0xffffff, 2.2)
+  light.castShadow = true
+  light.shadow.mapSize.set(2048, 2048)
+  // The shadow camera covers the model's bounding sphere; the biases keep a
+  // curved surface from shadowing itself in speckles.
+  Object.assign(light.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius })
+  light.shadow.bias = -0.0005
+  light.shadow.normalBias = radius * 0.004
   camera.add(light)
   scene.add(light.target)
   scene.add(camera)
@@ -153,10 +169,17 @@ function show(container, three, geometry) {
   controls.target.set(0, 0, 0)
   controls.update()
 
+  // In the camera's frame the target is d ahead (0, 0, -d); the light sits on
+  // the sphere of radius d round it, KEY_LIGHT.angle from the camera.
   const placeLight = () => {
     const d = camera.position.distanceTo(controls.target)
-    light.position.set(KEY_LIGHT_OFFSET.x * d, KEY_LIGHT_OFFSET.y * d, 0)
+    const a = (KEY_LIGHT.angle * Math.PI) / 180
+    const t = (KEY_LIGHT.toward * Math.PI) / 180
+    light.position.set(d * Math.sin(a) * Math.cos(t), d * Math.sin(a) * Math.sin(t), d * Math.cos(a) - d)
     light.target.position.copy(controls.target)
+    light.shadow.camera.near = Math.max(radius * 0.01, d - radius * 1.2)
+    light.shadow.camera.far = d + radius * 1.2
+    light.shadow.camera.updateProjectionMatrix()
   }
   const draw = () => {
     placeLight()
