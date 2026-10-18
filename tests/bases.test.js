@@ -339,9 +339,10 @@ describe('renderBase', () => {
     expect(names.filter((n) => !DEFAULT_SUMMARIES[n])).toEqual([])
   })
   it('reports unsupported views, unknown keys, and bad YAML', () => {
-    const out = renderBase('views:\n  - type: map\n    name: M\n  - type: cards\n    name: C\nextra: 1\n', [])
-    expect(out.views[0].error).toMatch(/not supported$/)
-    expect(out.views[1].error).toMatch(/not supported yet/)
+    const out = renderBase('views:\n  - type: map\n    name: M\n  - type: cards\n    name: C\n  - type: list\n    name: L\nextra: 1\n', [])
+    expect(out.views[0].error).toMatch(/map views are not supported$/)
+    expect(out.views[1].error).toBeUndefined()
+    expect(out.views[2].error).toBeUndefined()
     expect(out.notices[0]).toMatch(/extra/)
     expect(renderBase('filters: [', []).error).toMatch(/YAML/)
   })

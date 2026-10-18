@@ -8,6 +8,7 @@ import { EditorState, Annotation } from '@codemirror/state'
 import { EditorView, keymap, drawSelection, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { yaml } from '@codemirror/lang-yaml'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { VaultMarkdown, detectLineSeparator } from '../../../shared/markdown.js'
 
@@ -15,12 +16,12 @@ import { VaultMarkdown, detectLineSeparator } from '../../../shared/markdown.js'
 export const External = Annotation.define()
 
 export function createEditor(parent, { onUserChange, onScroll }) {
-  const extensions = () => [
+  const extensions = (language) => [
     history(),
     drawSelection(),
     highlightActiveLine(),
     EditorView.lineWrapping,
-    markdown({ base: markdownLanguage, extensions: [VaultMarkdown] }),
+    language === 'yaml' ? yaml() : markdown({ base: markdownLanguage, extensions: [VaultMarkdown] }),
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
     EditorView.updateListener.of((u) => {
@@ -33,9 +34,10 @@ export function createEditor(parent, { onUserChange, onScroll }) {
 
   return {
     view,
-    // A fresh state for a note's disk text, keeping its line separator.
-    createState: (text) =>
-      EditorState.create({ doc: text, extensions: [EditorState.lineSeparator.of(detectLineSeparator(text)), ...extensions()] }),
+    // A fresh state for a file's disk text, keeping its line separator;
+    // language is 'markdown' (notes) or 'yaml' (.base files).
+    createState: (text, language = 'markdown') =>
+      EditorState.create({ doc: text, extensions: [EditorState.lineSeparator.of(detectLineSeparator(text)), ...extensions(language)] }),
     setState: (state) => view.setState(state),
     getState: () => view.state,
     // The note's text exactly as it will be written (R1.3, R1.4).

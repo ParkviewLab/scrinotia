@@ -1,0 +1,14 @@
+filters: file.inFolder("Bases") && file.ext == "md"
+views:
+  - type: cards
+    name: Gallery
+    order:
+      - cover
+      - file.name
+      - priority
+      - author
+  - type: list
+    name: Simple
+    order:
+      - file.basename
+      - priority
