@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('granite', {
   unlinkedMentions: (rel) => ipcRenderer.invoke('links:unlinked', rel),
   outgoing: (rel) => ipcRenderer.invoke('links:outgoing', rel),
   search: (query) => ipcRenderer.invoke('search', query),
+  tags: () => ipcRenderer.invoke('tags'),
   renderBase: (rel, thisPath = null) => ipcRenderer.invoke('base:render', rel, thisPath),
   getSettings: (name) => ipcRenderer.invoke('settings:get', name),
   setSettings: (name, values) => ipcRenderer.invoke('settings:set', name, values),

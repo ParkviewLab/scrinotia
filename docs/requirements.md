@@ -70,7 +70,7 @@ R4.3. A backlinks panel for the open note lists every note that links to it, wit
 
 R4.4. An outgoing-links panel lists the links of the open note.
 
-R4.5. Tags (`#tag`, nested `#a/b`, and the frontmatter `tags` property) are recognised and listed in a tag pane; selecting a tag shows the notes that carry it.
+R4.5. Tags (`#tag`, nested `#a/b`, and the frontmatter `tags` property) are recognised. A Tags pane, switched with Files above the file tree, lists every tag with the number of notes carrying it or a tag nested under it (a note counts once for a parent), nested tags indented under their parents; clicking a tag searches for it.
 
 R4.6. An outline panel lists the headings of the open note, indented by level (frontmatter and fenced code left out), and updates as the note is edited. Clicking a heading scrolls the preview to it and, in the split mode, moves the editor's cursor to its line.
 

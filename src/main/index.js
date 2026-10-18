@@ -164,6 +164,7 @@ function registerIpc() {
   on('links:unlinked', (e, rel) => (rootOf(e), ctxOf(e).index.unlinkedMentions(rel)))
   on('links:outgoing', (e, rel) => (rootOf(e), ctxOf(e).index.outgoing(rel)))
   on('search', (e, query) => (rootOf(e), ctxOf(e).index.search(query)))
+  on('tags', (e) => (rootOf(e), ctxOf(e).index.tags()))
   on('settings:get', (e, name) => readSettings(rootOf(e), name))
   on('settings:set', (e, name, values) => writeSettings(rootOf(e), name, values))
   on('base:render', async (e, rel, thisPath = null) => {

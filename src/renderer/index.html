@@ -31,9 +31,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <button id="new-folder" type="button" title="New folder">+ Folder</button>
           </span>
         </header>
+        <div class="side-switch" role="tablist">
+          <button id="show-files" type="button" class="active">Files</button>
+          <button id="show-tags" type="button">Tags</button>
+        </div>
         <input id="search" class="search" type="search" placeholder="Search (words, &quot;phrase&quot;, -word, tag:, file:, path:)" />
         <ul id="tree" class="tree" role="tree"></ul>
         <ul id="results" class="results" hidden></ul>
+        <ul id="tag-list" class="tag-list" hidden></ul>
         <footer class="sidebar-foot">
           <button id="switch-vault" type="button">Switch vault</button>
           <label>Theme
