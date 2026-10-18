@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import pkg from '../../package.json'
 
 contextBridge.exposeInMainWorld('granite', {
@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('granite', {
   writeNote: (rel, text) => ipcRenderer.invoke('note:write', rel, text),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),
   statFile: (rel) => ipcRenderer.invoke('file:stat', rel),
+  // The path of a file dropped from the desktop (File objects carry no path in the page).
+  pathForFile: (file) => webUtils.getPathForFile(file),
+  importFile: (sourcePath) => ipcRenderer.invoke('file:import', sourcePath),
   readBytes: (rel) => ipcRenderer.invoke('file:readBytes', rel),
   openAbout: () => ipcRenderer.invoke('app:about'),
   openLicenses: () => ipcRenderer.invoke('app:licenses'),
