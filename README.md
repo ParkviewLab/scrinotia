@@ -12,9 +12,9 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.10.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.11.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
-- **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree hides dot-folders such as `.obsidian/`, which are never read or written.
+- **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree lists each folder's files before its subfolders and hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
 - **Links:** wikilinks (`[[note]]`, `[[note#heading|alias]]`, `![[image.png]]`) and local Markdown links are followed on click; backlinks, unlinked mentions and outgoing links are listed beside the note; renaming or moving a note updates the links that point to it, and nothing else in those notes.
 - **Dropping files:** drag files onto a note to copy them into `attachments/` and link them; drag a file from the tree or search results to link it.
