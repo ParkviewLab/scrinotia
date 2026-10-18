@@ -221,7 +221,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     title: 'Scrinotia',
-    backgroundColor: '#1e1f22',
+    backgroundColor: '#17181a',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

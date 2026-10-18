@@ -16,8 +16,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #1e1f22;
-  --bg-side: #17181a;
+  --bg: #17181a;
+  --bg-side: #1e1f22;
   --fg: #dcddde;
   --muted: #8b8e94;
   --tree-line: #7c818a;

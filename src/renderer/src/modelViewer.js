@@ -12,7 +12,7 @@
 
 const MODEL_LIMIT = 200 * 1024 * 1024
 
-const BACKGROUNDS = { dark: 0x17181a, light: 0xf4f5f7 }
+const BACKGROUNDS = { dark: 0x1e1f22, light: 0xf4f5f7 }
 
 // The directional light is orbited round the point the camera looks at:
 // KEY_LIGHT.angle degrees off the line of sight, towards KEY_LIGHT.toward
