@@ -7,7 +7,7 @@
 // dot-entries (.obsidian/, .granite-vaulting/, .git/) are neither listed nor
 // touched (R1.2).
 
-import { readdir, readFile, writeFile, rename, mkdir, stat, open } from 'node:fs/promises'
+import { readdir, readFile, writeFile, rename, mkdir, stat, open, copyFile, constants } from 'node:fs/promises'
 import { join, resolve, relative, sep, dirname, basename, extname } from 'node:path'
 
 export function isHidden(name) {
@@ -135,4 +135,21 @@ export async function statFile(root, rel) {
   const st = await stat(resolveInside(root, rel))
   const born = st.birthtimeMs > 0 ? st.birthtimeMs : Math.min(st.ctimeMs, st.mtimeMs)
   return { size: st.size, ctime: Math.round(born), mtime: Math.round(st.mtimeMs) }
+}
+
+// Copies a file from outside the vault into folderRel (created if missing),
+// under its own name or, if that is taken, a numbered one (R2.7). Returns the
+// new vault-relative path. The source is left as it is.
+export async function importFile(root, sourcePath, folderRel) {
+  const src = resolve(sourcePath)
+  const info = await stat(src)
+  if (!info.isFile()) throw new Error(`not a file: ${sourcePath}`)
+  if (folderRel) await mkdir(resolveInside(root, folderRel), { recursive: true })
+  const name = basename(src)
+  const dot = name.lastIndexOf('.')
+  const base = dot > 0 ? name.slice(0, dot) : name
+  const ext = dot > 0 ? name.slice(dot) : ''
+  const rel = await freeName(root, folderRel, base, ext)
+  await copyFile(src, resolveInside(root, rel), constants.COPYFILE_EXCL)
+  return rel
 }

@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 import { watch } from 'node:fs'
 import { stat } from 'node:fs/promises'
-import { join, basename, sep, resolve } from 'node:path'
+import { join, basename, sep, resolve, relative, isAbsolute } from 'node:path'
 import * as vault from './vault.js'
 import { createState } from './state.js'
 import { createIndex } from './linkIndex.js'
@@ -166,6 +166,17 @@ function registerIpc() {
   on('app:about', () => openAboutWindow())
   on('app:licenses', () => openLicensesWindow())
   on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
+  // Files dropped from outside the vault are copied into the vault's
+  // attachment folder (a vault setting, default "attachments").
+  on('file:import', async (e, sourcePath) => {
+    const root = rootOf(e)
+    const { values } = await readSettings(root, 'files')
+    const folder = typeof values.attachmentFolder === 'string' ? values.attachmentFolder.replace(/^\/+|\/+$/g, '') : 'attachments'
+    // A file already inside the vault is linked where it is, not copied.
+    const inside = relative(root, resolve(sourcePath))
+    if (inside && !inside.startsWith('..') && !isAbsolute(inside)) return inside.split(sep).join('/')
+    return vault.importFile(root, sourcePath, folder)
+  })
   on('file:readBytes', (e, rel) => vault.readBytes(rootOf(e), rel))
   on('open:path', async (e, rel) => {
     // shell.openPath returns an error message, or '' on success.
