@@ -14,6 +14,11 @@ Different kinds of content carry different licenses (encoded in [`REUSE.toml`](R
 |---|---|
 | Code, build scripts, configs, lockfiles | `AGPL-3.0-or-later` |
 | Documentation (`docs/`, `README.md`, this file) | `CC-BY-4.0` |
+| Third-party references (`docs/references/obsidian-api/`, `docs/references/obsidian-bases-skill/`) | `MIT`, their own copyright |
+
+## Third-party references
+
+[`docs/references/`](docs/references/README.md) holds two MIT-licensed works, copied unchanged with their notices, from which the `.base` support is implemented: the Obsidian API type definitions (© 2022 Dynalist Inc.) and the obsidian-bases skill (© 2026 Steph Ango). They remain under their MIT licences; `REUSE.toml` records them. granite-vaulting is independent of Obsidian and not endorsed by it.
 
 ## REUSE compliance
 

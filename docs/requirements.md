@@ -52,7 +52,7 @@ R3.4. Saving is automatic after a short pause in typing. Undo and redo cover the
 
 R3.5. Standard text-editing keyboard behaviour on both platforms (platform-appropriate modifier keys), and list continuation and indentation.
 
-R3.6. A `.base` file opens as a set of table views of the vault's notes, one tab per view. Supported: filters as expressions combined with and, or and not; comparisons, `!`, `&&`, `||`; `file.name`, `file.ext`, `file.path`, `file.folder`, `file.inFolder()`, `file.hasTag()`, `file.hasLink()` and frontmatter properties; table views with order, sort, limit and display names. Anything else is reported in the pane, not guessed. Clicking a note's name opens it.
+R3.6. A `.base` file is implemented from the two MIT-licensed references in `docs/references/` (the Obsidian API type definitions and the obsidian-bases skill), and from nothing else; the client follows those references, not Obsidian's behaviour. A base opens as its views, one tab per view, and in the split mode its YAML source is edited beside the rendered views, with the same saving and conflict handling as a note. The aim is the whole format the references describe: global and per-view filters; formulas and `formula.*` properties; note, file and formula properties with display names; the functions and value types of the formula language; table, cards and list views with order, sort, limit, groupBy and summaries; and bases embedded in notes. A view type the references name but the client does not provide (such as map) and any expression the client cannot evaluate are reported in the pane, never guessed.
 
 ### R4. Links and backlinks
 
@@ -96,7 +96,7 @@ R7.1. The client is licensed under AGPL-3.0-or-later; each source file carries t
 
 R7.2. Every dependency's licence must be compatible with AGPL-3.0-or-later (permissive licences such as MIT, BSD, ISC, and Apache-2.0 qualify); the dependency list and licences are recorded and checked.
 
-R7.3. The client is specified and written independently; no code, assets, icons, themes, or documentation of any proprietary product are copied.
+R7.3. The client is specified and written independently; no code, assets, icons, themes, or documentation of any proprietary product are copied. The only third-party descriptions of the vault formats the project uses are the MIT-licensed references in `docs/references/`, kept with their notices. The About dialog, the README and `LICENSING.md` state that granite-vaulting reads the formats used by Obsidian, a product of Dynalist Inc., that it is independent and not affiliated with or endorsed by Obsidian, and that `.base` is implemented from those two references. (Provenance note: the first `.base` subset, in v0.1.1, was written from two example files and from prior knowledge of the format, not from any document read for the purpose.)
 
 ## Deferred beyond v1
 
@@ -104,7 +104,7 @@ Graph view, canvas, plugins and themes, publish and sync, mobile, math and Merma
 
 ## Open questions
 
-Q1. Resolved: the client is not a copy, and the requirements define the behaviour themselves.
+Q1. Resolved: the client is not a copy, and the requirements define the behaviour themselves. Amended 2026-10-18: for `.base` only, the two MIT-licensed references in `docs/references/` are the source; Obsidian's help site, which carries no licence, is not consulted.
 
 Q2. Resolved: the client neither reads nor writes `.obsidian/` or any comparable folder (R1.2). Vault-level settings live in `.granite-vaulting/` inside the vault; machine-specific state and caches live outside it (R6.4, R6.5).
 
