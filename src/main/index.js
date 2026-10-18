@@ -10,6 +10,8 @@ import { createState } from './state.js'
 let win = null
 let root = null
 let watcher = null
+let flushed = false
+let quitting = false
 const state = createState(app.getPath('userData'))
 
 function requireVault() {
@@ -58,10 +60,24 @@ function registerIpc() {
   ipcMain.handle('vault:open', (_e, dir) => openVault(dir))
   ipcMain.handle('vault:tree', () => vault.scanVault(requireVault()))
   ipcMain.handle('note:read', (_e, rel) => vault.readNote(requireVault(), rel))
-  ipcMain.handle('entry:createNote', (_e, folder) => vault.createNote(requireVault(), folder))
+  ipcMain.handle('note:write', (_e, rel, text) => vault.writeNote(requireVault(), rel, text))
+  ipcMain.handle('open:external', (_e, url) => {
+    if (!/^(https?|mailto):/i.test(url)) throw new Error(`not an external link: ${url}`)
+    return shell.openExternal(url)
+  })
+  ipcMain.on('app:flushed', finishClose)
+  ipcMain.handle('entry:createNote', (_e, folder, base) => vault.createNote(requireVault(), folder, base))
   ipcMain.handle('entry:createFolder', (_e, folder) => vault.createFolder(requireVault(), folder))
   ipcMain.handle('entry:move', (_e, from, to) => vault.move(requireVault(), from, to))
   ipcMain.handle('entry:trash', (_e, rel) => vault.trash(requireVault(), rel, (p) => shell.trashItem(p)))
+}
+
+// After the renderer has flushed: resume the quit, or the close, it interrupted.
+function finishClose() {
+  if (flushed) return
+  flushed = true
+  if (quitting) app.quit()
+  else win?.close()
 }
 
 function createWindow() {
@@ -77,6 +93,15 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
+  // Unsaved edits are written before the window closes: the renderer is asked
+  // to flush, and the close proceeds when it replies (or after 3 s).
+  flushed = false
+  win.on('close', (e) => {
+    if (flushed) return
+    e.preventDefault()
+    win.webContents.send('app:flush')
+    setTimeout(finishClose, 3000)
+  })
   win.on('closed', () => {
     win = null
   })
@@ -86,6 +111,10 @@ function createWindow() {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+app.on('before-quit', () => {
+  quitting = true
+})
 
 app.whenReady().then(() => {
   registerIpc()

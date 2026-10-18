@@ -43,13 +43,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
       <main class="pane">
         <header class="pane-head">
           <span id="note-path" class="muted"></span>
+          <span class="actions" id="modes" hidden>
+            <button id="mode-live" type="button" class="active">Live</button>
+            <button id="mode-source" type="button">Source</button>
+            <button id="mode-reading" type="button">Reading</button>
+          </span>
           <span class="actions" id="entry-actions" hidden>
             <button id="rename" type="button">Rename</button>
             <button id="delete" type="button">Move to trash</button>
           </span>
         </header>
         <p id="pane-error" class="error"></p>
-        <pre id="note-body" class="note-body"></pre>
+        <div id="conflict" class="conflict" hidden>
+          This note changed on disk while you have unsaved edits.
+          <button id="keep-mine" type="button">Keep my version</button>
+          <button id="load-disk" type="button">Load the disk version</button>
+        </div>
+        <div id="editor" class="editor" hidden></div>
+        <p id="note-body" class="note-body muted"></p>
       </main>
     </section>
     <script type="module" src="/src/main.js"></script>
