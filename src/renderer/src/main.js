@@ -7,6 +7,7 @@
 import { createEditor } from './editor/editor.js'
 import { createPreview } from './preview.js'
 import { renderCell } from './baseCells.js'
+import { renderAttachment, attachmentKind } from './attachments.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -138,6 +139,14 @@ async function enterVault(opener) {
 
 $('open-folder').addEventListener('click', () => enterVault(api.chooseVault))
 $('new-window').addEventListener('click', () => api.newWindow())
+$('about-link').addEventListener('click', (e) => {
+  e.preventDefault()
+  api.openAbout()
+})
+$('licenses-link').addEventListener('click', (e) => {
+  e.preventDefault()
+  api.openLicenses()
+})
 $('switch-vault').addEventListener('click', () => {
   $('workspace').hidden = true
   $('start').hidden = false
@@ -247,16 +256,36 @@ const preview = createPreview({
     return hit ? assetBase + hit.split('/').map(encodeURIComponent).join('/') : null
   },
   resolves: (target) => resolveLink(target, current, files()) !== null,
+  resolvePath: (target) => resolveLink(target, current, files()),
+  attachmentKind,
 })
 
+// A base's preview is its views, computed from the saved file, so it is
+// redrawn after each save rather than on each keystroke.
 function renderPreview() {
   clearTimeout(previewTimer)
   if (!current) return
+  if (notes.get(current)?.kind === 'base') {
+    showBase(current)
+    return
+  }
   preview.render(editor.text(), $('preview'))
+  fillBaseEmbeds()
+  fillAttachmentEmbeds()
+}
+
+const assetUrlOf = (p) => assetBase + p.split('/').map(encodeURIComponent).join('/')
+
+// PDFs, audio, video, HTML and text embedded in the note shown.
+function fillAttachmentEmbeds() {
+  for (const el of $('preview').querySelectorAll('.attachment-embed')) {
+    renderAttachment(el, { path: el.dataset.path, url: assetUrlOf(el.dataset.path), api, embedded: true })
+  }
 }
 
 function schedulePreview() {
   clearTimeout(previewTimer)
+  if (notes.get(current)?.kind === 'base') return
   previewTimer = setTimeout(renderPreview, 120)
 }
 
@@ -311,6 +340,7 @@ async function save(path) {
   try {
     await api.writeNote(path, text)
     entry.dirty = false
+    if (entry.kind === 'base' && path === current) showBase(path)
   } catch (err) {
     entry.disk = previous
     showError($('pane-error'), err)
@@ -333,7 +363,42 @@ async function showBase(path) {
   currentBase = path
   const out = await api.renderBase(path).catch((err) => ({ error: String(err.message ?? err), views: [] }))
   if (currentBase !== path) return
-  const host = $('preview')
+  drawBase($('preview'), out, {
+    selected: baseView,
+    onSelect: (n) => {
+      baseView = n
+      showBase(path)
+    },
+  })
+}
+
+// Bases embedded in the note shown (![[X.base]] or ![[X.base#View]]): each
+// placeholder the preview left is filled with the base's views, with `this`
+// referring to the note.
+async function fillBaseEmbeds() {
+  const note = current
+  for (const el of $('preview').querySelectorAll('.base-embed')) {
+    const out = await api.renderBase(el.dataset.base, note).catch((err) => ({ error: String(err.message ?? err), views: [] }))
+    if (current !== note) return
+    const want = el.dataset.view
+    if (want) {
+      const n = out.views.findIndex((v) => v.name === want)
+      if (n < 0) {
+        el.textContent = `No view named “${want}” in ${el.dataset.base}.`
+        el.classList.add('missing')
+        continue
+      }
+      drawBase(el, { ...out, views: [out.views[n]] }, { selected: 0, tabs: false })
+    } else {
+      const draw = (sel) => drawBase(el, out, { selected: sel, onSelect: draw })
+      draw(0)
+    }
+  }
+}
+
+// Draws a base's output into host: view tabs (unless tabs is false), then
+// the selected view as a table, cards or list.
+function drawBase(host, out, { selected = 0, onSelect = () => {}, tabs: showTabs = true } = {}) {
   host.replaceChildren()
   if (out.error) {
     const p = document.createElement('p')
@@ -342,28 +407,48 @@ async function showBase(path) {
     host.append(p)
     return
   }
-  baseView = Math.min(baseView, Math.max(out.views.length - 1, 0))
-  const tabs = document.createElement('div')
-  tabs.className = 'base-tabs'
-  out.views.forEach((v, n) => {
-    const b = document.createElement('button')
-    b.type = 'button'
-    b.textContent = v.name
-    b.classList.toggle('active', n === baseView)
-    b.addEventListener('click', () => {
-      baseView = n
-      showBase(path)
+  const chosen = Math.min(selected, Math.max(out.views.length - 1, 0))
+  if (showTabs) {
+    const tabs = document.createElement('div')
+    tabs.className = 'base-tabs'
+    out.views.forEach((v, n) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = v.name
+      b.classList.toggle('active', n === chosen)
+      b.addEventListener('click', () => onSelect(n))
+      tabs.append(b)
     })
-    tabs.append(b)
-  })
-  host.append(tabs)
-  const v = out.views[baseView]
+    host.append(tabs)
+  }
+  const v = out.views[chosen]
   if (!v) return
   if (v.error) {
     const p = document.createElement('p')
     p.className = 'missing'
     p.textContent = v.error
     host.append(p)
+    return
+  }
+  const openTarget = (cell) => {
+    if (cell.path) openPath(cell.path)
+    else if (cell.target) follow({ kind: 'wikilink', ref: cell.target })
+  }
+  const assetUrl = (p) => assetBase + p.split('/').map(encodeURIComponent).join('/')
+  const notices = [...(out.notices ?? []), ...(v.notices ?? [])]
+  for (const n of notices) {
+    const p = document.createElement('p')
+    p.className = 'notice'
+    p.textContent = n
+    host.append(p)
+  }
+  const count = document.createElement('p')
+  count.className = 'muted'
+  // With groupOrder, only the listed groups are shown, so count what is shown.
+  const shown = v.groups ? v.groups.reduce((n, g) => n + g.rows.length, 0) : v.rows.length
+  count.textContent = `${shown} ${shown === 1 ? 'entry' : 'entries'}`
+  if (v.type === 'cards' || v.type === 'list') {
+    host.append(renderItems(v, { openTarget, assetUrl }), count)
     return
   }
   const table = document.createElement('table')
@@ -375,32 +460,132 @@ async function showBase(path) {
     head.append(th)
   }
   const tbody = table.createTBody()
-  const openTarget = (cell) => {
-    if (cell.path) openPath(cell.path)
-    else if (cell.target) follow({ kind: 'wikilink', ref: cell.target })
-  }
-  for (const r of v.rows) {
-    const tr = tbody.insertRow()
+  const addRow = (into, r) => {
+    const tr = into.insertRow()
     r.cells.forEach((cell, k) => {
       const td = tr.insertCell()
       // The file's own name opens the row's file.
       const own = ['file.name', 'file.basename', 'file.path'].includes(v.columns[k].id)
       const shown = own ? { ...cell, t: 'link', path: r.path } : cell
       td.className = `cell-${shown.t}`
-      td.append(renderCell(shown, { openTarget, assetUrl: (p) => assetBase + p.split('/').map(encodeURIComponent).join('/') }))
+      td.append(renderCell(shown, { openTarget, assetUrl }))
     })
   }
-  const notices = [...(out.notices ?? []), ...(v.notices ?? [])]
-  for (const n of notices) {
-    const p = document.createElement('p')
-    p.className = 'notice'
-    p.textContent = n
-    host.append(p)
+  // A summary row: each summarised column shows its summary's name and value.
+  const addSummaries = (into, sums, cls) => {
+    if (!sums) return
+    const tr = into.insertRow()
+    tr.className = cls
+    sums.forEach((s) => {
+      const td = tr.insertCell()
+      if (!s) return
+      const label = document.createElement('span')
+      label.className = 'summary-name'
+      label.textContent = `${s.name} `
+      td.className = `cell-${s.cell.t}`
+      td.append(label, renderCell(s.cell, { openTarget, assetUrl }))
+    })
   }
-  const count = document.createElement('p')
-  count.className = 'muted'
-  count.textContent = `${v.rows.length} ${v.rows.length === 1 ? 'entry' : 'entries'}`
+  if (v.groups) {
+    for (const g of v.groups) {
+      const head = tbody.insertRow()
+      head.className = 'group-row'
+      const td = head.insertCell()
+      td.colSpan = v.columns.length
+      td.append(g.key.t === 'empty' ? document.createTextNode('(no value)') : renderCell(g.key, { openTarget, assetUrl }))
+      const count = document.createElement('span')
+      count.className = 'muted'
+      count.textContent = ` ${g.rows.length}`
+      td.append(count)
+      for (const r of g.rows) addRow(tbody, r)
+      addSummaries(tbody, g.summaries, 'summary-row group-summary')
+    }
+  } else {
+    for (const r of v.rows) addRow(tbody, r)
+  }
+  if (v.summaries) addSummaries(table.createTFoot(), v.summaries, 'summary-row')
   host.append(table, count)
+}
+
+// Cards and list views: one item per entry. In a card, the first image among
+// its properties is the card's picture and the file's own name its title; in
+// a list, the first property leads and the rest follow it on the same line.
+const IMAGE_PATH = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i
+const OWN = ['file.name', 'file.basename', 'file.path']
+
+function renderItems(v, opts) {
+  const wrap = document.createElement('div')
+  const one = (r) => {
+    const cells = r.cells.map((cell, k) => ({ cell: OWN.includes(v.columns[k].id) ? { ...cell, t: 'link', path: r.path } : cell, col: v.columns[k] }))
+    if (v.type === 'list') {
+      const li = document.createElement('li')
+      li.className = 'base-list-item'
+      cells.forEach(({ cell, col }, k) => {
+        if (cell.t === 'empty') return
+        if (k) {
+          const sep = document.createElement('span')
+          sep.className = 'muted'
+          sep.textContent = k === 1 ? ' — ' : ' · '
+          li.append(sep)
+        }
+        const span = document.createElement('span')
+        span.title = col.label
+        span.append(renderCell(cell, opts))
+        li.append(span)
+      })
+      return li
+    }
+    const card = document.createElement('div')
+    card.className = 'base-card'
+    const imageAt = cells.findIndex(({ cell }) => cell.t === 'image' || (cell.t === 'link' && cell.path && IMAGE_PATH.test(cell.path)))
+    if (imageAt >= 0) {
+      const { cell } = cells[imageAt]
+      const img = document.createElement('img')
+      img.className = 'base-card-image'
+      img.src = cell.t === 'image' && !cell.path ? cell.src : opts.assetUrl(cell.path)
+      img.alt = cell.text
+      card.append(img)
+    }
+    const titleAt = cells.findIndex(({ col }) => OWN.includes(col.id))
+    const title = document.createElement('div')
+    title.className = 'base-card-title'
+    title.append(renderCell(titleAt >= 0 ? cells[titleAt].cell : { t: 'link', path: r.path, text: r.path.split('/').pop() }, opts))
+    card.append(title)
+    cells.forEach(({ cell, col }, k) => {
+      if (k === imageAt || k === titleAt || cell.t === 'empty') return
+      const line = document.createElement('div')
+      line.className = 'base-card-prop'
+      if (col.label) {
+        const label = document.createElement('span')
+        label.className = 'muted'
+        label.textContent = `${col.label} `
+        line.append(label)
+      }
+      line.append(renderCell(cell, opts))
+      card.append(line)
+    })
+    return card
+  }
+  const container = () => {
+    const c = document.createElement(v.type === 'list' ? 'ul' : 'div')
+    c.className = v.type === 'list' ? 'base-list' : 'base-cards'
+    return c
+  }
+  if (v.groups) {
+    for (const g of v.groups) {
+      const h = document.createElement('h4')
+      h.className = 'base-group-head'
+      h.append(g.key.t === 'empty' ? document.createTextNode('(no value)') : renderCell(g.key, opts))
+      const c = container()
+      c.append(...g.rows.map(one))
+      wrap.append(h, c)
+    }
+  } else {
+    const c = container()
+    c.append(...v.rows.map(one))
+    wrap.append(c)
+  }
+  return wrap
 }
 
 async function showNote(path) {
@@ -412,19 +597,20 @@ async function showNote(path) {
   const body = $('note-body')
   const entryInfo = path ? findEntry(view.tree, path) : null
   currentBase = null
-  if (entryInfo?.type === 'base') {
+  const kind = entryInfo?.type === 'base' ? 'base' : 'note'
+  if (entryInfo?.type === 'attachment') {
     current = null
     body.textContent = ''
     $('modes').hidden = true
     setNoteMode('preview')
     $('note-area').hidden = false
-    await showBase(path)
+    await renderAttachment($('preview'), { path, url: assetUrlOf(path), api })
     return
   }
-  if (!path || entryInfo?.type !== 'note') {
+  if (!path || (entryInfo?.type !== 'note' && entryInfo?.type !== 'base')) {
     $('note-area').hidden = true
     $('modes').hidden = true
-    body.textContent = entryInfo ? `${entryInfo.name} is an attachment; it is not shown in this version.` : ''
+    body.textContent = ''
     current = null
     return
   }
@@ -433,7 +619,7 @@ async function showNote(path) {
   if (!entry) {
     try {
       const text = await api.readNote(path)
-      entry = { state: editor.createState(text), disk: text, dirty: false, timer: null }
+      entry = { kind, state: editor.createState(text, kind === 'base' ? 'yaml' : 'markdown'), disk: text, dirty: false, timer: null }
       notes.set(path, entry)
     } catch (err) {
       showError($('pane-error'), err)

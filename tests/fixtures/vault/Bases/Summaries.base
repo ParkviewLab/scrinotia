@@ -1,0 +1,37 @@
+filters: file.inFolder("Bases") && file.ext == "md"
+formulas:
+  total: price * quantity
+  band: 'if(priority < 3, "top", "rest")'
+summaries:
+  meanQty: values.mean().round(1)
+properties:
+  formula.total:
+    displayName: Total
+views:
+  - type: table
+    name: Grouped
+    order:
+      - file.basename
+      - quantity
+      - formula.total
+      - due
+    sort:
+      - property: priority
+        direction: ASC
+    groupBy:
+      property: formula.band
+      direction: DESC
+    summaries:
+      quantity: meanQty
+      formula.total: Sum
+      due: Earliest
+  - type: table
+    name: Ordered groups
+    order:
+      - file.basename
+    groupBy:
+      property: priority
+      direction: ASC
+    groupOrder:
+      - 3
+      - 1

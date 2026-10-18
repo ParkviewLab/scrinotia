@@ -16,6 +16,7 @@ import { createState } from './state.js'
 import { createIndex } from './linkIndex.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
+import { openAboutWindow, openLicensesWindow } from './about.js'
 
 const state = createState(app.getPath('userData'))
 const contexts = new Map() // webContents id -> { win, root, watcher, index, flushed }
@@ -32,7 +33,8 @@ function serveAssets() {
       const ctx = [...contexts.values()].find((c) => c.token === url.hostname)
       if (!ctx?.root) return new Response('not found', { status: 404 })
       const rel = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
-      return net.fetch(pathToFileURL(vault.resolveInside(ctx.root, rel)).toString())
+      // Range headers pass through, so audio and video can seek.
+      return net.fetch(pathToFileURL(vault.resolveInside(ctx.root, rel)).toString(), { headers: request.headers })
     } catch {
       return new Response('not found', { status: 404 })
     }
@@ -145,6 +147,13 @@ function registerIpc() {
   on('vault:tree', (e) => vault.scanVault(rootOf(e)))
   on('window:new', () => void createWindow())
   on('note:read', (e, rel) => vault.readNote(rootOf(e), rel))
+  on('app:about', () => openAboutWindow())
+  on('app:licenses', () => openLicensesWindow())
+  on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
+  on('open:path', async (e, rel) => {
+    // shell.openPath returns an error message, or '' on success.
+    return shell.openPath(vault.resolveInside(rootOf(e), rel))
+  })
   on('note:write', (e, rel, text) => vault.writeNote(rootOf(e), rel, text))
   on('entry:createNote', (e, folder, base) => vault.createNote(rootOf(e), folder, base))
   on('entry:createFolder', (e, folder) => vault.createFolder(rootOf(e), folder))
@@ -156,9 +165,9 @@ function registerIpc() {
   on('search', (e, query) => (rootOf(e), ctxOf(e).index.search(query)))
   on('settings:get', (e, name) => readSettings(rootOf(e), name))
   on('settings:set', (e, name, values) => writeSettings(rootOf(e), name, values))
-  on('base:render', async (e, rel) => {
+  on('base:render', async (e, rel, thisPath = null) => {
     const index = ctxOf(e).index
-    return renderBase(await vault.readNote(rootOf(e), rel), index.entries(), { basePath: rel, resolve: index.resolve, now: Date.now() })
+    return renderBase(await vault.readNote(rootOf(e), rel), index.entries(), { basePath: rel, thisPath, resolve: index.resolve, now: Date.now() })
   })
   on('open:external', (_e, url) => {
     if (!/^(https?|mailto):/i.test(url)) throw new Error(`not an external link: ${url}`)
@@ -189,8 +198,12 @@ function createWindow() {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      // Chromium's PDF viewer, for PDF attachments.
+      plugins: true,
     },
   })
+  // No page, a vault HTML file included, may open windows of its own.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   const id = win.webContents.id
   const ctx = { win, root: null, watcher: null, index: null, flushed: false, token: randomBytes(12).toString('hex') }
   contexts.set(id, ctx)
@@ -213,8 +226,17 @@ function createWindow() {
 
 function buildMenu() {
   const isMac = process.platform === 'darwin'
+  const about = { label: 'About granite-vaulting', click: () => openAboutWindow() }
+  const licenses = { label: 'Open Source Licenses…', click: () => openLicensesWindow() }
   const template = [
-    ...(isMac ? [{ role: 'appMenu' }] : []),
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [about, licenses, { type: 'separator' }, { role: 'services' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }],
+          },
+        ]
+      : []),
     {
       label: 'File',
       submenu: [
@@ -226,6 +248,9 @@ function buildMenu() {
     { role: 'editMenu' },
     { role: 'viewMenu' },
     { role: 'windowMenu' },
+    // Help carries About and the licences on every platform, so Windows and
+    // Linux, which have no application menu, reach them too.
+    { role: 'help', submenu: [about, licenses] },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }

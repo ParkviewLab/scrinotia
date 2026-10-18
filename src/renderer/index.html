@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' gv-asset: https: data:" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' gv-asset: https: data:; style-src 'self' 'unsafe-inline'; media-src 'self' gv-asset:; frame-src gv-asset:" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>granite-vaulting</title>
     <link rel="stylesheet" href="/src/theme.css" />
@@ -20,6 +20,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
       <h2>Recent vaults</h2>
       <ul id="recent" class="recent"></ul>
       <p id="start-error" class="error"></p>
+      <p class="muted start-links"><a id="about-link" href="#">About</a> · <a id="licenses-link" href="#">Open source licences</a></p>
     </section>
     <section id="workspace" class="workspace" hidden>
       <aside class="sidebar">
