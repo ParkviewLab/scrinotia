@@ -8,11 +8,11 @@ An independent, local-first Markdown notes client for macOS and Ubuntu. It opens
 
 Scrinotia joins two Latin words: *scrinium*, the case in which Romans kept scrolls and documents (the root of English "shrine"), and *notitia*, knowledge and also a record of it. The repeated syllable of *scri-no-ti-tia* is dropped, as Latin itself does in *nutrix* from *nutri-trix*, giving "the scroll-case of knowledge": a vault that holds writing worth keeping.
 
-It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in classical Latin, not "sha". [`brand/scrinotia-icon-kit/NAME.md`](brand/scrinotia-icon-kit/NAME.md) gives the full account and how the name was chosen; the project was first called granite-vaulting.
+It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in classical Latin, not "sha". [`brand/scrinotia-icon-kit/NAME.md`](brand/scrinotia-icon-kit/NAME.md) gives the full account; the project was first called granite-vaulting.
 
 ## Status
 
-Version 0.8.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.9.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
