@@ -20,7 +20,7 @@ export default [
     },
   },
   {
-    files: ['src/main/**', 'src/preload/**', 'scripts/**', 'electron.vite.config.js', 'eslint.config.mjs'],
+    files: ['src/main/**', 'src/preload/**', 'scripts/**', 'tests/**', 'electron.vite.config.js', 'eslint.config.mjs'],
     languageOptions: { globals: { ...globals.node } },
   },
   {
