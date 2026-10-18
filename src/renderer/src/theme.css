@@ -577,3 +577,54 @@ button:hover {
   margin-top: 6px;
   font-size: 0.85em;
 }
+
+/* ---- quick switcher ---- */
+.switcher {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  z-index: 10;
+}
+.switcher[hidden] {
+  display: none;
+}
+.switcher-box {
+  width: min(600px, 90vw);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  padding: 10px;
+}
+.switcher-box input {
+  width: 100%;
+  font-size: 16px;
+  padding: 8px 10px;
+}
+.switcher-list {
+  list-style: none;
+  margin: 8px 0 4px;
+  padding: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.switcher-list li {
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.switcher-list li.active {
+  background: var(--select);
+  color: var(--accent);
+}
+.switcher-hint {
+  margin: 0;
+  font-size: 0.8em;
+}

@@ -38,7 +38,7 @@ R2.3. The user can create, rename, move, and delete notes and folders. Deletion 
 
 R2.4. Renaming or moving a note or folder updates the links that point to what moved, in the other notes of the vault, changing only each link's target text. A link elsewhere that the new name would otherwise capture (a nearer or shorter match) is rewritten to keep its previous target. A note changed on disk since it was indexed is left alone and reported.
 
-R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the tree, from a link, from search, and from a quick switcher (fuzzy search over note names).
+R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the tree, from a link, from search, and from a quick switcher (fuzzy search over note names). The quick switcher (File, Quick Switcher, Cmd/Ctrl+O) matches the typed characters in order against file names and paths, ranking a match within the file name, an exact or leading name, and matches at word starts first; arrow keys choose, Enter opens, Escape closes.
 
 R2.6. An attachment opens in the pane, and embedded in a note (`![[file]]`) it shows in place: images, PDFs (in the browser engine's PDF viewer), audio and video (with players that can seek), and text-like files (read-only, up to 2 MB) are shown; HTML is rendered in a sandboxed frame whose scripts run in an origin of their own, so they cannot reach the app or read other vault files, and cannot open windows; any other file shows its name, size and modification time, with a button that opens it in the system's default application. No page may open a window of its own.
 
