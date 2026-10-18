@@ -425,3 +425,17 @@ button:hover {
   font-size: 0.9em;
   margin: 4px 0;
 }
+.base-table .group-row td {
+  font-weight: 600;
+  background: var(--bg-side);
+  padding-top: 10px;
+}
+.base-table .summary-row td {
+  border-top: 2px solid var(--border);
+  color: var(--muted);
+}
+.base-table .summary-name {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}

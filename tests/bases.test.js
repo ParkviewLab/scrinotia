@@ -293,6 +293,51 @@ describe('renderBase', () => {
     expect(byName.Gamma[col('Author')].path).toBe('Welcome.md')
     expect(byName.Alpha[col('Tags')].t).toBe('list')
   })
+  it('groups rows and summarises columns, per group and overall', async () => {
+    const index = await vaultIndex()
+    const src = await readFile(join(ROOT, 'Bases', 'Summaries.base'), 'utf8')
+    const out = renderBase(src, index.entries(), { basePath: 'Bases/Summaries.base', resolve: index.resolve, now: NOW })
+    expect(out.error).toBeUndefined()
+    const [grouped, ordered] = out.views
+    expect(grouped.notices).toEqual([])
+    // band: Alpha (1) and Beta (2) are "top", Gamma (3) is "rest"; DESC puts "top" first.
+    expect(grouped.groups.map((g) => g.key.text)).toEqual(['top', 'rest'])
+    expect(grouped.groups[0].rows.map((r) => r.cells[0].text)).toEqual(['Alpha', 'Beta'])
+    const sums = (row) => row.map((s) => (s ? `${s.name}=${s.cell.text}` : null))
+    expect(sums(grouped.groups[0].summaries)).toEqual([null, 'meanQty=2.5', 'Sum=30', 'Earliest=2026-10-25'])
+    expect(sums(grouped.summaries)).toEqual([null, 'meanQty=2.3', 'Sum=40', 'Earliest=2026-10-25'])
+    // groupOrder keeps only the listed groups, in its order.
+    expect(ordered.groups.map((g) => g.key.text)).toEqual(['3', '1'])
+    expect(ordered.groups.flatMap((g) => g.rows.map((r) => r.cells[0].text))).toEqual(['Gamma', 'Alpha'])
+  })
+  it('computes every default summary', async () => {
+    const { DEFAULT_SUMMARIES } = await import('../src/main/bases/summaries.js')
+    const ns = [4, 1, 3, 2, null, 'x']
+    expect(DEFAULT_SUMMARIES.Average(ns)).toBe(2.5)
+    expect(DEFAULT_SUMMARIES.Min(ns)).toBe(1)
+    expect(DEFAULT_SUMMARIES.Max(ns)).toBe(4)
+    expect(DEFAULT_SUMMARIES.Sum(ns)).toBe(10)
+    expect(DEFAULT_SUMMARIES.Range(ns)).toBe(3)
+    expect(DEFAULT_SUMMARIES.Median(ns)).toBe(2.5)
+    expect(DEFAULT_SUMMARIES.Stddev([2, 4, 4, 4, 5, 5, 7, 9])).toBe(2)
+    const ds = ['2026-01-05', '2026-03-01', null]
+    expect(displayText(DEFAULT_SUMMARIES.Earliest(ds))).toBe('2026-01-05')
+    expect(displayText(DEFAULT_SUMMARIES.Latest(ds))).toBe('2026-03-01')
+    expect(DEFAULT_SUMMARIES.Range(ds)).toBeInstanceOf(DurationV)
+    expect(DEFAULT_SUMMARIES.Checked([true, false, true, null])).toBe(2)
+    expect(DEFAULT_SUMMARIES.Unchecked([true, false, true, null])).toBe(1)
+    expect(DEFAULT_SUMMARIES.Empty([null, '', [], 'a'])).toBe(3)
+    expect(DEFAULT_SUMMARIES.Filled([null, '', [], 'a'])).toBe(1)
+    expect(DEFAULT_SUMMARIES.Unique(['a', 'b', 'a', null])).toBe(2)
+  })
+  it('implements every default summary the reference lists', async () => {
+    const { DEFAULT_SUMMARIES } = await import('../src/main/bases/summaries.js')
+    const text = await readFile(join(REFS, 'SKILL.md'), 'utf8')
+    const section = text.split('## Default Summary Formulas')[1].split('\n## ')[0]
+    const names = [...section.matchAll(/^\| `([A-Za-z]+)` \|/gm)].map((m) => m[1])
+    expect(names.length).toBeGreaterThan(12)
+    expect(names.filter((n) => !DEFAULT_SUMMARIES[n])).toEqual([])
+  })
   it('reports unsupported views, unknown keys, and bad YAML', () => {
     const out = renderBase('views:\n  - type: map\n    name: M\n  - type: cards\n    name: C\nextra: 1\n', [])
     expect(out.views[0].error).toMatch(/not supported$/)

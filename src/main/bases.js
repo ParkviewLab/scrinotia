@@ -11,7 +11,8 @@
 import { parse as parseYaml } from 'yaml'
 import { parse, parsePropertyId, Unsupported } from './bases/parse.js'
 import { evaluate, createContext } from './bases/evaluate.js'
-import { EvalError, ErrorV, LinkV, FileV, HtmlV, ImageV, DateV, DurationV, typeOf, isTruthy, compareValues, displayText, formatDate, formatDuration } from './bases/values.js'
+import { summarise } from './bases/summaries.js'
+import { EvalError, ErrorV, LinkV, FileV, HtmlV, ImageV, DateV, DurationV, typeOf, isTruthy, compareValues, valueEquals, displayText, formatDate, formatDuration } from './bases/values.js'
 
 export { Unsupported }
 
@@ -67,6 +68,8 @@ function safeValue(id, ctx, row) {
     throw err
   }
 }
+
+const isPlainMapping = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 
 // Typed cells for the renderer.
 export function toCell(v) {
@@ -137,7 +140,14 @@ export function renderBase(source, entries, { basePath = null, resolve = () => n
   for (const key of Object.keys(def)) {
     if (!['filters', 'formulas', 'properties', 'summaries', 'views'].includes(key)) notices.push(`The key “${key}” is not part of the format and is ignored.`)
   }
-  if (def.summaries) notices.push('Custom summaries are not supported yet; they are ignored.')
+  const customSummaries = {}
+  for (const [name, src] of Object.entries(def.summaries ?? {})) {
+    try {
+      customSummaries[name] = parse(String(src))
+    } catch (err) {
+      customSummaries[name] = new EvalError(`summary ${name}: ${err.message}`)
+    }
+  }
 
   let globalFilter
   try {
@@ -174,8 +184,6 @@ export function renderBase(source, entries, { basePath = null, resolve = () => n
       const viewNotices = []
       const { rows, failed } = rowsFor(compileFilter(v.filters, `view “${name}” filters`))
       if (failed) viewNotices.push(`${failed} ${failed === 1 ? 'entry was' : 'entries were'} left out because a filter could not be evaluated for ${failed === 1 ? 'it' : 'them'}.`)
-      if (v.groupBy) viewNotices.push('Grouping is not supported yet; rows are shown ungrouped.')
-      if (v.summaries) viewNotices.push('Summaries are not supported yet.')
       const order = Array.isArray(v.order) && v.order.length ? v.order.map(String) : ['file.name']
       const columns = order.map((id) => ({ id, label: def.properties?.[id]?.displayName ?? defaultLabel(id), type: parsePropertyId(id).type }))
 
@@ -199,12 +207,58 @@ export function renderBase(source, entries, { basePath = null, resolve = () => n
       let sorted = keyed.map((k) => k.row)
       const limit = Number(v.limit)
       if (Number.isInteger(limit) && limit >= 0) sorted = sorted.slice(0, limit)
+
+      // Summaries: view.summaries maps a property id to a summary name.
+      const summaryFor = isPlainMapping(v.summaries) ? v.summaries : {}
+      const summaryRow = (rowsIn) =>
+        columns.map((c) => {
+          const name = summaryFor[c.id]
+          if (!name) return null
+          const values = rowsIn.map((row) => safeValue(c.id, ctx, row))
+          return { name: String(name), cell: toCell(summarise(String(name), values, { ctx, customs: customSummaries, row: { entry: ctx.thisEntry ?? { path: '', frontmatter: {} } } })) }
+        })
+      const hasSummaries = columns.some((c) => summaryFor[c.id])
+      const rowOut = (row) => ({ path: row.entry.path, cells: columns.map((c) => cellFor(c.id, ctx, row)) })
+
+      // Grouping: rows (already sorted and limited) grouped by one property;
+      // groups ordered by their value in the given direction, empty last, or
+      // by groupOrder where the view lists one.
+      let groups = null
+      if (v.groupBy) {
+        const gid = String(isPlainMapping(v.groupBy) ? v.groupBy.property : v.groupBy)
+        const gdir = String((isPlainMapping(v.groupBy) && v.groupBy.direction) || 'ASC').toUpperCase() === 'DESC' ? -1 : 1
+        const buckets = []
+        for (const row of sorted) {
+          const key = safeValue(gid, ctx, row)
+          const k = key instanceof ErrorV ? null : key
+          let b = buckets.find((x) => (x.key === null ? k === null : k !== null && valueEquals(x.key, k)))
+          if (!b) buckets.push((b = { key: k, rows: [] }))
+          b.rows.push(row)
+        }
+        if (Array.isArray(v.groupOrder)) {
+          const ordered = []
+          for (const want of v.groupOrder) {
+            const b = buckets.find((x) => (want === null ? x.key === null : x.key !== null && valueEquals(x.key, want)))
+            if (b) ordered.push(b)
+          }
+          buckets.splice(0, buckets.length, ...ordered)
+        } else {
+          buckets.sort((a, b) => (a.key === null ? 1 : b.key === null ? -1 : compareValues(a.key, b.key) * gdir))
+        }
+        groups = buckets.map((b) => ({
+          key: b.key === null ? { t: 'empty', text: '' } : toCell(b.key),
+          rows: b.rows.map(rowOut),
+          summaries: hasSummaries ? summaryRow(b.rows) : null,
+        }))
+      }
       return {
         name,
         type,
         columns,
         notices: viewNotices,
-        rows: sorted.map((row) => ({ path: row.entry.path, cells: columns.map((c) => cellFor(c.id, ctx, row)) })),
+        rows: sorted.map(rowOut),
+        groups,
+        summaries: hasSummaries ? summaryRow(sorted) : null,
       }
     } catch (err) {
       if (err instanceof Unsupported) return { name, type, error: err.message }
