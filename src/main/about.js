@@ -68,7 +68,11 @@ export function openAboutWindow() {
   <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc. The .base file format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
   <div class="copy">© 2026 Gary Frattarola · AGPL-3.0-or-later</div>
   <div class="links"><a href="${SOURCE_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
-</div>`
+</div>
+<script>
+  // Escape dismisses the window, as it does a dialog.
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') window.close() })
+</script>`
   aboutWin = new BrowserWindow({
     width: 520,
     height: 540,
