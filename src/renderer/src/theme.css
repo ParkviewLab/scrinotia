@@ -20,6 +20,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --bg-side: #17181a;
   --fg: #dcddde;
   --muted: #8b8e94;
+  --tree-line: #7c818a;
   --accent: #7f9cf5;
   --select: #2c2f36;
   --border: #2a2c30;
@@ -31,6 +32,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --bg-side: #f4f5f7;
   --fg: #1f2328;
   --muted: #656d76;
+  --tree-line: #959ba4;
   --accent: #3b5bdb;
   --select: #e3e7ee;
   --border: #d8dce2;
@@ -136,8 +138,47 @@ button:hover {
   overflow: auto;
   padding: 4px 0;
 }
+/* Nested levels (R2.2): 24 px each, with connecting lines. Each nested
+   item has a vertical line down its left edge and a short tick across to its
+   row; the last item's line stops at its tick. The line sits under the
+   parent folder's arrow. */
 .tree ul {
-  padding-left: 14px;
+  padding-left: 0;
+  margin-left: 8px;
+}
+.tree > li > ul {
+  margin-left: 16px;
+}
+.tree ul > li {
+  position: relative;
+  padding-left: 16px;
+}
+.tree ul > li::before,
+.tree ul > li::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  border-color: var(--tree-line);
+  border-style: solid;
+  border-width: 0;
+  pointer-events: none;
+}
+.tree ul > li::before {
+  top: 0;
+  bottom: 0;
+  border-left-width: 1px;
+}
+.tree ul > li:last-child::before {
+  bottom: auto;
+  height: 11.5px;
+}
+.tree ul > li::after {
+  top: 11.5px;
+  width: 12px;
+  border-top-width: 1px;
+}
+.tree ul .row {
+  padding-left: 4px;
 }
 .tree .row {
   display: block;
