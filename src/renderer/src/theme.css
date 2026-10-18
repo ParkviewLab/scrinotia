@@ -401,3 +401,27 @@ button:hover {
 .base-table th {
   white-space: nowrap;
 }
+.base-table td.cell-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.base-table a {
+  color: var(--accent);
+  cursor: pointer;
+}
+.base-table a.unresolved {
+  opacity: 0.6;
+}
+.cell-error {
+  color: var(--error);
+  cursor: help;
+}
+.cell-image {
+  max-height: 48px;
+  max-width: 120px;
+}
+.preview .notice {
+  color: var(--muted);
+  font-size: 0.9em;
+  margin: 4px 0;
+}

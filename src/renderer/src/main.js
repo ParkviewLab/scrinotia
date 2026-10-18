@@ -6,6 +6,7 @@
 
 import { createEditor } from './editor/editor.js'
 import { createPreview } from './preview.js'
+import { renderCell } from './baseCells.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -374,23 +375,31 @@ async function showBase(path) {
     head.append(th)
   }
   const tbody = table.createTBody()
+  const openTarget = (cell) => {
+    if (cell.path) openPath(cell.path)
+    else if (cell.target) follow({ kind: 'wikilink', ref: cell.target })
+  }
   for (const r of v.rows) {
     const tr = tbody.insertRow()
     r.cells.forEach((cell, k) => {
       const td = tr.insertCell()
-      if (v.columns[k].key === 'file.name') {
-        const a = document.createElement('a')
-        a.textContent = cell
-        a.addEventListener('click', () => openPath(r.path))
-        td.append(a)
-      } else {
-        td.textContent = cell
-      }
+      // The file's own name opens the row's file.
+      const own = ['file.name', 'file.basename', 'file.path'].includes(v.columns[k].id)
+      const shown = own ? { ...cell, t: 'link', path: r.path } : cell
+      td.className = `cell-${shown.t}`
+      td.append(renderCell(shown, { openTarget, assetUrl: (p) => assetBase + p.split('/').map(encodeURIComponent).join('/') }))
     })
+  }
+  const notices = [...(out.notices ?? []), ...(v.notices ?? [])]
+  for (const n of notices) {
+    const p = document.createElement('p')
+    p.className = 'notice'
+    p.textContent = n
+    host.append(p)
   }
   const count = document.createElement('p')
   count.className = 'muted'
-  count.textContent = `${v.rows.length} ${v.rows.length === 1 ? 'note' : 'notes'}`
+  count.textContent = `${v.rows.length} ${v.rows.length === 1 ? 'entry' : 'entries'}`
   host.append(table, count)
 }
 

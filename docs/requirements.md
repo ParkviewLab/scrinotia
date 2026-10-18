@@ -52,7 +52,9 @@ R3.4. Saving is automatic after a short pause in typing. Undo and redo cover the
 
 R3.5. Standard text-editing keyboard behaviour on both platforms (platform-appropriate modifier keys), and list continuation and indentation.
 
-R3.6. A `.base` file opens as a set of table views of the vault's notes, one tab per view. Supported: filters as expressions combined with and, or and not; comparisons, `!`, `&&`, `||`; `file.name`, `file.ext`, `file.path`, `file.folder`, `file.inFolder()`, `file.hasTag()`, `file.hasLink()` and frontmatter properties; table views with order, sort, limit and display names. Anything else is reported in the pane, not guessed. Clicking a note's name opens it.
+R3.6. A `.base` file is implemented from the two MIT-licensed references in `docs/references/` (the Obsidian API type definitions and the obsidian-bases skill), and from nothing else; the client follows those references, not Obsidian's behaviour. A base opens as its views, one tab per view, and in the split mode its YAML source is edited beside the rendered views, with the same saving and conflict handling as a note. The aim is the whole format the references describe: global and per-view filters; formulas and `formula.*` properties; note, file and formula properties with display names; the functions and value types of the formula language; table, cards and list views with order, sort, limit, groupBy and summaries; and bases embedded in notes. A view type the references name but the client does not provide (such as map) and any expression the client cannot evaluate are reported in the pane, never guessed.
+
+R3.6.1. Where the references are silent, the client chooses as follows. `file.name` includes the extension and `file.basename` omits it, as the API's `TAbstractFile.name` and `TFile.basename` define. A property whose name holds characters other than letters, digits and `_` is written `note["name"]` in an expression; in `order`, `sort`, `groupBy` and `properties` it is written as it stands. Values compare by type: numbers numerically, dates chronologically, text case-insensitively with numbers in text ordered numerically; values of different types are never equal; empty values and errors sort last. An expression that fails for one entry shows a marked cell for that entry only; an entry for which a filter fails is left out of the view, and the view says how many were left out. `file.ctime` is the file's birth time, or, where the filesystem records none, the earlier of its change and modification times. `file.tags` lists tags with their `#`. A duration's `days`, `hours` and the other fields are whole units, truncated towards zero; a month counts as 30.436875 days where a duration mixes months with fixed time. `icon()` is reported as unsupported, since the client bundles no icon set. A column's default label is the property's name without its type prefix.
 
 ### R4. Links and backlinks
 
@@ -96,7 +98,7 @@ R7.1. The client is licensed under AGPL-3.0-or-later; each source file carries t
 
 R7.2. Every dependency's licence must be compatible with AGPL-3.0-or-later (permissive licences such as MIT, BSD, ISC, and Apache-2.0 qualify); the dependency list and licences are recorded and checked.
 
-R7.3. The client is specified and written independently; no code, assets, icons, themes, or documentation of any proprietary product are copied.
+R7.3. The client is specified and written independently; no code, assets, icons, themes, or documentation of any proprietary product are copied. The only third-party descriptions of the vault formats the project uses are the MIT-licensed references in `docs/references/`, kept with their notices. The About dialog, the README and `LICENSING.md` state that granite-vaulting reads the formats used by Obsidian, a product of Dynalist Inc., that it is independent and not affiliated with or endorsed by Obsidian, and that `.base` is implemented from those two references. (Provenance note: the first `.base` subset, in v0.1.1, was written from two example files and from prior knowledge of the format, not from any document read for the purpose.)
 
 ## Deferred beyond v1
 
@@ -104,7 +106,7 @@ Graph view, canvas, plugins and themes, publish and sync, mobile, math and Merma
 
 ## Open questions
 
-Q1. Resolved: the client is not a copy, and the requirements define the behaviour themselves.
+Q1. Resolved: the client is not a copy, and the requirements define the behaviour themselves. Amended 2026-10-18: for `.base` only, the two MIT-licensed references in `docs/references/` are the source; Obsidian's help site, which carries no licence, is not consulted.
 
 Q2. Resolved: the client neither reads nor writes `.obsidian/` or any comparable folder (R1.2). Vault-level settings live in `.granite-vaulting/` inside the vault; machine-specific state and caches live outside it (R6.4, R6.5).
 

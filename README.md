@@ -4,16 +4,16 @@ An independent, local-first Markdown notes client for macOS and Ubuntu. It opens
 
 ## Status
 
-Version 0.1.0, the first release. The requirements are in [`docs/requirements.md`](docs/requirements.md); what version 0.1.0 covers of them:
+Version 0.2.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
 - **Links:** wikilinks (`[[note]]`, `[[note#heading|alias]]`, `![[image.png]]`) and local Markdown links are followed on click; backlinks, unlinked mentions and outgoing links are listed beside the note; renaming or moving a note updates the links that point to it, and nothing else in those notes.
 - **Search:** words, `"phrases"`, `-exclusions`, `tag:`, `file:` and `path:`.
-- **`.base` files:** table views with filters, sorts and display names, for the subset of the format described in requirement R3.6.
+- **`.base` files:** table views with filters, formulas (the full function library of the references, including dates and durations), note, file and formula properties, sorts, limits and display names; a value that cannot be computed is marked in its cell. Requirement R3.6 gives the scope and R3.6.1 the choices made where the references are silent.
 - **Settings:** a dark and a light theme, dark by default, kept per vault in `.granite-vaulting/` so that a synchronisation tool such as Syncthing carries it with the vault.
 
-Not yet present: tabs, a quick switcher, an outline and a tags pane, embedded notes (an embed of a note shows as a link), and regular-expression search.
+Not yet present: in `.base` files, summaries, grouping, cards and list views, editing a base beside its views, and bases embedded in notes; elsewhere, tabs, a quick switcher, an outline and a tags pane, embedded notes (an embed of a note shows as a link), and regular-expression search.
 
 ## Install
 
@@ -40,6 +40,10 @@ npm run dev
 ## Releasing
 
 Releases are cut from the CLI and published by the tag-driven workflow, as the ParkviewLab handbook's `releases.md` describes.
+
+## Relation to Obsidian
+
+granite-vaulting reads vaults and `.base` files in the formats used by Obsidian, a product of Dynalist Inc. It is an independent project, not affiliated with or endorsed by Obsidian. The `.base` format is implemented from two MIT-licensed references, the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango), kept in [`docs/references/`](docs/references/README.md).
 
 ## Contributing
 
