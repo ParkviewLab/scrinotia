@@ -28,10 +28,21 @@ function resolveEntry(link, from, files) {
   return resolveLink(link.target, from, files)
 }
 
-export function createIndex({ list, read }) {
-  // list(): every vault-relative file path; read(path): a note's text.
+export function createIndex({ list, read, stat = null }) {
+  // list(): every vault-relative file path; read(path): a note's text;
+  // stat(path): { size, ctime, mtime } in bytes and milliseconds (optional).
   let files = []
   const notes = new Map() // path -> { text, links, tags }
+  const stats = new Map() // path -> { size, ctime, mtime }
+
+  async function statOf(p) {
+    if (!stat) return
+    try {
+      stats.set(p, await stat(p))
+    } catch {
+      stats.delete(p)
+    }
+  }
 
   function frontmatterOf(text) {
     const m = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/.exec(text)
@@ -50,22 +61,32 @@ export function createIndex({ list, read }) {
     notes.set(path, { text, links: parseLinks(text), tags: [...new Set([...parseTags(text), ...fmTags])], frontmatter })
   }
 
+  // Reads and stats run in batches, so a large vault is not read one file at a time.
+  async function inBatches(items, fn, size = 64) {
+    for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn))
+  }
+
   async function rebuild() {
     files = await list()
     notes.clear()
-    for (const p of files.filter(isNote)) {
+    stats.clear()
+    await inBatches(files, statOf)
+    await inBatches(files.filter(isNote), async (p) => {
       try {
         indexText(p, await read(p))
       } catch {
         // unreadable notes are skipped; they reappear on the next change
       }
-    }
+    })
   }
 
   async function update(changed) {
     files = await list()
     const present = new Set(files)
     for (const p of [...notes.keys()]) if (!present.has(p)) notes.delete(p)
+    for (const p of [...stats.keys()]) if (!present.has(p)) stats.delete(p)
+    for (const p of changed) if (present.has(p)) await statOf(p)
+    for (const p of files) if (!stats.has(p)) await statOf(p)
     for (const p of changed) {
       if (!isNote(p) || !present.has(p)) continue
       try {
@@ -224,12 +245,23 @@ export function createIndex({ list, read }) {
   }
 
   // Every file, with a note's frontmatter, tags and resolved link targets (for .base views).
+  // Every file, with its stats and, for a note, its frontmatter, tags and
+  // links (each { target, path }, path null when unresolved), embeds apart.
   function entries() {
     return files.map((path) => {
+      const st = stats.get(path) ?? {}
       const note = notes.get(path)
-      if (!note) return { path, frontmatter: {}, tags: [], links: [] }
-      const links = note.links.map((l) => resolveEntry(l, path, files)).filter(Boolean)
-      return { path, frontmatter: note.frontmatter, tags: note.tags, links }
+      if (!note) return { path, ...st, frontmatter: {}, tags: [], links: [], linkTargets: [], embedTargets: [] }
+      const resolved = note.links.map((l) => ({ embed: l.embed, target: l.target, path: resolveEntry(l, path, files) }))
+      return {
+        path,
+        ...st,
+        frontmatter: note.frontmatter,
+        tags: note.tags,
+        links: resolved.filter((l) => l.path).map((l) => l.path),
+        linkTargets: resolved.filter((l) => !l.embed).map(({ target, path: p }) => ({ target, path: p })),
+        embedTargets: resolved.filter((l) => l.embed).map(({ target, path: p }) => ({ target, path: p })),
+      }
     })
   }
 
@@ -244,6 +276,7 @@ export function createIndex({ list, read }) {
     search,
     planRename,
     files: () => files,
+    resolve: (target, from) => (target ? resolveLink(target, from, files) : null),
     has: (p) => notes.has(p),
   }
 }
