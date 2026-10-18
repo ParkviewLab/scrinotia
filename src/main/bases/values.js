@@ -65,6 +65,15 @@ export class ImageV {
   }
 }
 
+// The `note` and `formula` names in an expression.
+export class NoteObj {
+  constructor(values) {
+    this.values = values
+  }
+}
+
+export class FormulaRef {}
+
 export class ErrorV {
   constructor(message) {
     this.message = message
@@ -87,7 +96,7 @@ export function typeOf(v) {
   if (v instanceof HtmlV) return 'html'
   if (v instanceof ImageV) return 'image'
   if (v instanceof ErrorV) return 'error'
-  if (isPlainObject(v)) return 'object'
+  if (isPlainObject(v) || v instanceof NoteObj) return 'object'
   return 'unknown'
 }
 
@@ -104,7 +113,7 @@ export function isTruthy(v) {
     case 'list':
       return v.length > 0
     case 'object':
-      return Object.keys(v).length > 0
+      return Object.keys(v instanceof NoteObj ? v.values : v).length > 0
     case 'error':
       return false
     default:
@@ -170,6 +179,30 @@ export function addDuration(date, dur, sign = 1) {
   }
   d = d.add(sign * dur.ms, 'millisecond')
   return new DateV(d.valueOf(), date.hasTime || dur.ms % 86400000 !== 0)
+}
+
+// The difference between two dates, counted in local calendar time: a day
+// that a daylight-saving change makes 23 or 25 hours long still counts as one.
+export function dateDifference(a, b) {
+  const offset = (dayjs(a.ms).utcOffset() - dayjs(b.ms).utcOffset()) * 60000
+  return new DurationV(0, a.ms - b.ms + offset)
+}
+
+// Ordering for the relational operators: defined only for values of the same
+// type (a date against a date-like text, and links against files, count as
+// the same); otherwise there is no order and the comparison is false.
+export function relational(a, b) {
+  const ta = typeOf(a)
+  const tb = typeOf(b)
+  if (ta === 'date' || tb === 'date') {
+    const da = parseDate(a)
+    const db = parseDate(b)
+    return da && db ? da.ms - db.ms : null
+  }
+  const linkish = (t) => t === 'link' || t === 'file'
+  if (ta !== tb && !(linkish(ta) && linkish(tb))) return null
+  if (!['number', 'string', 'boolean', 'duration', 'link', 'file', 'list'].includes(ta)) return null
+  return compareValues(a, b)
 }
 
 export function formatDate(v, pattern) {
@@ -285,7 +318,7 @@ export function displayText(v) {
     case 'error':
       return v.message
     case 'object':
-      return JSON.stringify(v)
+      return JSON.stringify(v instanceof NoteObj ? v.values : v)
     default:
       return String(v)
   }

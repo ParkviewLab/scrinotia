@@ -157,6 +157,31 @@ describe('functions', () => {
     expect(ev('pages.toString() + " pages"')).toBe('412 pages')
     expect(ev('missing.isEmpty()')).toBe(true)
   })
+  it('orders only values of the same type', () => {
+    const e = { ...ENTRIES[0], frontmatter: { n: '50', m: 50 } }
+    const evx = (src) => evaluateExpression(src, e, { entries: [e], resolve, now: NOW })
+    expect(evx('n > 100')).toBe(false)
+    expect(evx('n < 100')).toBe(false)
+    expect(evx('m < 100')).toBe(true)
+    expect(evx('"2026-10-01" < today()')).toBe(true)
+  })
+  it('counts calendar days across a daylight-saving change', () => {
+    const saved = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      expect(ev('(date("2027-03-15") - date("2027-03-14")).days')).toBe(1)
+      expect(ev('(date("2027-03-20") - date("2027-03-10")).days')).toBe(10)
+      expect(ev('(date("2027-11-08") - date("2027-11-07")).days')).toBe(1)
+    } finally {
+      process.env.TZ = saved
+    }
+  })
+  it('treats note as an object of the note’s properties', () => {
+    expect(ev('note.keys()')).toContain('author')
+    expect(ev('note.keys()')).not.toContain('values')
+    expect(ev('note.isEmpty()')).toBe(false)
+    expect(ev('note.isType("object")')).toBe(true)
+  })
   it('compares by type', () => {
     expect(ev('"" == 0')).toBe(false)
     expect(ev('pages == 412')).toBe(true)
@@ -188,21 +213,43 @@ describe('coverage of the references', () => {
       'Object Functions': IMPLEMENTED.object,
       'Regular Expression Functions': IMPLEMENTED.regexp,
     }
+    // Each listed name is called for real on a sample value: an error saying
+    // it is not a function or method means it is missing, whatever the lists say.
+    const receiver = {
+      'Any Type Functions': '"x"',
+      'Date Functions & Fields': 'now()',
+      'String Functions': '"x"',
+      'Number Functions': '(1)',
+      'List Functions': '[1, 2]',
+      'File Functions': 'file',
+      'Link Functions': 'link("Herbert")',
+      'Object Functions': 'file.properties',
+      'Regular Expression Functions': '/x/',
+    }
+    const answers = (src) => {
+      try {
+        ev(src)
+        return true
+      } catch (err) {
+        return !/is not a (method|function)/.test(err.message)
+      }
+    }
     let checked = 0
     for (const section of sections) {
       const title = section.split('\n')[0].trim()
+      for (const m of section.matchAll(/`(date|duration)\.([a-z]+)`/g)) {
+        if (!title.startsWith('Date') && !title.startsWith('Duration')) continue
+        checked++
+        const sample = m[1] === 'date' ? 'now()' : '(now() - today())'
+        if (!answers(`${sample}.${m[2]}`)) missing.push(`${title}: field ${m[2]}`)
+      }
       const known = listFor[title]
       if (!known) continue
       for (const m of section.matchAll(/^\| `([A-Za-z]+)\(\)`/gm)) {
         checked++
-        if (!known.includes(m[1]) && !UNSUPPORTED.functions.includes(m[1])) missing.push(`${title}: ${m[1]}`)
-      }
-      for (const m of section.matchAll(/`(?:date|duration)\.([a-z]+)`/g)) {
-        const fields = title.startsWith('Date') ? IMPLEMENTED.dateFields : IMPLEMENTED.durationFields
-        if (title.startsWith('Date') || title.startsWith('Duration')) {
-          checked++
-          if (!fields.includes(m[1])) missing.push(`${title}: field ${m[1]}`)
-        }
+        if (UNSUPPORTED.functions.includes(m[1])) continue
+        const call = title === 'Global Functions' ? `${m[1]}()` : `${receiver[title]}.${m[1]}()`
+        if (!known.includes(m[1]) || !answers(call)) missing.push(`${title}: ${m[1]}`)
       }
     }
     expect(checked).toBeGreaterThan(60)
@@ -243,6 +290,7 @@ describe('renderBase', () => {
     expect(byName.Alpha[col('Days left')].text).toBe('7')
     expect(byName.Alpha[col('Label')].text).toBe('high')
     expect(byName.Gamma[col('Author')].t).toBe('link')
+    expect(byName.Gamma[col('Author')].path).toBe('Welcome.md')
     expect(byName.Alpha[col('Tags')].t).toBe('list')
   })
   it('reports unsupported views, unknown keys, and bad YAML', () => {

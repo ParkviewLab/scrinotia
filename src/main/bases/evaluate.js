@@ -22,6 +22,10 @@ import {
   parseDuration,
   addDuration,
   formatDate,
+  dateDifference,
+  relational,
+  NoteObj,
+  FormulaRef,
   valueEquals,
   compareValues,
   displayText,
@@ -129,7 +133,7 @@ export function evaluate(node, ctx, row, scope = {}) {
         const i = num(key, 'a list index')
         return obj[i < 0 ? obj.length + i : i] ?? null
       }
-      if (obj && obj.__note) return obj.values[String(key)] ?? null
+      if (obj instanceof NoteObj) return obj.values[String(key)] ?? null
       if (isPlainObject(obj)) return obj[String(key)] ?? null
       if (typeof obj === 'string') return obj[num(key, 'a string index')] ?? null
       return obj === null ? null : fail(`cannot index a ${typeOf(obj)}`)
@@ -158,9 +162,9 @@ function identifier(name, ctx, row, scope) {
     case 'file':
       return new FileV(row.entry)
     case 'note':
-      return { __note: true, values: noteObject(row.entry) }
+      return new NoteObj(noteObject(row.entry))
     case 'formula':
-      return { __formula: true }
+      return new FormulaRef()
     case 'this':
       return ctx.thisEntry ? new FileV(ctx.thisEntry) : null
     default: {
@@ -172,11 +176,11 @@ function identifier(name, ctx, row, scope) {
 
 function member(obj, name, ctx, row) {
   if (obj === null || obj === undefined) return null
-  if (obj.__note) {
+  if (obj instanceof NoteObj) {
     const v = obj.values[name]
     return v === undefined ? null : v
   }
-  if (obj.__formula) return formulaValue(name, ctx, row)
+  if (obj instanceof FormulaRef) return formulaValue(name, ctx, row)
   if (obj instanceof FileV) return fileProperty(ctx, obj.entry, name)
   if (obj instanceof DateV) {
     const d = dayjs(obj.ms)
@@ -249,7 +253,8 @@ function binary(node, ctx, row, scope) {
     case '>':
     case '>=': {
       if (a === null || b === null) return false
-      const r = compareValues(a, b)
+      const r = relational(a, b)
+      if (r === null) return false
       return op === '<' ? r < 0 : op === '<=' ? r <= 0 : op === '>' ? r > 0 : r >= 0
     }
     case '+':
@@ -287,9 +292,9 @@ function plus(a, b) {
 
 function minus(a, b) {
   if (a instanceof DateV) {
-    if (b instanceof DateV) return new DurationV(0, a.ms - b.ms)
+    if (b instanceof DateV) return dateDifference(a, b)
     const bd = typeof b === 'string' ? parseDate(b) : null
-    if (bd) return new DurationV(0, a.ms - bd.ms)
+    if (bd) return dateDifference(a, bd)
     const d = b instanceof DurationV ? b : parseDuration(b)
     return d ? addDuration(a, d, -1) : fail(`cannot subtract ${typeOf(b)} from a date`)
   }
@@ -375,8 +380,7 @@ function callMethod(node, ctx, row, scope) {
   if (name === 'isEmpty') {
     if (t === 'null') return true
     if (t === 'string' || t === 'list') return obj.length === 0
-    if (t === 'object') return Object.keys(obj).length === 0
-    if (obj?.__note) return Object.keys(obj.values).length === 0
+    if (t === 'object') return Object.keys(obj instanceof NoteObj ? obj.values : obj).length === 0
     return false
   }
   if (t === 'null') return null
@@ -397,15 +401,13 @@ function callMethod(node, ctx, row, scope) {
     case 'regexp':
       if (name === 'matches') return new RegExp(obj.source, obj.flags.replace('g', '')).test(displayText(args[0]))
       break
-    case 'object':
-      if (name === 'keys') return Object.keys(obj)
-      if (name === 'values') return Object.values(obj)
+    case 'object': {
+      const o = obj instanceof NoteObj ? obj.values : obj
+      if (name === 'keys') return Object.keys(o)
+      if (name === 'values') return Object.values(o)
       break
+    }
     default:
-      if (obj?.__note) {
-        if (name === 'keys') return Object.keys(obj.values)
-        if (name === 'values') return Object.values(obj.values)
-      }
   }
   return fail(`${t}.${name}() is not a method`)
 }

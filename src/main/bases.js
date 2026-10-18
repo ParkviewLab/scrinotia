@@ -47,6 +47,18 @@ function propertyValue(id, ctx, row) {
   return evaluate({ k: 'member', obj: { k: 'id', name: type }, name }, ctx, row)
 }
 
+// A cell for one row, with wikilinks written as text (in frontmatter)
+// resolved from the row's own note.
+function cellFor(id, ctx, row) {
+  const cell = toCell(safeValue(id, ctx, row))
+  const fix = (c) => {
+    if (c.t === 'link' && !c.path && c.target) return { ...c, path: ctx.vault.resolve(c.target, row.entry.path) }
+    if (c.t === 'list') return { ...c, items: c.items.map(fix) }
+    return c
+  }
+  return fix(cell)
+}
+
 function safeValue(id, ctx, row) {
   try {
     return propertyValue(id, ctx, row)
@@ -192,7 +204,7 @@ export function renderBase(source, entries, { basePath = null, resolve = () => n
         type,
         columns,
         notices: viewNotices,
-        rows: sorted.map((row) => ({ path: row.entry.path, cells: columns.map((c) => toCell(safeValue(c.id, ctx, row))) })),
+        rows: sorted.map((row) => ({ path: row.entry.path, cells: columns.map((c) => cellFor(c.id, ctx, row)) })),
       }
     } catch (err) {
       if (err instanceof Unsupported) return { name, type, error: err.message }

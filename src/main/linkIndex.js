@@ -61,18 +61,23 @@ export function createIndex({ list, read, stat = null }) {
     notes.set(path, { text, links: parseLinks(text), tags: [...new Set([...parseTags(text), ...fmTags])], frontmatter })
   }
 
+  // Reads and stats run in batches, so a large vault is not read one file at a time.
+  async function inBatches(items, fn, size = 64) {
+    for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn))
+  }
+
   async function rebuild() {
     files = await list()
     notes.clear()
     stats.clear()
-    for (const p of files) await statOf(p)
-    for (const p of files.filter(isNote)) {
+    await inBatches(files, statOf)
+    await inBatches(files.filter(isNote), async (p) => {
       try {
         indexText(p, await read(p))
       } catch {
         // unreadable notes are skipped; they reappear on the next change
       }
-    }
+    })
   }
 
   async function update(changed) {
