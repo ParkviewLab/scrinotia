@@ -5,6 +5,7 @@
 // file tree and the note editor.
 
 import { createEditor } from './editor/editor.js'
+import { createPreview } from './preview.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -99,6 +100,7 @@ async function enterVault(opener) {
     current = null
     $('search').value = ''
     runSearch()
+    assetBase = opened.assetBase ?? ''
     $('vault-name').textContent = opened.name
     $('vault-name').title = opened.root
     $('start').hidden = true
@@ -206,8 +208,60 @@ const editor = createEditor($('editor'), {
     clearTimeout(entry.timer)
     const path = current
     entry.timer = setTimeout(() => save(path), SAVE_DELAY)
+    schedulePreview()
   },
-  onFollow: follow,
+  onScroll: syncScroll,
+})
+
+// ---- preview (R3.1): read-only rendering, alone or beside the editor ----
+let assetBase = ''
+let noteMode = 'preview'
+let previewTimer = null
+const preview = createPreview({
+  assetUrl: (target) => {
+    const hit = resolveLink(target, current, files())
+    return hit ? assetBase + hit.split('/').map(encodeURIComponent).join('/') : null
+  },
+  resolves: (target) => resolveLink(target, current, files()) !== null,
+})
+
+function renderPreview() {
+  clearTimeout(previewTimer)
+  if (!current) return
+  preview.render(editor.text(), $('preview'))
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimer)
+  previewTimer = setTimeout(renderPreview, 120)
+}
+
+// In split mode the preview follows the editor's scroll position by proportion.
+function syncScroll(cmView) {
+  if (noteMode !== 'split') return
+  const src = cmView.scrollDOM
+  const max = src.scrollHeight - src.clientHeight
+  const dst = $('preview')
+  dst.scrollTop = max > 0 ? (src.scrollTop / max) * (dst.scrollHeight - dst.clientHeight) : 0
+}
+
+function setNoteMode(mode) {
+  noteMode = mode
+  $('note-area').className = `note-area mode-${mode}`
+  for (const m of ['preview', 'split']) $(`mode-${m}`).classList.toggle('active', m === mode)
+  if (mode === 'split') {
+    editor.view.requestMeasure()
+    editor.focus()
+  }
+}
+
+$('preview').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-wikilink], [data-href]')
+  if (!el) return
+  e.preventDefault()
+  const wikilink = el.getAttribute('data-wikilink')
+  if (wikilink !== null) follow({ kind: 'wikilink', ref: wikilink })
+  else follow({ kind: 'href', ref: el.getAttribute('data-href') })
 })
 
 function files() {
@@ -215,11 +269,7 @@ function files() {
 }
 
 function updateResolver() {
-  const list = files()
-  editor.setResolver((ref) => {
-    const { target } = splitLink(ref)
-    return !target || resolveLink(target, current, list) !== null
-  })
+  if (current) schedulePreview()
 }
 
 async function save(path) {
@@ -260,7 +310,7 @@ async function showNote(path) {
   const body = $('note-body')
   const entryInfo = path ? findEntry(view.tree, path) : null
   if (!path || entryInfo?.type !== 'note') {
-    $('editor').hidden = true
+    $('note-area').hidden = true
     $('modes').hidden = true
     body.textContent = entryInfo ? `${entryInfo.name} is an attachment; it is not shown in this version.` : ''
     current = null
@@ -275,14 +325,15 @@ async function showNote(path) {
       notes.set(path, entry)
     } catch (err) {
       showError($('pane-error'), err)
-      $('editor').hidden = true
+      $('note-area').hidden = true
       return
     }
   }
   if (current !== path) return // another note was chosen while this one loaded
-  $('editor').hidden = false
+  $('note-area').hidden = false
   $('modes').hidden = false
   editor.setState(entry.state)
+  renderPreview()
   updateResolver()
 }
 
@@ -396,18 +447,13 @@ function forgetNotes(match) {
   }
   if (current && !notes.has(current)) {
     current = null
-    $('editor').hidden = true
+    $('note-area').hidden = true
     $('modes').hidden = true
   }
 }
 
 // ---- modes (R3.1) ----
-for (const mode of ['live', 'source', 'reading']) {
-  $(`mode-${mode}`).addEventListener('click', () => {
-    editor.setMode(mode)
-    for (const m of ['live', 'source', 'reading']) $(`mode-${m}`).classList.toggle('active', m === mode)
-  })
-}
+for (const mode of ['preview', 'split']) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
 
 // ---- following links ----
 async function openPath(path) {
@@ -489,6 +535,7 @@ function loadDiskText(entry, text) {
     editor.replaceFromDisk(text)
     entry.state = editor.getState()
   }
+  renderPreview()
 }
 
 api.onFlush(flushAll)

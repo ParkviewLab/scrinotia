@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' gv-asset: https: data:" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>granite-vaulting</title>
     <link rel="stylesheet" href="/src/theme.css" />
@@ -47,9 +47,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         <header class="pane-head">
           <span id="note-path" class="muted"></span>
           <span class="actions" id="modes" hidden>
-            <button id="mode-live" type="button" class="active">Live</button>
-            <button id="mode-source" type="button">Source</button>
-            <button id="mode-reading" type="button">Reading</button>
+            <button id="mode-preview" type="button" class="active">Preview</button>
+            <button id="mode-split" type="button">Edit (split)</button>
           </span>
           <span class="actions" id="entry-actions" hidden>
             <button id="rename" type="button">Rename</button>
@@ -62,7 +61,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
           <button id="keep-mine" type="button">Keep my version</button>
           <button id="load-disk" type="button">Load the disk version</button>
         </div>
-        <div id="editor" class="editor" hidden></div>
+        <div id="note-area" class="note-area mode-preview" hidden>
+          <div id="editor" class="editor"></div>
+          <article id="preview" class="preview"></article>
+        </div>
         <p id="note-body" class="note-body muted"></p>
       </main>
       <aside class="links" id="links">
