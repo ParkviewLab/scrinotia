@@ -11,7 +11,17 @@ contextBridge.exposeInMainWorld('granite', {
   openVault: (dir) => ipcRenderer.invoke('vault:open', dir),
   tree: () => ipcRenderer.invoke('vault:tree'),
   readNote: (rel) => ipcRenderer.invoke('note:read', rel),
-  createNote: (folder) => ipcRenderer.invoke('entry:createNote', folder),
+  writeNote: (rel, text) => ipcRenderer.invoke('note:write', rel, text),
+  openExternal: (url) => ipcRenderer.invoke('open:external', url),
+  onFlush: (fn) =>
+    ipcRenderer.on('app:flush', async () => {
+      try {
+        await fn()
+      } finally {
+        ipcRenderer.send('app:flushed')
+      }
+    }),
+  createNote: (folder, base) => ipcRenderer.invoke('entry:createNote', folder, base),
   createFolder: (folder) => ipcRenderer.invoke('entry:createFolder', folder),
   move: (from, to) => ipcRenderer.invoke('entry:move', from, to),
   trash: (rel) => ipcRenderer.invoke('entry:trash', rel),

@@ -1,8 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// The vault browser: a start screen with recent vaults, then a file tree and a
-// note pane. The note pane is read-only until the editor lands.
+// The vault browser and editor: a start screen with recent vaults, then a
+// file tree and the note editor.
+
+import { createEditor } from './editor/editor.js'
+import { splitLink } from '../../shared/markdown.js'
+import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
 const api = window.granite
 const $ = (id) => document.getElementById(id)
@@ -174,28 +178,217 @@ async function refreshTree() {
   renderTree()
 }
 
-// ---- pane ----
-async function renderPane() {
-  const body = $('note-body')
-  showError($('pane-error'), null)
-  $('entry-actions').hidden = !view.selected
-  $('note-path').textContent = view.selected?.path ?? ''
-  if (!view.openNote) {
-    body.textContent = ''
+// ---- pane and editor ----
+// One entry per note opened this session: its editor state (with undo
+// history), the text last read from or written to disk, and whether it has
+// unsaved edits. Saving happens only after user edits (R1.1), half a second
+// after typing stops (R3.4); a watcher event whose disk text equals the last
+// text written is the echo of our own save and is ignored.
+const notes = new Map()
+let current = null
+let conflictText = null
+const SAVE_DELAY = 500
+
+const editor = createEditor($('editor'), {
+  onUserChange: () => {
+    const entry = notes.get(current)
+    if (!entry) return
+    entry.dirty = true
+    clearTimeout(entry.timer)
+    const path = current
+    entry.timer = setTimeout(() => save(path), SAVE_DELAY)
+  },
+  onFollow: follow,
+})
+
+function files() {
+  return flattenFiles(view.tree)
+}
+
+function updateResolver() {
+  const list = files()
+  editor.setResolver((ref) => {
+    const { target } = splitLink(ref)
+    return !target || resolveLink(target, current, list) !== null
+  })
+}
+
+async function save(path) {
+  const entry = notes.get(path)
+  if (!entry) return
+  clearTimeout(entry.timer)
+  const state = path === current ? editor.getState() : entry.state
+  const text = editor.text(state)
+  if (text === entry.disk) {
+    entry.dirty = false
     return
   }
-  const entry = findEntry(view.tree, view.openNote)
-  if (entry?.type === 'attachment') {
-    body.textContent = `${entry.name} is an attachment; it is not shown in this version.`
-    return
-  }
+  const previous = entry.disk
+  entry.disk = text
   try {
-    body.textContent = await api.readNote(view.openNote)
+    await api.writeNote(path, text)
+    entry.dirty = false
   } catch (err) {
-    body.textContent = ''
+    entry.disk = previous
     showError($('pane-error'), err)
   }
 }
+
+async function flushAll() {
+  await Promise.all([...notes.keys()].filter((p) => notes.get(p).dirty).map(save))
+}
+
+function rememberCurrent() {
+  if (current && notes.has(current)) notes.get(current).state = editor.getState()
+}
+
+async function showNote(path) {
+  if (path === current) return
+  rememberCurrent()
+  if (current && notes.get(current)?.dirty) await save(current)
+  current = path
+  hideConflict()
+  const body = $('note-body')
+  const entryInfo = path ? findEntry(view.tree, path) : null
+  if (!path || entryInfo?.type !== 'note') {
+    $('editor').hidden = true
+    $('modes').hidden = true
+    body.textContent = entryInfo ? `${entryInfo.name} is an attachment; it is not shown in this version.` : ''
+    current = null
+    return
+  }
+  body.textContent = ''
+  let entry = notes.get(path)
+  if (!entry) {
+    try {
+      const text = await api.readNote(path)
+      entry = { state: editor.createState(text), disk: text, dirty: false, timer: null }
+      notes.set(path, entry)
+    } catch (err) {
+      showError($('pane-error'), err)
+      $('editor').hidden = true
+      return
+    }
+  }
+  if (current !== path) return // another note was chosen while this one loaded
+  $('editor').hidden = false
+  $('modes').hidden = false
+  editor.setState(entry.state)
+  updateResolver()
+}
+
+async function renderPane() {
+  showError($('pane-error'), null)
+  $('entry-actions').hidden = !view.selected
+  $('note-path').textContent = view.openNote ?? view.selected?.path ?? ''
+  await showNote(view.openNote)
+}
+
+function forgetNotes(match) {
+  for (const p of [...notes.keys()]) {
+    if (match(p)) {
+      clearTimeout(notes.get(p).timer)
+      notes.delete(p)
+    }
+  }
+  if (current && !notes.has(current)) {
+    current = null
+    $('editor').hidden = true
+    $('modes').hidden = true
+  }
+}
+
+// ---- modes (R3.1) ----
+for (const mode of ['live', 'source', 'reading']) {
+  $(`mode-${mode}`).addEventListener('click', () => {
+    editor.setMode(mode)
+    for (const m of ['live', 'source', 'reading']) $(`mode-${m}`).classList.toggle('active', m === mode)
+  })
+}
+
+// ---- following links ----
+async function openPath(path) {
+  view.selected = { path, type: findEntry(view.tree, path)?.type ?? 'note' }
+  view.openNote = path
+  let folder = parentOf(path)
+  while (folder) {
+    view.expanded.add(folder)
+    folder = parentOf(folder)
+  }
+  renderTree()
+  await renderPane()
+}
+
+async function follow({ kind, ref }) {
+  if (kind === 'href') {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(ref)) {
+      await run(() => api.openExternal(ref))
+      return
+    }
+    let decoded = ref
+    try {
+      decoded = decodeURIComponent(ref)
+    } catch {
+      // keep the raw form
+    }
+    const target = decoded.split('#')[0]
+    const hit = target ? resolveRelative(target, current, files()) : null
+    if (hit) await openPath(hit)
+    else showError($('pane-error'), `No note at ${decoded}`)
+    return
+  }
+  const { target } = splitLink(ref)
+  if (!target) return
+  const hit = resolveLink(target, current, files())
+  if (hit) {
+    await openPath(hit)
+    return
+  }
+  if (!window.confirm(`“${target}” does not exist. Create it?`)) return
+  const name = target.split('/').pop()
+  const rel = await run(() => api.createNote(parentOf(target), name))
+  if (!rel) return
+  await refreshTree()
+  await openPath(rel)
+}
+
+// ---- conflicts (R1.5) ----
+function hideConflict() {
+  conflictText = null
+  $('conflict').hidden = true
+}
+$('keep-mine').addEventListener('click', async () => {
+  const entry = notes.get(current)
+  if (entry && conflictText !== null) {
+    entry.disk = conflictText
+    entry.dirty = true
+    await save(current)
+  }
+  hideConflict()
+})
+$('load-disk').addEventListener('click', () => {
+  const entry = notes.get(current)
+  if (entry && conflictText !== null) {
+    clearTimeout(entry.timer)
+    loadDiskText(entry, conflictText)
+  }
+  hideConflict()
+})
+
+function loadDiskText(entry, text) {
+  entry.disk = text
+  entry.dirty = false
+  const fresh = editor.createState(text)
+  if (fresh.lineBreak !== editor.getState().lineBreak) {
+    entry.state = fresh
+    editor.setState(fresh)
+  } else {
+    editor.replaceFromDisk(text)
+    entry.state = editor.getState()
+  }
+}
+
+api.onFlush(flushAll)
 
 // ---- entry actions ----
 async function run(action) {
@@ -209,6 +402,7 @@ async function run(action) {
 }
 
 async function rename(from, to) {
+  await flushAll()
   const done = await run(() => api.move(from, to))
   if (!done) return
   const remap = (p) => (p === from ? to : p.startsWith(from + '/') ? to + p.slice(from.length) : p)
@@ -216,6 +410,14 @@ async function rename(from, to) {
   if (view.openNote) view.openNote = remap(view.openNote)
   view.expanded = new Set([...view.expanded].map(remap))
   view.expanded.add(parentOf(to))
+  rememberCurrent()
+  for (const [p, entry] of [...notes]) {
+    if (remap(p) !== p) {
+      notes.delete(p)
+      notes.set(remap(p), entry)
+    }
+  }
+  if (current) current = remap(current)
   await refreshTree()
   renderPane()
 }
@@ -247,6 +449,7 @@ $('delete').addEventListener('click', async () => {
   const sel = view.selected
   if (!sel) return
   if (!window.confirm(`Move “${sel.path}” to the trash?`)) return
+  await flushAll()
   const done = await run(async () => {
     await api.trash(sel.path)
     return true
@@ -254,6 +457,7 @@ $('delete').addEventListener('click', async () => {
   if (!done) return
   view.selected = null
   if (view.openNote === sel.path || view.openNote?.startsWith(sel.path + '/')) view.openNote = null
+  forgetNotes((p) => p === sel.path || p.startsWith(sel.path + '/'))
   await refreshTree()
   renderPane()
 })
@@ -300,7 +504,31 @@ function startRename() {
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return
   await refreshTree()
-  if (view.openNote === null || paths.includes(view.openNote)) renderPane()
+  updateResolver()
+  for (const path of paths) {
+    const entry = notes.get(path)
+    if (!entry) continue
+    let disk
+    try {
+      disk = await api.readNote(path)
+    } catch {
+      forgetNotes((p) => p === path) // deleted or moved away
+      continue
+    }
+    if (disk === entry.disk) continue // our own save, or no change
+    if (path !== current) {
+      if (entry.dirty) continue // resolved when the note is shown and saved
+      notes.delete(path)
+      continue
+    }
+    if (entry.dirty) {
+      conflictText = disk
+      $('conflict').hidden = false
+    } else {
+      loadDiskText(entry, disk)
+    }
+  }
+  if (!current) renderPane()
 })
 
 $('version').textContent = `version ${api.version}`

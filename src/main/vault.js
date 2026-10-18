@@ -94,6 +94,7 @@ async function freeName(root, folderRel, base, ext) {
 }
 
 export async function createNote(root, folderRel, base = 'Untitled') {
+  if (folderRel) await mkdir(resolveInside(root, folderRel), { recursive: true })
   const rel = await freeName(root, folderRel, base, '.md')
   await writeFile(resolveInside(root, rel), '', { flag: 'wx' })
   return rel

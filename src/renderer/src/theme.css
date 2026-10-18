@@ -176,3 +176,68 @@ button:hover {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ---- editor ---- */
+.pane-head .actions button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.editor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.editor .cm-editor {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+.editor .cm-editor.cm-focused {
+  outline: none;
+}
+.editor .cm-scroller {
+  font: 15px/1.65 system-ui, sans-serif;
+  padding: 16px 0;
+}
+.editor .cm-content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 32px;
+  caret-color: var(--fg);
+}
+.editor .cm-cursor {
+  border-left-color: var(--fg);
+}
+.editor .cm-activeLine {
+  background: transparent;
+}
+.editor .cm-selectionBackground,
+.editor .cm-focused .cm-selectionBackground {
+  background: var(--select) !important;
+}
+.cm-h1 { font-size: 1.8em; font-weight: 700; }
+.cm-h2 { font-size: 1.5em; font-weight: 700; }
+.cm-h3 { font-size: 1.25em; font-weight: 600; }
+.cm-h4, .cm-h5, .cm-h6 { font-weight: 600; }
+.cm-em { font-style: italic; }
+.cm-strong { font-weight: 700; }
+.cm-strike { text-decoration: line-through; }
+.cm-highlight { background: color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 2px; }
+.cm-inline-code { font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; background: var(--select); border-radius: 3px; padding: 0 3px; }
+.cm-codeblock { font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; background: var(--bg-side); }
+.cm-comment { color: var(--muted); }
+.cm-quote { border-left: 3px solid var(--border); padding-left: 12px !important; color: var(--muted); }
+.cm-callout { border-left-color: var(--accent); background: var(--bg-side); }
+.cm-frontmatter { font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; color: var(--muted); background: var(--bg-side); }
+.cm-link, .cm-wikilink, .cm-embed { color: var(--accent); cursor: pointer; }
+.cm-wikilink.cm-unresolved, .cm-embed.cm-unresolved { opacity: 0.6; text-decoration: underline dotted; }
+.cm-embed::before { content: '↳ '; color: var(--muted); }
+.cm-rule { display: inline-block; width: 100%; border-top: 1px solid var(--border); vertical-align: middle; }
+.cm-task { margin: 0 4px 0 0; vertical-align: middle; }
+.conflict {
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+}
+.conflict[hidden] { display: none; }
