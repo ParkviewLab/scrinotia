@@ -15,8 +15,10 @@ import 'katex/dist/katex.min.css'
 import DOMPurify from 'dompurify'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
+import nameCardUrl from '../../../brand/scrinotia-icon-kit/brand/scrinotia-name-card.png'
 
 const api = window.scrinotia
+document.getElementById('panel-card').src = nameCardUrl
 const $ = (id) => document.getElementById(id)
 
 const view = {

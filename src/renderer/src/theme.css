@@ -427,6 +427,19 @@ button:hover {
   overflow: auto;
   padding: 8px 0;
 }
+/* The name card at the top of the right panel, framed to the dark card
+   without the PNG's cream margin (as in About). */
+.panel-card {
+  margin: 4px 12px 10px;
+  aspect-ratio: 1656 / 384;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.panel-card img {
+  display: block;
+  width: 107.005%;
+  margin: -3.502% 0 0 -3.502%;
+}
 .links h3 {
   font-size: 0.85em;
   text-transform: uppercase;
