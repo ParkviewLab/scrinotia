@@ -1,0 +1,35 @@
+name: Test
+
+# Electron-app CI — lint + a build smoke-test. If the app is plain JavaScript (no
+# TypeScript, no test suite), this runs ESLint and the electron-vite build, which
+# fails loudly on a broken bundle. Add `npm run typecheck` / `npm test` steps when
+# the app adopts TypeScript / Vitest. See the handbook's electron-tooling.md / ci.md.
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (electron-vite)
+        run: npm run build

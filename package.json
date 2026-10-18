@@ -1,0 +1,23 @@
+{
+  "name": "granite-vaulting",
+  "version": "0.1.0",
+  "description": "An independent, local-first Markdown notes client",
+  "author": "Gary Frattarola <garyf@parkviewlab.ai>",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "electron": "^43.1.1",
+    "electron-vite": "^5.0.0",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
+    "vite": "^7.0.0"
+  }
+}

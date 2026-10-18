@@ -1,6 +1,6 @@
 # granite-vaulting: requirements, draft 1
 
-Status: draft for review. Provisional location; it moves to `docs/requirements.md` of a garycoding repository once that repository is named. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
+Status: draft for review. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
 
 ## Purpose
 
@@ -78,7 +78,7 @@ R5.3. The search index is a cache outside the vault, rebuildable at any time fro
 
 R6.1. Runs on macOS (current and previous major release) and Ubuntu (current LTS), on Apple silicon and x86-64 where the technology allows.
 
-R6.2. Light and dark appearance, following the system setting.
+R6.2. A dark and a light theme are provided, and the user chooses between them. The default is the dark theme, whatever the system setting; the choice is a vault-level setting (R6.4), and is held until then for the session only.
 
 R6.3. All data stays on the machine. No network access, accounts, telemetry, or update checks in v1.
 
