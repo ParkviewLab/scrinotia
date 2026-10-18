@@ -4,6 +4,28 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.8.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Say in About whether a newer version is available (#50)
+- Set the colour of STL models in a Settings dialog (#51)
+- Choose the interface, body, heading and monospace fonts in Settings (#52)
+- Explain the name in About and fold away the .base statement (#55)
+
+### Bug fixes
+
+- Close the About window with Escape (#53)
+- Close the Open Source Licenses window with Escape (#54)
+
+### Docs
+
+- Describe version 0.8.0 in the README (#56)
+
 ## [v0.7.0] - 2026-10-18
 
 ### Highlights
