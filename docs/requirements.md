@@ -40,6 +40,8 @@ R2.4. Renaming or moving a note or folder updates the links that point to what m
 
 R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the tree, from a link, from search, and from a quick switcher (fuzzy search over note names).
 
+R2.6. An attachment opens in the pane, and embedded in a note (`![[file]]`) it shows in place: images, PDFs (in the browser engine's PDF viewer), audio and video (with players that can seek), and text-like files (read-only, up to 2 MB) are shown; HTML is rendered in a sandboxed frame whose scripts run in an origin of their own, so they cannot reach the app or read other vault files, and cannot open windows; any other file shows its name, size and modification time, with a button that opens it in the system's default application. No page may open a window of its own.
+
 ### R3. Live-preview editor
 
 R3.1. A note is shown in one of two modes: a read-only rendered preview, and a split view with the Markdown source editor on the left and the rendered preview on the right, updated as the user types. The preview is the default. (Amended 2026-10-17; it replaces the earlier in-place live preview.)

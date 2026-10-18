@@ -32,7 +32,8 @@ function serveAssets() {
       const ctx = [...contexts.values()].find((c) => c.token === url.hostname)
       if (!ctx?.root) return new Response('not found', { status: 404 })
       const rel = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
-      return net.fetch(pathToFileURL(vault.resolveInside(ctx.root, rel)).toString())
+      // Range headers pass through, so audio and video can seek.
+      return net.fetch(pathToFileURL(vault.resolveInside(ctx.root, rel)).toString(), { headers: request.headers })
     } catch {
       return new Response('not found', { status: 404 })
     }
@@ -145,6 +146,11 @@ function registerIpc() {
   on('vault:tree', (e) => vault.scanVault(rootOf(e)))
   on('window:new', () => void createWindow())
   on('note:read', (e, rel) => vault.readNote(rootOf(e), rel))
+  on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
+  on('open:path', async (e, rel) => {
+    // shell.openPath returns an error message, or '' on success.
+    return shell.openPath(vault.resolveInside(rootOf(e), rel))
+  })
   on('note:write', (e, rel, text) => vault.writeNote(rootOf(e), rel, text))
   on('entry:createNote', (e, folder, base) => vault.createNote(rootOf(e), folder, base))
   on('entry:createFolder', (e, folder) => vault.createFolder(rootOf(e), folder))
@@ -189,8 +195,12 @@ function createWindow() {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      // Chromium's PDF viewer, for PDF attachments.
+      plugins: true,
     },
   })
+  // No page, a vault HTML file included, may open windows of its own.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   const id = win.webContents.id
   const ctx = { win, root: null, watcher: null, index: null, flushed: false, token: randomBytes(12).toString('hex') }
   contexts.set(id, ctx)

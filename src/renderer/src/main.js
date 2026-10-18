@@ -7,6 +7,7 @@
 import { createEditor } from './editor/editor.js'
 import { createPreview } from './preview.js'
 import { renderCell } from './baseCells.js'
+import { renderAttachment, attachmentKind } from './attachments.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -248,6 +249,7 @@ const preview = createPreview({
   },
   resolves: (target) => resolveLink(target, current, files()) !== null,
   resolvePath: (target) => resolveLink(target, current, files()),
+  attachmentKind,
 })
 
 // A base's preview is its views, computed from the saved file, so it is
@@ -261,6 +263,16 @@ function renderPreview() {
   }
   preview.render(editor.text(), $('preview'))
   fillBaseEmbeds()
+  fillAttachmentEmbeds()
+}
+
+const assetUrlOf = (p) => assetBase + p.split('/').map(encodeURIComponent).join('/')
+
+// PDFs, audio, video, HTML and text embedded in the note shown.
+function fillAttachmentEmbeds() {
+  for (const el of $('preview').querySelectorAll('.attachment-embed')) {
+    renderAttachment(el, { path: el.dataset.path, url: assetUrlOf(el.dataset.path), api, embedded: true })
+  }
 }
 
 function schedulePreview() {
@@ -578,10 +590,19 @@ async function showNote(path) {
   const entryInfo = path ? findEntry(view.tree, path) : null
   currentBase = null
   const kind = entryInfo?.type === 'base' ? 'base' : 'note'
+  if (entryInfo?.type === 'attachment') {
+    current = null
+    body.textContent = ''
+    $('modes').hidden = true
+    setNoteMode('preview')
+    $('note-area').hidden = false
+    await renderAttachment($('preview'), { path, url: assetUrlOf(path), api })
+    return
+  }
   if (!path || (entryInfo?.type !== 'note' && entryInfo?.type !== 'base')) {
     $('note-area').hidden = true
     $('modes').hidden = true
-    body.textContent = entryInfo ? `${entryInfo.name} is an attachment; it is not shown in this version.` : ''
+    body.textContent = ''
     current = null
     return
   }

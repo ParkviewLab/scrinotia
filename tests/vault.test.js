@@ -33,7 +33,7 @@ function flatten(tree) {
 describe('scanVault', () => {
   it('lists folders first, then files, and hides dot-entries', async () => {
     const tree = await scanVault(root)
-    expect(tree.map((e) => e.name)).toEqual(['attachments', 'Bases', 'Projects', 'Tangents', 'BOM note.md', 'Dashboard.md', 'Embeds.md', 'Ideas.md', 'No newline.md', 'Welcome.md', 'Windows note.md'])
+    expect(tree.map((e) => e.name)).toEqual(['attachments', 'Bases', 'Projects', 'Tangents', 'Attachments.md', 'BOM note.md', 'Dashboard.md', 'Embeds.md', 'Ideas.md', 'No newline.md', 'Welcome.md', 'Windows note.md'])
     expect(flatten(tree)).not.toContain('.obsidian')
     expect(flatten(tree)).toContain('Projects/Archive/Plan.md')
   })

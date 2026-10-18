@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Sandbox test</title></head>
+<body style="font-family: sans-serif">
+<h1>HTML attachment</h1>
+<p id="out">scripts did not run</p>
+<script>
+  let reach = 'blocked'
+  try { reach = window.parent.granite ? 'REACHABLE' : 'blocked' } catch (e) { reach = 'blocked' }
+  let vault = 'pending'
+  fetch(location.href.replace('page.html', 'data.json')).then(() => { vault = 'READABLE' }, () => { vault = 'blocked' })
+    .finally(() => { document.getElementById('out').textContent = 'scripts ran; app: ' + reach + '; other vault files: ' + vault })
+</script>
+</body></html>

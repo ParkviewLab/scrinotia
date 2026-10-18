@@ -493,3 +493,53 @@ button:hover {
   margin: 1em 0;
   overflow-x: auto;
 }
+
+/* ---- attachments ---- */
+.attachment img {
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
+}
+.attachment iframe {
+  width: 100%;
+  height: calc(100vh - 140px);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+}
+.attachment-embedded iframe {
+  height: 480px;
+}
+.attachment video {
+  max-width: 100%;
+}
+.attachment audio {
+  width: 100%;
+}
+.attachment-text {
+  font: 13px/1.5 ui-monospace, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg-side);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.attachment-embedded .attachment-text {
+  max-height: 320px;
+  overflow: auto;
+}
+.attachment-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.attachment-name {
+  font-weight: 600;
+  font-size: 1.1em;
+}
+.preview .attachment-embed {
+  display: block;
+  margin: 1em 0;
+}
