@@ -34,3 +34,10 @@ path = ["docs/references/obsidian-bases-skill/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Steph Ango"
 SPDX-License-Identifier = "MIT"
+
+# The app icon is a mark: all rights reserved, not relicensed by the repository.
+[[annotations]]
+path = ["build/icon.png", "build/icon.svg"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
+SPDX-License-Identifier = "LicenseRef-AllRightsReserved"
