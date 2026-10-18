@@ -259,12 +259,14 @@ function buildMenu() {
   const isMac = process.platform === 'darwin'
   const about = { label: 'About Scrinotia', click: () => openAboutWindow() }
   const licenses = { label: 'Open Source Licenses…', click: () => openLicensesWindow() }
+  // Settings belong to the vault in the focused window (R6.8).
+  const settings = { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: (_item, win) => win?.webContents.send('ui:settings') }
   const template = [
     ...(isMac
       ? [
           {
             label: app.name,
-            submenu: [about, licenses, { type: 'separator' }, { role: 'services' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }],
+            submenu: [about, licenses, { type: 'separator' }, settings, { type: 'separator' }, { role: 'services' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }],
           },
         ]
       : []),
@@ -280,7 +282,7 @@ function buildMenu() {
         { type: 'separator' },
         { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: (_item, win) => win?.webContents.send('ui:close-tab') },
         { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' },
-        ...(isMac ? [] : [{ role: 'quit' }]),
+        ...(isMac ? [] : [{ type: 'separator' }, settings, { type: 'separator' }, { role: 'quit' }]),
       ],
     },
     { role: 'editMenu' },

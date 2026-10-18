@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import appIcon from '../../build/icon.png?asset'
+import { checkForUpdate } from './update.js'
 
 const SOURCE_URL = 'https://github.com/garycoding/scrinotia'
 
@@ -21,6 +22,9 @@ const STYLE = `
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px/1.55 system-ui,sans-serif}
   a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}`
+
+// Escape dismisses the About and licences windows, as it does a dialog.
+const CLOSE_ON_ESCAPE = `<script>addEventListener('keydown', (e) => { if (e.key === 'Escape') window.close() })</script>`
 
 // Links open in the system's browser or application, never inside the app.
 function lockDown(win) {
@@ -47,26 +51,47 @@ let aboutWin = null
 export function openAboutWindow() {
   if (aboutWin && !aboutWin.isDestroyed()) return aboutWin.focus()
   const html = `<!doctype html><meta charset="utf-8"><title>About Scrinotia</title><style>${STYLE}
-  .wrap{height:100%;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;-webkit-user-select:none;cursor:default}
+  .wrap{height:100%;overflow:auto;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:safe center;text-align:center;-webkit-user-select:none;cursor:default}
   .icon{width:96px;height:96px;margin-bottom:10px}
   h1{margin:0;font-size:21px;font-weight:600}
-  .ver{margin:3px 0 16px;color:var(--muted);font-size:12px}
+  .ver{margin:3px 0 6px;color:var(--muted);font-size:12px}
+  /* The update line keeps its height from the first paint, so the answer
+     arriving from the network never shifts what is already on screen. */
+  .upd{margin:0 0 16px;min-height:18px;color:var(--muted);font-size:12px}
   p{margin:0 0 10px;max-width:34em}
   .copy{margin:14px 0 10px;font-size:11px;color:var(--muted)}
   .links{display:flex;gap:18px;font-size:12px}
+  .name{color:var(--muted);font-size:12px}
+  .name p{margin:0 0 4px}
+  /* The statement on Obsidian (R7.3), closed until its line is clicked. */
+  details{max-width:34em;margin:4px 0 0;font-size:12px}
+  summary{list-style:none;cursor:pointer;color:var(--accent)}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:' ›';display:inline-block;margin-left:4px;transition:transform .15s}
+  details[open] summary::after{transform:rotate(90deg)}
+  details p{margin:8px 0 0;color:var(--muted)}
 </style>
 <div class="wrap">
   <img class="icon" src="data:image/png;base64,${iconData()}" alt="">
   <h1>Scrinotia</h1>
   <div class="ver">Version ${esc(app.getVersion())}</div>
+  <div class="upd" id="upd">Checking for a newer version…</div>
   <p>An independent, local-first Markdown notes client.</p>
-  <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. It is an independent project, not affiliated with or endorsed by Obsidian. The .base format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
+  <div class="name">
+    <p><b>Scrinotia</b>, from Latin <i>scrinium</i> (scroll-case) and <i>notitia</i> (knowledge, record), with haplology: “the scroll-case of knowledge”.</p>
+    <p><b>Pronunciation:</b> skri · NO · tee · a (/skrɪˈnoʊ.ti.ə/)</p>
+  </div>
+  <details>
+    <summary>The .base file format</summary>
+    <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc. The .base file format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
+  </details>
   <div class="copy">© 2026 Gary Frattarola · AGPL-3.0-or-later</div>
   <div class="links"><a href="${SOURCE_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
-</div>`
+</div>
+${CLOSE_ON_ESCAPE}`
   aboutWin = new BrowserWindow({
     width: 520,
-    height: 540,
+    height: 600,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -80,6 +105,33 @@ export function openAboutWindow() {
   aboutWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
   aboutWin.on('closed', () => {
     aboutWin = null
+  })
+
+  // The version check runs here and only here: opening About is the act that
+  // asks for it, so the app never reaches the network on its own. The answer
+  // is drawn from data with textContent, never interpolated into markup, since
+  // the version comes from a third party.
+  const win = aboutWin
+  checkForUpdate({ currentVersion: app.getVersion() }).then((r) => {
+    if (win.isDestroyed()) return
+    win.webContents
+      .executeJavaScript(
+        `(function (r) {
+      var el = document.getElementById('upd'); if (!el) return;
+      el.textContent = '';
+      if (r.state === 'update') {
+        var a = document.createElement('a');
+        a.href = r.url; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = 'Scrinotia ' + r.version + ' is available.';
+        el.appendChild(a);
+      } else if (r.state === 'current') {
+        el.textContent = 'Scrinotia is up to date.';
+      } else {
+        el.textContent = 'Could not check for a newer version.';
+      }
+    })(${JSON.stringify(r)})`,
+      )
+      .catch(() => {})
   })
 }
 
@@ -156,7 +208,8 @@ export function openLicensesWindow() {
   code{background:var(--panel);padding:1px 6px;border-radius:3px}
 </style>
 <header><h1>Open Source Licenses</h1><div class="sub">Scrinotia includes the open-source software below and is implemented, for .base files, from the references listed.</div></header>
-<main>${body}</main>`
+<main>${body}</main>
+${CLOSE_ON_ESCAPE}`
   licWin = new BrowserWindow({
     width: 760,
     height: 660,
