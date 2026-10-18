@@ -4,17 +4,17 @@ An independent, local-first Markdown notes client for macOS and Ubuntu. It opens
 
 ## Status
 
-Version 0.2.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.3.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
 - **Links:** wikilinks (`[[note]]`, `[[note#heading|alias]]`, `![[image.png]]`) and local Markdown links are followed on click; backlinks, unlinked mentions and outgoing links are listed beside the note; renaming or moving a note updates the links that point to it, and nothing else in those notes.
 - **Attachments:** images, PDFs, audio, video, text and HTML (scripts sandboxed) are shown in the pane and embedded in notes; other files show their details and open in the system's application.
 - **Search:** words, `"phrases"`, `-exclusions`, `tag:`, `file:` and `path:`.
-- **`.base` files:** table views with filters, formulas (the full function library of the references, including dates and durations), note, file and formula properties, sorts, limits and display names; a value that cannot be computed is marked in its cell. Requirement R3.6 gives the scope and R3.6.1 the choices made where the references are silent.
+- **`.base` files:** table, cards and list views with filters, formulas (the full function library of the references, including dates and durations), note, file and formula properties, sorts, limits, grouping, summaries and display names; a value that cannot be computed is marked in its cell; a base can be edited in the split mode beside its views, and embedded in a note with `![[Name.base]]` or `![[Name.base#View]]`. Requirement R3.6 gives the scope and R3.6.1 the choices made where the references are silent.
 - **Settings:** a dark and a light theme, dark by default, kept per vault in `.granite-vaulting/` so that a synchronisation tool such as Syncthing carries it with the vault.
 
-Not yet present: in `.base` files, summaries, grouping, cards and list views, editing a base beside its views, and bases embedded in notes; elsewhere, tabs, a quick switcher, an outline and a tags pane, embedded notes (an embed of a note shows as a link), and regular-expression search.
+Not yet present: tabs, a quick switcher, an outline and a tags pane, embedded notes (an embed of a note shows as a link), and regular-expression search.
 
 ## Install
 
@@ -25,6 +25,8 @@ Download the installer for your system from the repository's [Releases page](htt
 - **Windows:** an unsigned `.exe` installer is built as well; SmartScreen warns on first launch.
 
 ## Use
+
+About granite-vaulting and the open-source licences are in the Help menu (and, on macOS, the application menu).
 
 Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Select a note to see its preview; choose Edit (split) to change it. The panel on the right lists the note's backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it.
 
