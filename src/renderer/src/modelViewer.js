@@ -14,6 +14,11 @@ const MODEL_LIMIT = 200 * 1024 * 1024
 
 const BACKGROUNDS = { dark: 0x17181a, light: 0xf4f5f7 }
 
+// Where the directional light sits beside the camera, as fractions of the
+// camera's distance from what it looks at: right and up, together about 31°
+// off the line of sight.
+const KEY_LIGHT_OFFSET = { x: 0.4, y: 0.45 }
+
 export const DEFAULT_MODEL_COLOUR = { h: 225, s: 40, l: 62 }
 
 // A colour as stored ({ h: 0–360, s: 0–100, l: 0–100 }), or the default when
@@ -134,17 +139,29 @@ function show(container, three, geometry) {
   camera.up.set(0, 0, 1)
   const distance = (radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.15
   camera.position.set(1, -1.4, 0.9).normalize().multiplyScalar(distance)
-  // The directional light rides with the camera, so the side in view is lit.
+  // The directional light rides with the camera, so the side in view is lit,
+  // but from about 30° above and to the right of the line of sight (in
+  // proportion to the camera's distance, so the angle is the same for every
+  // model and zoom), so that relief facing the viewer still shows. It points
+  // where the camera looks.
   const light = new THREE.DirectionalLight(0xffffff, 2.2)
-  light.position.set(0.5, 1, 1)
   camera.add(light)
+  scene.add(light.target)
   scene.add(camera)
 
   const controls = new OrbitControls(camera, renderer.domElement)
   controls.target.set(0, 0, 0)
   controls.update()
 
-  const draw = () => renderer.render(scene, camera)
+  const placeLight = () => {
+    const d = camera.position.distanceTo(controls.target)
+    light.position.set(KEY_LIGHT_OFFSET.x * d, KEY_LIGHT_OFFSET.y * d, 0)
+    light.target.position.copy(controls.target)
+  }
+  const draw = () => {
+    placeLight()
+    renderer.render(scene, camera)
+  }
   const resize = () => {
     const w = container.clientWidth
     const h = container.clientHeight
