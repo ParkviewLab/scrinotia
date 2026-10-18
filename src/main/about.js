@@ -23,6 +23,9 @@ const STYLE = `
   html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px/1.55 system-ui,sans-serif}
   a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}`
 
+// Escape dismisses the About and licences windows, as it does a dialog.
+const CLOSE_ON_ESCAPE = `<script>addEventListener('keydown', (e) => { if (e.key === 'Escape') window.close() })</script>`
+
 // Links open in the system's browser or application, never inside the app.
 function lockDown(win) {
   const open = (url) => (url.startsWith('file:') ? shell.openPath(fileURLToPath(url)) : shell.openExternal(url))
@@ -69,10 +72,7 @@ export function openAboutWindow() {
   <div class="copy">© 2026 Gary Frattarola · AGPL-3.0-or-later</div>
   <div class="links"><a href="${SOURCE_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
 </div>
-<script>
-  // Escape dismisses the window, as it does a dialog.
-  addEventListener('keydown', (e) => { if (e.key === 'Escape') window.close() })
-</script>`
+${CLOSE_ON_ESCAPE}`
   aboutWin = new BrowserWindow({
     width: 520,
     height: 540,
@@ -192,7 +192,8 @@ export function openLicensesWindow() {
   code{background:var(--panel);padding:1px 6px;border-radius:3px}
 </style>
 <header><h1>Open Source Licenses</h1><div class="sub">Scrinotia includes the open-source software below and is implemented, for .base files, from the references listed.</div></header>
-<main>${body}</main>`
+<main>${body}</main>
+${CLOSE_ON_ESCAPE}`
   licWin = new BrowserWindow({
     width: 760,
     height: 660,
