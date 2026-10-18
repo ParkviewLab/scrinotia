@@ -10,11 +10,12 @@ Version 0.3.0. The requirements are in [`docs/requirements.md`](docs/requirement
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
 - **Links:** wikilinks (`[[note]]`, `[[note#heading|alias]]`, `![[image.png]]`) and local Markdown links are followed on click; backlinks, unlinked mentions and outgoing links are listed beside the note; renaming or moving a note updates the links that point to it, and nothing else in those notes.
 - **Attachments:** images, PDFs, audio, video, text and HTML (scripts sandboxed) are shown in the pane and embedded in notes; other files show their details and open in the system's application.
+- **Embedded notes:** `![[Note]]`, `![[Note#Heading]]` and `![[Note#^id]]` show the note, section or block in a box, one level deep, with Show all for long notes.
 - **Search:** words, `"phrases"`, `-exclusions`, `tag:`, `file:` and `path:`.
 - **`.base` files:** table, cards and list views with filters, formulas (the full function library of the references, including dates and durations), note, file and formula properties, sorts, limits, grouping, summaries and display names; a value that cannot be computed is marked in its cell; a base can be edited in the split mode beside its views, and embedded in a note with `![[Name.base]]` or `![[Name.base#View]]`. Requirement R3.6 gives the scope and R3.6.1 the choices made where the references are silent.
 - **Settings:** a dark and a light theme, dark by default, kept per vault in `.granite-vaulting/` so that a synchronisation tool such as Syncthing carries it with the vault.
 
-Not yet present: tabs, a quick switcher, an outline and a tags pane, embedded notes (an embed of a note shows as a link), and regular-expression search.
+Not yet present: tabs, a quick switcher, an outline and a tags pane, and regular-expression search.
 
 ## Install
 

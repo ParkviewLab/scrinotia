@@ -548,3 +548,32 @@ button:hover {
   cursor: pointer;
   text-decoration: none;
 }
+
+/* ---- embedded notes ---- */
+.preview .note-embed {
+  display: block;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-side);
+  border-radius: 4px;
+  margin: 1em 0;
+  padding: 6px 14px 10px;
+}
+.preview .note-embed-head {
+  font-size: 0.85em;
+  margin-bottom: 4px;
+}
+.preview .note-embed-body {
+  max-height: 400px;
+  overflow: auto;
+}
+.preview .note-embed.expanded > .note-embed-body {
+  max-height: none;
+}
+.preview .note-embed-notice {
+  color: var(--muted);
+  font-style: italic;
+}
+.preview .note-embed-more {
+  margin-top: 6px;
+  font-size: 0.85em;
+}

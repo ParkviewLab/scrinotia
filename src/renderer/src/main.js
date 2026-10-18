@@ -8,6 +8,7 @@ import { createEditor } from './editor/editor.js'
 import { createPreview } from './preview.js'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
+import { extractSection } from '../../shared/sections.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -270,8 +271,76 @@ function renderPreview() {
     return
   }
   preview.render(editor.text(), $('preview'))
+  fillEmbeds()
+}
+
+async function fillEmbeds() {
+  const note = current
+  await fillNoteEmbeds($('preview'), 1, new Set([note]))
+  if (current !== note) return
   fillBaseEmbeds()
   fillAttachmentEmbeds()
+}
+
+// Embedded notes (R3.7): each placeholder becomes a box with the note's name
+// (a link to it) and its content, or the section or block named. Only one
+// level is shown: an embed inside an embedded note is a plain link, so no
+// note renders inside another twice and a loop of embeds cannot repeat.
+async function fillNoteEmbeds(host, depth, chain) {
+  for (const el of host.querySelectorAll(':scope .note-embed:not([data-filled])')) {
+    el.dataset.filled = '1'
+    const path = el.dataset.path
+    const sub = el.dataset.sub || null
+    const name = path.slice(path.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+    if (depth > 1) {
+      const a = document.createElement('a')
+      a.className = 'embed-link'
+      a.textContent = sub ? `${name} › ${sub}` : name
+      a.setAttribute('data-wikilink', path.replace(/\.md$/i, '') + (sub ? `#${sub}` : ''))
+      el.replaceWith(a)
+      continue
+    }
+    const head = document.createElement('div')
+    head.className = 'note-embed-head'
+    const link = document.createElement('a')
+    link.textContent = sub ? `${name} › ${sub.replace(/^\^/, '^')}` : name
+    link.setAttribute('data-wikilink', path.replace(/\.md$/i, '') + (sub ? `#${sub}` : ''))
+    head.append(link)
+    const body = document.createElement('div')
+    body.className = 'note-embed-body'
+    el.replaceChildren(head, body)
+    if (chain.has(path)) {
+      body.className = 'note-embed-notice'
+      body.textContent = 'This note embeds itself; it is not repeated.'
+      continue
+    }
+    let text
+    try {
+      text = extractSection(await api.readNote(path), sub)
+    } catch {
+      text = null
+    }
+    if (text === null) {
+      body.className = 'note-embed-notice'
+      body.textContent = sub ? `No section “${sub}” in ${name}.` : `${name} could not be read.`
+      continue
+    }
+    preview.render(text, body)
+    await fillNoteEmbeds(body, depth + 1, new Set([...chain, path]))
+    // A long note scrolls inside its box; Show all lets it run to full length.
+    requestAnimationFrame(() => {
+      if (body.scrollHeight <= body.clientHeight + 2) return
+      const more = document.createElement('button')
+      more.type = 'button'
+      more.className = 'note-embed-more'
+      more.textContent = 'Show all'
+      more.addEventListener('click', () => {
+        const open = el.classList.toggle('expanded')
+        more.textContent = open ? 'Show less' : 'Show all'
+      })
+      el.append(more)
+    })
+  }
 }
 
 const assetUrlOf = (p) => assetBase + p.split('/').map(encodeURIComponent).join('/')
