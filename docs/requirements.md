@@ -1,6 +1,6 @@
 # granite-vaulting: requirements, draft 1
 
-Status: draft for review. Provisional location; it moves to `docs/requirements.md` of a garycoding repository once that repository is named. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
+Status: draft for review. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
 
 ## Purpose
 
