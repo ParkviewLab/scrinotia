@@ -17,6 +17,7 @@ import { createIndex } from './linkIndex.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
 import { openAboutWindow, openLicensesWindow } from './about.js'
+import appIcon from '../../build/icon.png?asset'
 
 const state = createState(app.getPath('userData'))
 const contexts = new Map() // webContents id -> { win, root, watcher, index, flushed }
@@ -163,6 +164,7 @@ function registerIpc() {
   on('links:unlinked', (e, rel) => (rootOf(e), ctxOf(e).index.unlinkedMentions(rel)))
   on('links:outgoing', (e, rel) => (rootOf(e), ctxOf(e).index.outgoing(rel)))
   on('search', (e, query) => (rootOf(e), ctxOf(e).index.search(query)))
+  on('tags', (e) => (rootOf(e), ctxOf(e).index.tags()))
   on('settings:get', (e, name) => readSettings(rootOf(e), name))
   on('settings:set', (e, name, values) => writeSettings(rootOf(e), name, values))
   on('base:render', async (e, rel, thisPath = null) => {
@@ -201,6 +203,8 @@ function createWindow() {
       // Chromium's PDF viewer, for PDF attachments.
       plugins: true,
     },
+    // Linux takes the window icon from here; macOS and Windows from the package.
+    ...(process.platform === 'linux' ? { icon: appIcon } : {}),
   })
   // No page, a vault HTML file included, may open windows of its own.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -241,8 +245,15 @@ function buildMenu() {
       label: 'File',
       submenu: [
         { label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
+        {
+          label: 'Quick Switcher…',
+          accelerator: 'CmdOrCtrl+O',
+          click: (_item, win) => win?.webContents.send('ui:quick-switcher'),
+        },
         { type: 'separator' },
-        isMac ? { role: 'close' } : { role: 'quit' },
+        { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: (_item, win) => win?.webContents.send('ui:close-tab') },
+        { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' },
+        ...(isMac ? [] : [{ role: 'quit' }]),
       ],
     },
     { role: 'editMenu' },
@@ -260,6 +271,8 @@ app.on('before-quit', () => {
 })
 
 app.whenReady().then(() => {
+  // A packaged app carries its icon; running from source, the Dock shows it too.
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(appIcon)
   registerIpc()
   serveAssets()
   buildMenu()

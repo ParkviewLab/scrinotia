@@ -8,6 +8,8 @@ import { createEditor } from './editor/editor.js'
 import { createPreview } from './preview.js'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
+import { extractSection, listHeadings } from '../../shared/sections.js'
+import { fuzzyRank } from './fuzzy.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -119,6 +121,9 @@ async function enterVault(opener) {
     view.tree = opened.tree
     view.selected = null
     view.openNote = null
+    tabs.list = []
+    tabs.active = -1
+    renderTabs()
     view.expanded = new Set()
     notes.clear()
     current = null
@@ -170,7 +175,10 @@ function renderEntry(entry) {
   if (view.selected?.path === entry.path) row.classList.add('selected')
   row.draggable = true
   row.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-gv-path', entry.path))
-  row.addEventListener('click', () => select(entry))
+  row.addEventListener('click', (e) => select(entry, { newTab: e.metaKey || e.ctrlKey }))
+  row.addEventListener('auxclick', (e) => {
+    if (e.button === 1 && entry.type !== 'folder') select(entry, { newTab: true })
+  })
   li.append(row)
   if (entry.type === 'folder') {
     if (view.expanded.has(entry.path)) li.classList.add('open')
@@ -202,23 +210,115 @@ async function moveInto(from, folder) {
   await rename(from, join(folder, name))
 }
 
-function select(entry) {
+function select(entry, { newTab = false } = {}) {
   view.selected = { path: entry.path, type: entry.type }
   if (entry.type === 'folder') {
     if (view.expanded.has(entry.path)) view.expanded.delete(entry.path)
     else view.expanded.add(entry.path)
   } else {
-    view.openNote = entry.path
+    showInTab(entry.path, { newTab })
   }
   renderTree()
   renderPane()
 }
 
+// ---- tabs (R2.5): one tab per open file. A click opens a file in the
+// current tab; Cmd/Ctrl+click or a middle click opens it in a new one; a
+// file already open in a tab is brought forward instead of opened twice. ----
+const tabs = { list: [], active: -1 }
+
+function showInTab(path, { newTab = false } = {}) {
+  const at = tabs.list.indexOf(path)
+  if (at >= 0) tabs.active = at
+  else if (newTab || tabs.active < 0) {
+    tabs.list.splice(tabs.active + 1, 0, path)
+    tabs.active += 1
+  } else tabs.list[tabs.active] = path
+  view.openNote = path
+  renderTabs()
+}
+
+function activateTab(i) {
+  if (i < 0 || i >= tabs.list.length) return
+  tabs.active = i
+  view.openNote = tabs.list[i]
+  view.selected = { path: view.openNote, type: findEntry(view.tree, view.openNote)?.type ?? 'note' }
+  renderTabs()
+  renderTree()
+  renderPane()
+}
+
+function closeTab(i) {
+  if (i < 0 || i >= tabs.list.length) return
+  tabs.list.splice(i, 1)
+  if (tabs.active >= tabs.list.length || i < tabs.active) tabs.active -= 1
+  if (tabs.active < 0 && tabs.list.length) tabs.active = 0
+  view.openNote = tabs.list[tabs.active] ?? null
+  view.selected = view.openNote ? { path: view.openNote, type: findEntry(view.tree, view.openNote)?.type ?? 'note' } : null
+  renderTabs()
+  renderTree()
+  renderPane()
+}
+
+// After files move or vanish: remap or drop their tabs.
+function retab(map) {
+  const before = tabs.list[tabs.active]
+  tabs.list = tabs.list.map(map).filter(Boolean)
+  tabs.list = tabs.list.filter((p, i) => tabs.list.indexOf(p) === i)
+  const now = before ? map(before) : null
+  tabs.active = now ? tabs.list.indexOf(now) : Math.min(tabs.active, tabs.list.length - 1)
+  if (tabs.active < 0 && tabs.list.length) tabs.active = 0
+  view.openNote = tabs.list[tabs.active] ?? null
+  renderTabs()
+}
+
+function renderTabs() {
+  const nav = $('tabs')
+  nav.hidden = tabs.list.length === 0
+  nav.replaceChildren(
+    ...tabs.list.map((p, i) => {
+      const tab = document.createElement('div')
+      tab.className = `tab${i === tabs.active ? ' active' : ''}`
+      tab.setAttribute('role', 'tab')
+      tab.title = p
+      const label = document.createElement('span')
+      label.className = 'tab-label'
+      label.textContent = p.slice(p.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+      const x = document.createElement('button')
+      x.type = 'button'
+      x.className = 'tab-close'
+      x.textContent = '×'
+      x.title = 'Close tab'
+      x.addEventListener('click', (e) => {
+        e.stopPropagation()
+        closeTab(i)
+      })
+      tab.append(label, x)
+      tab.addEventListener('click', () => activateTab(i))
+      tab.addEventListener('auxclick', (e) => {
+        if (e.button === 1) closeTab(i)
+      })
+      return tab
+    }),
+  )
+}
+
+api.onCloseTab(() => {
+  if (tabs.list.length) closeTab(tabs.active)
+})
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'Tab' && tabs.list.length > 1) {
+    e.preventDefault()
+    const n = tabs.list.length
+    activateTab((tabs.active + (e.shiftKey ? n - 1 : 1)) % n)
+  }
+})
+
 async function refreshTree() {
   view.tree = await api.tree()
   if (view.renaming) return
   if (view.selected && !findEntry(view.tree, view.selected.path)) view.selected = null
-  if (view.openNote && !findEntry(view.tree, view.openNote)) view.openNote = null
+  if (tabs.list.some((p) => !findEntry(view.tree, p))) retab((p) => (findEntry(view.tree, p) ? p : null))
   renderTree()
 }
 
@@ -270,8 +370,106 @@ function renderPreview() {
     return
   }
   preview.render(editor.text(), $('preview'))
+  fillEmbeds()
+  renderOutline()
+}
+
+// ---- outline (R4.6): the note's headings; a click goes to the heading in
+// the preview and, in split mode, puts the editor's cursor on its line ----
+function renderOutline() {
+  const list = $('outline')
+  if (!current || notes.get(current)?.kind === 'base') {
+    list.replaceChildren()
+    return
+  }
+  const heads = listHeadings(editor.text())
+  const top = Math.min(...heads.map((h) => h.level))
+  list.replaceChildren(
+    ...heads.map((h, k) => {
+      const li = document.createElement('li')
+      li.textContent = h.text
+      li.style.paddingLeft = `${12 + (h.level - top) * 14}px`
+      li.title = h.text
+      li.addEventListener('click', () => goToHeading(k, h.line))
+      return li
+    }),
+  )
+}
+
+function goToHeading(k, line) {
+  // The preview's own headings, in order, leaving out embedded notes and the properties block.
+  const els = [...$('preview').querySelectorAll('h1, h2, h3, h4, h5, h6')].filter((el) => !el.closest('.note-embed, .properties, .callout'))
+  els[k]?.scrollIntoView({ block: 'start' })
+  if (noteMode === 'split') editor.gotoLine(line)
+}
+
+async function fillEmbeds() {
+  const note = current
+  await fillNoteEmbeds($('preview'), 1, new Set([note]))
+  if (current !== note) return
   fillBaseEmbeds()
   fillAttachmentEmbeds()
+}
+
+// Embedded notes (R3.7): each placeholder becomes a box with the note's name
+// (a link to it) and its content, or the section or block named. Only one
+// level is shown: an embed inside an embedded note is a plain link, so no
+// note renders inside another twice and a loop of embeds cannot repeat.
+async function fillNoteEmbeds(host, depth, chain) {
+  for (const el of host.querySelectorAll(':scope .note-embed:not([data-filled])')) {
+    el.dataset.filled = '1'
+    const path = el.dataset.path
+    const sub = el.dataset.sub || null
+    const name = path.slice(path.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+    if (depth > 1) {
+      const a = document.createElement('a')
+      a.className = 'embed-link'
+      a.textContent = sub ? `${name} › ${sub}` : name
+      a.setAttribute('data-wikilink', path.replace(/\.md$/i, '') + (sub ? `#${sub}` : ''))
+      el.replaceWith(a)
+      continue
+    }
+    const head = document.createElement('div')
+    head.className = 'note-embed-head'
+    const link = document.createElement('a')
+    link.textContent = sub ? `${name} › ${sub.replace(/^\^/, '^')}` : name
+    link.setAttribute('data-wikilink', path.replace(/\.md$/i, '') + (sub ? `#${sub}` : ''))
+    head.append(link)
+    const body = document.createElement('div')
+    body.className = 'note-embed-body'
+    el.replaceChildren(head, body)
+    if (chain.has(path)) {
+      body.className = 'note-embed-notice'
+      body.textContent = 'This note embeds itself; it is not repeated.'
+      continue
+    }
+    let text
+    try {
+      text = extractSection(await api.readNote(path), sub)
+    } catch {
+      text = null
+    }
+    if (text === null) {
+      body.className = 'note-embed-notice'
+      body.textContent = sub ? `No section “${sub}” in ${name}.` : `${name} could not be read.`
+      continue
+    }
+    preview.render(text, body)
+    await fillNoteEmbeds(body, depth + 1, new Set([...chain, path]))
+    // A long note scrolls inside its box; Show all lets it run to full length.
+    requestAnimationFrame(() => {
+      if (body.scrollHeight <= body.clientHeight + 2) return
+      const more = document.createElement('button')
+      more.type = 'button'
+      more.className = 'note-embed-more'
+      more.textContent = 'Show all'
+      more.addEventListener('click', () => {
+        const open = el.classList.toggle('expanded')
+        more.textContent = open ? 'Show less' : 'Show all'
+      })
+      el.append(more)
+    })
+  }
 }
 
 const assetUrlOf = (p) => assetBase + p.split('/').map(encodeURIComponent).join('/')
@@ -308,13 +506,18 @@ function setNoteMode(mode) {
   }
 }
 
-$('preview').addEventListener('click', (e) => {
+// Links follow on click; Cmd/Ctrl+click or a middle click opens a new tab.
+function previewLink(e, newTab) {
   const el = e.target.closest('[data-wikilink], [data-href]')
   if (!el) return
   e.preventDefault()
   const wikilink = el.getAttribute('data-wikilink')
-  if (wikilink !== null) follow({ kind: 'wikilink', ref: wikilink })
-  else follow({ kind: 'href', ref: el.getAttribute('data-href') })
+  if (wikilink !== null) follow({ kind: 'wikilink', ref: wikilink, newTab })
+  else follow({ kind: 'href', ref: el.getAttribute('data-href'), newTab })
+}
+$('preview').addEventListener('click', (e) => previewLink(e, e.metaKey || e.ctrlKey))
+$('preview').addEventListener('auxclick', (e) => {
+  if (e.button === 1) previewLink(e, true)
 })
 
 function files() {
@@ -640,6 +843,7 @@ async function renderPane() {
   $('entry-actions').hidden = !view.selected
   $('note-path').textContent = view.openNote ?? view.selected?.path ?? ''
   await showNote(view.openNote)
+  renderOutline()
   await renderLinks()
 }
 
@@ -704,6 +908,7 @@ $('search').addEventListener('keydown', (e) => {
 })
 
 async function runSearch() {
+  if (sidePane === 'tags') return
   const q = $('search').value.trim()
   const seq = ++searchSeq
   if (!q) {
@@ -712,8 +917,11 @@ async function runSearch() {
     return
   }
   let results = []
+  let problem = null
   try {
-    results = await api.search(q)
+    const out = await api.search(q)
+    results = out.results
+    problem = out.error ?? null
   } catch (err) {
     showError($('pane-error'), err)
   }
@@ -730,7 +938,7 @@ async function runSearch() {
   if (items.length === 0) {
     const li = document.createElement('li')
     li.className = 'info'
-    li.textContent = 'No matches.'
+    li.textContent = problem ?? 'No matches.'
     items.push(li)
   }
   $('results').replaceChildren(...items)
@@ -754,9 +962,9 @@ function forgetNotes(match) {
 for (const mode of ['preview', 'split']) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
 
 // ---- following links ----
-async function openPath(path) {
+async function openPath(path, { newTab = false } = {}) {
   view.selected = { path, type: findEntry(view.tree, path)?.type ?? 'note' }
-  view.openNote = path
+  showInTab(path, { newTab })
   let folder = parentOf(path)
   while (folder) {
     view.expanded.add(folder)
@@ -766,7 +974,7 @@ async function openPath(path) {
   await renderPane()
 }
 
-async function follow({ kind, ref }) {
+async function follow({ kind, ref, newTab = false }) {
   if (kind === 'href') {
     if (/^[a-z][a-z0-9+.-]*:/i.test(ref)) {
       await run(() => api.openExternal(ref))
@@ -780,7 +988,7 @@ async function follow({ kind, ref }) {
     }
     const target = decoded.split('#')[0]
     const hit = target ? resolveRelative(target, current, files()) : null
-    if (hit) await openPath(hit)
+    if (hit) await openPath(hit, { newTab })
     else showError($('pane-error'), `No note at ${decoded}`)
     return
   }
@@ -788,7 +996,7 @@ async function follow({ kind, ref }) {
   if (!target) return
   const hit = resolveLink(target, current, files())
   if (hit) {
-    await openPath(hit)
+    await openPath(hit, { newTab })
     return
   }
   if (!window.confirm(`“${target}” does not exist. Create it?`)) return
@@ -796,7 +1004,7 @@ async function follow({ kind, ref }) {
   const rel = await run(() => api.createNote(parentOf(target), name))
   if (!rel) return
   await refreshTree()
-  await openPath(rel)
+  await openPath(rel, { newTab })
 }
 
 // ---- conflicts (R1.5) ----
@@ -858,7 +1066,7 @@ async function rename(from, to) {
   }
   const remap = (p) => (p === from ? to : p.startsWith(from + '/') ? to + p.slice(from.length) : p)
   if (view.selected) view.selected.path = remap(view.selected.path)
-  if (view.openNote) view.openNote = remap(view.openNote)
+  retab(remap)
   view.expanded = new Set([...view.expanded].map(remap))
   view.expanded.add(parentOf(to))
   rememberCurrent()
@@ -879,7 +1087,7 @@ $('new-note').addEventListener('click', async () => {
   if (!rel) return
   if (folder) view.expanded.add(folder)
   view.selected = { path: rel, type: 'note' }
-  view.openNote = rel
+  showInTab(rel, { newTab: true })
   await refreshTree()
   renderPane()
   startRename()
@@ -907,7 +1115,7 @@ $('delete').addEventListener('click', async () => {
   })
   if (!done) return
   view.selected = null
-  if (view.openNote === sel.path || view.openNote?.startsWith(sel.path + '/')) view.openNote = null
+  retab((p) => (p === sel.path || p.startsWith(sel.path + '/') ? null : p))
   forgetNotes((p) => p === sel.path || p.startsWith(sel.path + '/'))
   await refreshTree()
   renderPane()
@@ -952,6 +1160,148 @@ function startRename() {
 }
 
 // ---- external changes (R1.5) ----
+// ---- quick switcher (R2.5): Cmd/Ctrl+O, type part of a name, Enter ----
+const switcher = { items: [], at: 0 }
+function openSwitcher() {
+  if ($('workspace').hidden) return
+  $('switcher').hidden = false
+  $('switcher-input').value = ''
+  drawSwitcher()
+  $('switcher-input').focus()
+}
+function closeSwitcher() {
+  $('switcher').hidden = true
+}
+function drawSwitcher() {
+  const q = $('switcher-input').value
+  const all = files()
+  // With no query, notes in tree order; otherwise the best fuzzy matches.
+  switcher.items = q.trim() ? fuzzyRank(q, all, 50) : all.filter((p) => /\.md$/i.test(p)).slice(0, 50)
+  switcher.at = Math.min(switcher.at, Math.max(0, switcher.items.length - 1))
+  if (!q.trim()) switcher.at = 0
+  $('switcher-list').replaceChildren(
+    ...switcher.items.map((p, i) => {
+      const li = document.createElement('li')
+      li.className = i === switcher.at ? 'active' : ''
+      li.setAttribute('role', 'option')
+      const name = document.createElement('span')
+      name.textContent = p.slice(p.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+      const folder = document.createElement('span')
+      folder.className = 'muted'
+      folder.textContent = p.includes('/') ? ` ${p.slice(0, p.lastIndexOf('/'))}` : ''
+      li.append(name, folder)
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        chooseSwitcher(i)
+      })
+      return li
+    }),
+  )
+  $('switcher-list').querySelector('.active')?.scrollIntoView({ block: 'nearest' })
+}
+function chooseSwitcher(i) {
+  const p = switcher.items[i]
+  closeSwitcher()
+  if (p) openPath(p)
+}
+$('switcher-input').addEventListener('input', () => {
+  switcher.at = 0
+  drawSwitcher()
+})
+$('switcher-input').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    const n = switcher.items.length
+    if (n) switcher.at = (switcher.at + (e.key === 'ArrowDown' ? 1 : n - 1)) % n
+    drawSwitcher()
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    chooseSwitcher(switcher.at)
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    closeSwitcher()
+  }
+})
+$('switcher').addEventListener('mousedown', (e) => {
+  if (e.target === $('switcher')) closeSwitcher()
+})
+api.onQuickSwitcher(openSwitcher)
+// The menu's accelerator normally opens it; this covers a focus the menu misses.
+window.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') {
+    e.preventDefault()
+    openSwitcher()
+  }
+})
+
+// ---- tags pane (R4.5): every tag with the number of notes carrying it,
+// nested tags under their parents; a click searches for the tag ----
+let sidePane = 'files'
+function setSidePane(which) {
+  sidePane = which
+  $('show-files').classList.toggle('active', which === 'files')
+  $('show-tags').classList.toggle('active', which === 'tags')
+  $('tag-list').hidden = which !== 'tags'
+  if (which === 'tags') {
+    $('tree').hidden = true
+    $('results').hidden = true
+    renderTags()
+  } else runSearch()
+}
+$('show-files').addEventListener('click', () => setSidePane('files'))
+$('show-tags').addEventListener('click', () => setSidePane('tags'))
+
+// A tag's count is the notes carrying it or any tag nested under it.
+function tagRows(pairs, notesByTag) {
+  const names = new Set()
+  for (const [tag] of pairs) {
+    const parts = tag.split('/')
+    for (let i = 1; i <= parts.length; i++) names.add(parts.slice(0, i).join('/'))
+  }
+  return [...names]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))
+    .map((name) => ({ name, depth: name.split('/').length - 1, label: name.split('/').pop(), count: notesByTag(name) }))
+}
+
+async function renderTags() {
+  let pairs = []
+  try {
+    pairs = await api.tags()
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+  if (sidePane !== 'tags') return
+  // pairs: [tag, notes carrying it or a tag nested under it], parents included.
+  const counts = new Map(pairs)
+  const rows = tagRows(pairs, (name) => counts.get(name) ?? 0)
+  const list = $('tag-list')
+  if (!rows.length) {
+    const li = document.createElement('li')
+    li.className = 'info'
+    li.textContent = 'No tags in this vault.'
+    list.replaceChildren(li)
+    return
+  }
+  list.replaceChildren(
+    ...rows.map((r) => {
+      const li = document.createElement('li')
+      li.style.paddingLeft = `${12 + r.depth * 14}px`
+      const name = document.createElement('span')
+      name.textContent = `#${r.label}`
+      const count = document.createElement('span')
+      count.className = 'muted tag-count'
+      count.textContent = String(r.count)
+      li.append(name, count)
+      li.title = `#${r.name}`
+      li.addEventListener('click', () => {
+        $('search').value = `tag:${r.name}`
+        setSidePane('files')
+      })
+      return li
+    }),
+  )
+}
+
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return
   await refreshTree()
@@ -983,6 +1333,7 @@ api.onVaultChanged(async (paths) => {
   else if (!current) renderPane()
   else renderLinks()
   if ($('search').value.trim()) runSearch()
+  if (sidePane === 'tags') renderTags()
 })
 
 $('version').textContent = `version ${api.version}`

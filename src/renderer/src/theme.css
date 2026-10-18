@@ -548,3 +548,183 @@ button:hover {
   cursor: pointer;
   text-decoration: none;
 }
+
+/* ---- embedded notes ---- */
+.preview .note-embed {
+  display: block;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-side);
+  border-radius: 4px;
+  margin: 1em 0;
+  padding: 6px 14px 10px;
+}
+.preview .note-embed-head {
+  font-size: 0.85em;
+  margin-bottom: 4px;
+}
+.preview .note-embed-body {
+  max-height: 400px;
+  overflow: auto;
+}
+.preview .note-embed.expanded > .note-embed-body {
+  max-height: none;
+}
+.preview .note-embed-notice {
+  color: var(--muted);
+  font-style: italic;
+}
+.preview .note-embed-more {
+  margin-top: 6px;
+  font-size: 0.85em;
+}
+
+/* ---- quick switcher ---- */
+.switcher {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  z-index: 10;
+}
+.switcher[hidden] {
+  display: none;
+}
+.switcher-box {
+  width: min(600px, 90vw);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  padding: 10px;
+}
+.switcher-box input {
+  width: 100%;
+  font-size: 16px;
+  padding: 8px 10px;
+}
+.switcher-list {
+  list-style: none;
+  margin: 8px 0 4px;
+  padding: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.switcher-list li {
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.switcher-list li.active {
+  background: var(--select);
+  color: var(--accent);
+}
+.switcher-hint {
+  margin: 0;
+  font-size: 0.8em;
+}
+
+/* ---- outline ---- */
+.outline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.outline li {
+  padding: 2px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outline li:hover {
+  background: var(--select);
+  color: var(--accent);
+}
+
+/* ---- tabs ---- */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex: none;
+}
+.tabs[hidden] {
+  display: none;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--bg-side);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab.active {
+  background: var(--bg);
+  color: var(--fg);
+}
+.tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-close {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  color: var(--muted);
+  line-height: 1;
+}
+.tab-close:hover {
+  color: var(--fg);
+}
+
+/* ---- files / tags switch and tags pane ---- */
+.side-switch {
+  display: flex;
+  gap: 4px;
+  margin: 0 12px 6px;
+}
+.side-switch button {
+  flex: 1;
+}
+.side-switch button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tag-list {
+  flex: 1;
+  overflow: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+.tag-list[hidden] {
+  display: none;
+}
+.tag-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 12px;
+  cursor: pointer;
+}
+.tag-list li:hover {
+  background: var(--select);
+  color: var(--accent);
+}
+.tag-count {
+  font-variant-numeric: tabular-nums;
+}

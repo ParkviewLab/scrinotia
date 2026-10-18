@@ -1,6 +1,6 @@
 {
   "name": "granite-vaulting",
-  "version": "0.3.0",
+  "version": "0.3.1-dev0",
   "description": "An independent, local-first Markdown notes client",
   "author": "Gary Frattarola <garyf@parkviewlab.ai>",
   "license": "AGPL-3.0-or-later",
@@ -42,6 +42,7 @@
     "dayjs": "^1.11.23",
     "dompurify": "^3.4.17",
     "marked": "^18.1.1",
+    "minisearch": "^7.2.0",
     "yaml": "^2.9.1"
   }
 }

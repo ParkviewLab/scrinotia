@@ -38,7 +38,7 @@ R2.3. The user can create, rename, move, and delete notes and folders. Deletion 
 
 R2.4. Renaming or moving a note or folder updates the links that point to what moved, in the other notes of the vault, changing only each link's target text. A link elsewhere that the new name would otherwise capture (a nearer or shorter match) is rewritten to keep its previous target. A note changed on disk since it was indexed is left alone and reported.
 
-R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the tree, from a link, from search, and from a quick switcher (fuzzy search over note names).
+R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the tree, from a link, from search, and from a quick switcher (fuzzy search over note names). The quick switcher (File, Quick Switcher, Cmd/Ctrl+O) matches the typed characters in order against file names and paths, ranking a match within the file name, an exact or leading name, and matches at word starts first; arrow keys choose, Enter opens, Escape closes. Tabs: each open file has a tab above the pane; a click on a file or link opens it in the current tab, Cmd/Ctrl+click or a middle click in a new tab; a file already open is brought forward; a tab closes with its ×, a middle click, or Cmd/Ctrl+W (Cmd/Ctrl+Shift+W closes the window); Ctrl+Tab and Ctrl+Shift+Tab move between tabs; tabs follow renames and close when their file is deleted. Tabs are per window and are not kept between launches.
 
 R2.6. An attachment opens in the pane, and embedded in a note (`![[file]]`) it shows in place: images, PDFs (in the browser engine's PDF viewer), audio and video (with players that can seek), and text-like files (read-only, up to 2 MB) are shown; HTML is rendered in a sandboxed frame whose scripts run in an origin of their own, so they cannot reach the app or read other vault files, and cannot open windows; any other file shows its name, size and modification time, with a button that opens it in the system's default application. No page may open a window of its own.
 
@@ -58,6 +58,8 @@ R3.6. A `.base` file is implemented from the two MIT-licensed references in `doc
 
 R3.6.1. Where the references are silent, the client chooses as follows. `file.name` includes the extension and `file.basename` omits it, as the API's `TAbstractFile.name` and `TFile.basename` define. A property whose name holds characters other than letters, digits and `_` is written `note["name"]` in an expression; in `order`, `sort`, `groupBy` and `properties` it is written as it stands. Values compare by type: numbers numerically, dates chronologically, text case-insensitively with numbers in text ordered numerically; values of different types are never equal; empty values and errors sort last. An expression that fails for one entry shows a marked cell for that entry only; an entry for which a filter fails is left out of the view, and the view says how many were left out. `file.ctime` is the file's birth time, or, where the filesystem records none, the earlier of its change and modification times. `file.tags` lists tags with their `#`. A duration's `days`, `hours` and the other fields are whole units, truncated towards zero; a month counts as 30.436875 days where a duration mixes months with fixed time. `icon()` is reported as unsupported, since the client bundles no icon set. A column's default label is the property's name without its type prefix. Summaries: a column's summary is computed over the values of the rows shown (after the view's limit), per group and for the whole view; errors are left out of the values; Range gives max minus min for numbers and latest minus earliest for dates; Stddev is the population standard deviation; Empty counts empty text, empty lists and missing values. `list.mean()`, used by the reference's own custom-summary example although its function list omits it, averages the numbers in a list. Groups are ordered by their value in the groupBy direction with the group of entries without a value last, or by `groupOrder` where a view lists one, which then shows only the listed groups. Cards view: one card per entry, the first image among its properties (an image value, or a link to an image file) as the card's picture, the file's own name as its title, the other properties below with their labels. List view: one line per entry, the first property leading and the others after it. Neither view shows summaries. Embedding: `![[Name.base]]` in a note shows the base with its view tabs, and `![[Name.base#View]]` shows that one view; inside an embed, `this` is the embedding note. A fenced code block of base YAML is not supported, since the references do not describe one.
 
+R3.7. An embedded note (`![[Note]]`, `![[Note#Heading]]` for the section under that heading, `![[Note#^id]]` for the paragraph or list item marked `^id`) shows in the preview as a read-only box headed by the note's name, which opens the note. A box taller than about 400 pixels scrolls inside itself and offers Show all and Show less. Only one level is shown: an embed inside an embedded note is a plain link, so a note that embeds itself, directly or through others, is never repeated. A box updates when its note changes on disk. A section or note that cannot be found is reported in the box. Block markers (`^id`) are not shown in the preview.
+
 ### R4. Links and backlinks
 
 R4.1. Wikilinks in all of these forms are recognised, followed, and autocompleted when typed after `[[`: `[[Note]]`, `[[Note|alias]]`, `[[Note#Heading]]`, `[[Note#^block-id]]`, and `[[folder/Note]]`. Ordinary Markdown links to notes (`[text](Note.md)`, with percent-encoding) are followed as well.
@@ -68,17 +70,19 @@ R4.3. A backlinks panel for the open note lists every note that links to it, wit
 
 R4.4. An outgoing-links panel lists the links of the open note.
 
-R4.5. Tags (`#tag`, nested `#a/b`, and the frontmatter `tags` property) are recognised and listed in a tag pane; selecting a tag shows the notes that carry it.
+R4.5. Tags (`#tag`, nested `#a/b`, and the frontmatter `tags` property) are recognised. A Tags pane, switched with Files above the file tree, lists every tag with the number of notes carrying it or a tag nested under it (a note counts once for a parent), nested tags indented under their parents; clicking a tag searches for it.
 
-R4.6. An outline panel lists the headings of the open note and moves the cursor to the one chosen.
+R4.6. An outline panel lists the headings of the open note, indented by level (frontmatter and fenced code left out), and updates as the note is edited. Clicking a heading scrolls the preview to it and, in the split mode, moves the editor's cursor to its line.
 
 ### R5. Search
 
 R5.1. Full-text search across the vault, returning matching notes with context lines and highlighted matches, updating as the vault changes.
 
-R5.2. Search supports plain words, quoted phrases, exclusion, and restriction by tag, by file name, and by path. Regular expressions and further operators are open for decision.
+R5.2. Search supports plain words (all must match; a word matches by its prefix, and a word of five letters or more also with one or two typos), "quoted phrases" (exact), /regular expressions/ (case-insensitive unless flags say otherwise; an invalid one is reported), exclusion with `-`, and restriction by `tag:`, `file:` and `path:`.
 
 R5.3. The search index is a cache outside the vault, rebuildable at any time from the files, and never the source of truth.
+
+R5.4. Results are ranked by BM25+ (MiniSearch, MIT) over each note's name, tags and text, with the name weighted three times and tags twice the body, best match first; a search without plain words lists its results in path order. The ranked index is kept up to date one note at a time as the vault changes.
 
 ### R6. Application
 

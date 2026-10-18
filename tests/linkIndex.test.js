@@ -53,18 +53,58 @@ describe('backlinks and mentions', () => {
     ])
     expect(index.tags()).toEqual([['idea', 1], ['x', 1]])
   })
+  it('counts a note once for a parent tag', async () => {
+    const { index } = memoryVault({ 'a.md': '#p/x #p/y', 'b.md': '#p/x', 'c.md': '#q' })
+    await index.rebuild()
+    expect(index.tags()).toEqual([['p', 2], ['p/x', 2], ['p/y', 1], ['q', 1]])
+  })
 })
 
 describe('search', () => {
+  const paths = (out) => out.results.map((r) => r.path)
   it('matches words, phrases, exclusions and fields', async () => {
     const { index } = memoryVault(VAULT)
     await index.rebuild()
-    expect(index.search('plan').map((r) => r.path)).toEqual(['Projects/Archive/Plan.md', 'Projects/Plan.md', 'Welcome.md'])
-    expect(index.search('"old plan"').map((r) => r.path)).toEqual(['Projects/Archive/Plan.md'])
-    expect(index.search('plan -archive').map((r) => r.path)).toEqual(['Projects/Plan.md', 'Welcome.md'])
-    expect(index.search('tag:idea').map((r) => r.path)).toEqual(['Ideas.md'])
-    expect(index.search('path:projects goals')).toEqual([])
-    expect(index.search('welcome')[0].matches.length).toBeGreaterThan(0)
+    expect(paths(index.search('plan')).sort()).toEqual(['Projects/Archive/Plan.md', 'Projects/Plan.md', 'Welcome.md'])
+    expect(paths(index.search('"old plan"'))).toEqual(['Projects/Archive/Plan.md'])
+    expect(paths(index.search('plan -archive')).sort()).toEqual(['Projects/Plan.md', 'Welcome.md'])
+    expect(paths(index.search('tag:idea'))).toEqual(['Ideas.md'])
+    expect(paths(index.search('path:projects goals'))).toEqual([])
+    expect(index.search('welcome').results[0].matches.length).toBeGreaterThan(0)
+  })
+  it('ranks by BM25: a word in the name and used often ranks first', async () => {
+    const { index } = memoryVault({
+      'Gardening.md': '# Gardening\n\nGardening notes: soil, gardening tools, gardening seasons.',
+      'Diary.md': '# Diary\n\nToday some gardening, then reading, cooking and walking for a long while.',
+      'Other.md': '# Other\n\nNothing relevant here at all.',
+    })
+    await index.rebuild()
+    expect(paths(index.search('gardening'))).toEqual(['Gardening.md', 'Diary.md'])
+  })
+  it('matches prefixes, and typos in longer words only', async () => {
+    const { index } = memoryVault({ 'a.md': 'The vaulting horse.', 'b.md': 'A cat sat.' })
+    await index.rebuild()
+    expect(paths(index.search('vault'))).toEqual(['a.md'])
+    expect(paths(index.search('vualting'))).toEqual(['a.md'])
+    expect(paths(index.search('cta'))).toEqual([])
+  })
+  it('matches regular expressions, and reports invalid ones', async () => {
+    const { index } = memoryVault({ 'a.md': 'Released 2026-10-18.', 'b.md': 'No date.' })
+    await index.rebuild()
+    expect(paths(index.search('/\\d{4}-\\d{2}-\\d{2}/'))).toEqual(['a.md'])
+    expect(index.search('/\\d{4}-\\d{2}-\\d{2}/').results[0].matches[0].context).toBe('Released 2026-10-18.')
+    expect(paths(index.search('-/\\d{4}/'))).toEqual(['b.md'])
+    expect(index.search('/[unclosed/').error).toMatch(/Not a valid regular expression/)
+  })
+  it('keeps the ranked index in step with changes', async () => {
+    const { store, index } = memoryVault({ 'a.md': 'apple', 'b.md': 'banana' })
+    await index.rebuild()
+    store.set('a.md', 'cherry')
+    store.delete('b.md')
+    await index.update(['a.md', 'b.md'])
+    expect(paths(index.search('apple'))).toEqual([])
+    expect(paths(index.search('banana'))).toEqual([])
+    expect(paths(index.search('cherry'))).toEqual(['a.md'])
   })
 })
 

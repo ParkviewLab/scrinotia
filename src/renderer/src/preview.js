@@ -49,6 +49,14 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
             const path = resolvePath(target)
             if (path) return `<span class="base-embed" data-base="${escapeHtml(path)}" data-view="${escapeHtml(subpath ?? '')}"></span>`
           }
+          // An embedded note (![[Note]], ![[Note#Heading]], ![[Note#^block]])
+          // becomes a placeholder that the app fills with the note's content.
+          if (token.embed && target && !/\.[a-z0-9]+$/i.test(target.replace(/\.md$/i, '')) ) {
+            const path = resolvePath(target)
+            if (path && /\.md$/i.test(path)) {
+              return `<span class="note-embed" data-path="${escapeHtml(path)}" data-sub="${escapeHtml(subpath ?? '')}"></span>`
+            }
+          }
           // Other embedded attachments (PDF, audio, video, HTML, text) become
           // placeholders that the app fills with a viewer.
           if (token.embed && !IMAGE.test(target) && !/\.(md|base)$/i.test(target)) {
@@ -143,9 +151,11 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
 
   return {
     render(text, into) {
-      const { yaml, body } = splitFrontmatter(text)
+      const { yaml, body: raw } = splitFrontmatter(text)
+      // Block markers (a trailing ^id that an embed can point to) are not shown.
+      const body = raw.replace(/[ \t]\^[A-Za-z0-9-]+[ \t]*$/gm, '')
       const html = (yaml !== null ? propertiesTable(yaml) : '') + marked.parse(body)
-      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|gv-asset):|^#/i })
+      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|gv-asset):|^#/i })
       into.innerHTML = clean
       calloutPass(into)
       for (const box of into.querySelectorAll('input[type="checkbox"]')) box.disabled = true

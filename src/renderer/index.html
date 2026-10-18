@@ -31,9 +31,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <button id="new-folder" type="button" title="New folder">+ Folder</button>
           </span>
         </header>
-        <input id="search" class="search" type="search" placeholder="Search (words, &quot;phrase&quot;, -word, tag:, file:, path:)" />
+        <div class="side-switch" role="tablist">
+          <button id="show-files" type="button" class="active">Files</button>
+          <button id="show-tags" type="button">Tags</button>
+        </div>
+        <input id="search" class="search" type="search" placeholder="Search (words, &quot;phrase&quot;, /regex/, -word, tag:, file:, path:)" />
         <ul id="tree" class="tree" role="tree"></ul>
         <ul id="results" class="results" hidden></ul>
+        <ul id="tag-list" class="tag-list" hidden></ul>
         <footer class="sidebar-foot">
           <button id="switch-vault" type="button">Switch vault</button>
           <label>Theme
@@ -45,6 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         </footer>
       </aside>
       <main class="pane">
+        <nav id="tabs" class="tabs" role="tablist"></nav>
         <header class="pane-head">
           <span id="note-path" class="muted"></span>
           <span class="actions" id="modes" hidden>
@@ -69,6 +75,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         <p id="note-body" class="note-body muted"></p>
       </main>
       <aside class="links" id="links">
+        <h3>Outline</h3>
+        <ul id="outline" class="outline"></ul>
         <h3>Backlinks <span id="backlinks-count" class="muted"></span></h3>
         <ul id="backlinks" class="link-list"></ul>
         <h3>Unlinked mentions <span id="unlinked-count" class="muted"></span></h3>
@@ -77,6 +85,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         <ul id="outgoing" class="link-list"></ul>
       </aside>
     </section>
+    <div id="switcher" class="switcher" hidden>
+      <div class="switcher-box" role="dialog" aria-label="Quick switcher">
+        <input id="switcher-input" type="text" placeholder="Type to find a note or file…" autocomplete="off" />
+        <ul id="switcher-list" class="switcher-list" role="listbox"></ul>
+        <p class="switcher-hint muted">↑ ↓ to choose · Enter to open · Esc to close</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
