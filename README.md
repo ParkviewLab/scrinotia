@@ -56,7 +56,7 @@ Releases are cut from the CLI and published by the tag-driven workflow, as the P
 
 ## Relation to Obsidian
 
-Scrinotia reads vaults and `.base` files in the formats used by Obsidian, a product of Dynalist Inc. It is an independent project, not affiliated with or endorsed by Obsidian. The `.base` format is implemented from two MIT-licensed references, the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango), kept in [`docs/references/`](docs/references/README.md).
+Scrinotia reads vaults and `.base` files in the formats used by Obsidian, a product of Dynalist Inc. Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc. The `.base` file format is implemented from two MIT-licensed references, the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango), kept in [`docs/references/`](docs/references/README.md).
 
 ## Contributing
 
