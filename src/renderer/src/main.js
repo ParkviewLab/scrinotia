@@ -1065,11 +1065,11 @@ async function runSearch() {
   $('tree').hidden = true
   $('results').hidden = false
   const items = results.map((r) =>
-    hitItem(
+    draggableItem(r.path, hitItem(
       r.path.replace(/\.md$/i, ''),
       r.matches.map((m) => m.context).join(' · '),
       (newTab) => openPath(r.path, { newTab }),
-    ),
+    )),
   )
   if (items.length === 0) {
     const li = document.createElement('li')
@@ -1521,6 +1521,73 @@ api
   })
   .catch(() => {})
   .finally(applyLayout)
+
+// ---- dropping files on a note (R2.7): files from outside the vault are
+// copied into its attachment folder; files dragged from the tree or search
+// results are already in the vault. Either way a link goes into the note:
+// an embed for what the preview shows inline, a plain link otherwise. In the
+// split editor it goes where the file is dropped; in the preview, at the end.
+function draggableItem(path, li) {
+  li.draggable = true
+  li.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-gv-path', path))
+  return li
+}
+
+function linkFor(path) {
+  const name = path.slice(path.lastIndexOf('/') + 1)
+  const isNote = /\.md$/i.test(name)
+  // The shortest form that still resolves to this file from the open note.
+  const short = isNote ? name.replace(/\.md$/i, '') : name
+  const target = resolveLink(short, current, files()) === path ? short : isNote ? path.replace(/\.md$/i, '') : path
+  const embed = !isNote && attachmentKind(path) !== 'other'
+  return `${embed ? '!' : ''}[[${target}]]`
+}
+
+function canDrop(e) {
+  const t = e.dataTransfer?.types ?? []
+  return current && notes.get(current)?.kind === 'note' && (t.includes('Files') || t.includes('text/x-gv-path'))
+}
+
+$('note-area').addEventListener(
+  'dragover',
+  (e) => {
+    if (!canDrop(e)) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'copy'
+  },
+  true,
+)
+
+$('note-area').addEventListener(
+  'drop',
+  async (e) => {
+    if (!canDrop(e)) return
+    e.preventDefault()
+    e.stopPropagation()
+    const note = current
+    const inEditor = noteMode === 'split' && $('editor').contains(e.target)
+    const pos = inEditor ? editor.posAt(e.clientX, e.clientY) : null
+    const paths = []
+    const vaultPath = e.dataTransfer.getData('text/x-gv-path')
+    if (vaultPath) paths.push(vaultPath)
+    for (const file of e.dataTransfer.files) {
+      const source = api.pathForFile(file)
+      if (!source) continue
+      const rel = await run(() => api.importFile(source))
+      if (rel) paths.push(rel)
+    }
+    if (!paths.length || current !== note) return
+    await refreshTree()
+    const links = paths.map(linkFor).join('\n')
+    if (pos !== null) editor.insert(links, pos)
+    else {
+      const text = editor.text()
+      editor.insert(`${text.length && !text.endsWith('\n') ? '\n' : ''}${links}\n`)
+    }
+  },
+  true,
+)
 
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return

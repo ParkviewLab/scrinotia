@@ -47,6 +47,13 @@ export function createEditor(parent, { onUserChange, onScroll }) {
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, annotations: [External.of(true)] })
     },
     focus: () => view.focus(),
+    // The document position under a point of the window, or null.
+    posAt: (x, y) => view.posAtCoords({ x, y }),
+    // Inserts text as an edit of the user's (so it saves), at pos or the end.
+    insert(text, pos = null) {
+      const at = pos ?? view.state.doc.length
+      view.dispatch({ changes: { from: at, insert: text }, selection: { anchor: at + text.length }, userEvent: 'input.drop' })
+    },
     // Puts the cursor at the start of a 1-based line and scrolls it to the top.
     gotoLine(n) {
       const line = view.state.doc.line(Math.max(1, Math.min(n, view.state.doc.lines)))
