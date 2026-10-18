@@ -430,6 +430,7 @@ button:hover {
 /* The name card at the top of the right panel, framed to the dark card
    without the PNG's cream margin (as in About). */
 .panel-card {
+  max-width: 300px;
   margin: 4px 12px 10px;
   aspect-ratio: 1656 / 384;
   border-radius: 10px;
