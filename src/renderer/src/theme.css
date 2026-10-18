@@ -366,3 +366,38 @@ button:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---- .base views ---- */
+.base-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+.base-tabs button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.base-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.92em;
+}
+.base-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+}
+.base-table tbody tr:hover {
+  background: var(--select);
+}
+.tree .base > .row::before {
+  content: '▦ ';
+  color: var(--muted);
+}
+.actions[hidden] {
+  display: none;
+}
+.base-table td:not(:first-child),
+.base-table th {
+  white-space: nowrap;
+}

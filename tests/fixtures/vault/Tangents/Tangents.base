@@ -1,0 +1,32 @@
+filters:
+  and:
+    - file.inFolder("Tangents")
+    - file.ext == "md"
+    - file.name != "README"
+properties:
+  file.name:
+    displayName: Idea
+views:
+  - type: table
+    name: By target
+    order:
+      - file.name
+      - target
+      - origin
+      - discovered
+      - status
+    sort:
+      - property: target
+        direction: ASC
+      - property: discovered
+        direction: DESC
+  - type: table
+    name: By date
+    order:
+      - discovered
+      - file.name
+      - target
+      - status
+    sort:
+      - property: discovered
+        direction: DESC

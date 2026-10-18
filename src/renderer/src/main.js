@@ -301,6 +301,76 @@ function rememberCurrent() {
   if (current && notes.has(current)) notes.get(current).state = editor.getState()
 }
 
+// ---- .base files: table views (rendered in the main process) ----
+let currentBase = null
+let baseView = 0
+
+async function showBase(path) {
+  currentBase = path
+  const out = await api.renderBase(path).catch((err) => ({ error: String(err.message ?? err), views: [] }))
+  if (currentBase !== path) return
+  const host = $('preview')
+  host.replaceChildren()
+  if (out.error) {
+    const p = document.createElement('p')
+    p.className = 'missing'
+    p.textContent = out.error
+    host.append(p)
+    return
+  }
+  baseView = Math.min(baseView, Math.max(out.views.length - 1, 0))
+  const tabs = document.createElement('div')
+  tabs.className = 'base-tabs'
+  out.views.forEach((v, n) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.textContent = v.name
+    b.classList.toggle('active', n === baseView)
+    b.addEventListener('click', () => {
+      baseView = n
+      showBase(path)
+    })
+    tabs.append(b)
+  })
+  host.append(tabs)
+  const v = out.views[baseView]
+  if (!v) return
+  if (v.error) {
+    const p = document.createElement('p')
+    p.className = 'missing'
+    p.textContent = v.error
+    host.append(p)
+    return
+  }
+  const table = document.createElement('table')
+  table.className = 'base-table'
+  const head = table.createTHead().insertRow()
+  for (const c of v.columns) {
+    const th = document.createElement('th')
+    th.textContent = c.label
+    head.append(th)
+  }
+  const tbody = table.createTBody()
+  for (const r of v.rows) {
+    const tr = tbody.insertRow()
+    r.cells.forEach((cell, k) => {
+      const td = tr.insertCell()
+      if (v.columns[k].key === 'file.name') {
+        const a = document.createElement('a')
+        a.textContent = cell
+        a.addEventListener('click', () => openPath(r.path))
+        td.append(a)
+      } else {
+        td.textContent = cell
+      }
+    })
+  }
+  const count = document.createElement('p')
+  count.className = 'muted'
+  count.textContent = `${v.rows.length} ${v.rows.length === 1 ? 'note' : 'notes'}`
+  host.append(table, count)
+}
+
 async function showNote(path) {
   if (path === current) return
   rememberCurrent()
@@ -309,6 +379,16 @@ async function showNote(path) {
   hideConflict()
   const body = $('note-body')
   const entryInfo = path ? findEntry(view.tree, path) : null
+  currentBase = null
+  if (entryInfo?.type === 'base') {
+    current = null
+    body.textContent = ''
+    $('modes').hidden = true
+    setNoteMode('preview')
+    $('note-area').hidden = false
+    await showBase(path)
+    return
+  }
   if (!path || entryInfo?.type !== 'note') {
     $('note-area').hidden = true
     $('modes').hidden = true
@@ -681,7 +761,8 @@ api.onVaultChanged(async (paths) => {
       loadDiskText(entry, disk)
     }
   }
-  if (!current) renderPane()
+  if (currentBase) showBase(currentBase)
+  else if (!current) renderPane()
   else renderLinks()
   if ($('search').value.trim()) runSearch()
 })

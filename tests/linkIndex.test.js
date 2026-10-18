@@ -51,7 +51,7 @@ describe('backlinks and mentions', () => {
       ['the goals', 'Projects/Plan.md'],
       ['Ideas', 'Ideas.md'],
     ])
-    expect(index.tags()).toEqual([['idea', 1]])
+    expect(index.tags()).toEqual([['idea', 1], ['x', 1]])
   })
 })
 

@@ -48,7 +48,8 @@ export async function scanVault(root) {
       if (e.isDirectory()) {
         out.push({ name: e.name, path: toRel(root, full), type: 'folder', children: await walk(full) })
       } else if (e.isFile()) {
-        const type = extname(e.name).toLowerCase() === '.md' ? 'note' : 'attachment'
+        const ext = extname(e.name).toLowerCase()
+        const type = ext === '.md' ? 'note' : ext === '.base' ? 'base' : 'attachment'
         out.push({ name: e.name, path: toRel(root, full), type })
       }
     }
