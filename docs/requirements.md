@@ -52,6 +52,8 @@ R3.4. Saving is automatic after a short pause in typing. Undo and redo cover the
 
 R3.5. Standard text-editing keyboard behaviour on both platforms (platform-appropriate modifier keys), and list continuation and indentation.
 
+R3.6. A `.base` file opens as a set of table views of the vault's notes, one tab per view. Supported: filters as expressions combined with and, or and not; comparisons, `!`, `&&`, `||`; `file.name`, `file.ext`, `file.path`, `file.folder`, `file.inFolder()`, `file.hasTag()`, `file.hasLink()` and frontmatter properties; table views with order, sort, limit and display names. Anything else is reported in the pane, not guessed. Clicking a note's name opens it.
+
 ### R4. Links and backlinks
 
 R4.1. Wikilinks in all of these forms are recognised, followed, and autocompleted when typed after `[[`: `[[Note]]`, `[[Note|alias]]`, `[[Note#Heading]]`, `[[Note#^block-id]]`, and `[[folder/Note]]`. Ordinary Markdown links to notes (`[text](Note.md)`, with percent-encoding) are followed as well.

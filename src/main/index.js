@@ -14,6 +14,7 @@ import { join, basename, sep, resolve } from 'node:path'
 import * as vault from './vault.js'
 import { createState } from './state.js'
 import { createIndex } from './linkIndex.js'
+import { renderBase } from './bases.js'
 
 const state = createState(app.getPath('userData'))
 const contexts = new Map() // webContents id -> { win, root, watcher, index, flushed }
@@ -151,6 +152,7 @@ function registerIpc() {
   on('links:unlinked', (e, rel) => (rootOf(e), ctxOf(e).index.unlinkedMentions(rel)))
   on('links:outgoing', (e, rel) => (rootOf(e), ctxOf(e).index.outgoing(rel)))
   on('search', (e, query) => (rootOf(e), ctxOf(e).index.search(query)))
+  on('base:render', async (e, rel) => renderBase(await vault.readNote(rootOf(e), rel), ctxOf(e).index.entries()))
   on('open:external', (_e, url) => {
     if (!/^(https?|mailto):/i.test(url)) throw new Error(`not an external link: ${url}`)
     return shell.openExternal(url)

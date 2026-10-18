@@ -8,6 +8,7 @@
 
 import { parseLinks, parseTags } from '../shared/markdown.js'
 import { resolveLink, resolveRelative } from '../shared/links.js'
+import { parse as parseYaml } from 'yaml'
 
 const isNote = (p) => /\.md$/i.test(p)
 const baseName = (p) => p.slice(p.lastIndexOf('/') + 1)
@@ -32,8 +33,21 @@ export function createIndex({ list, read }) {
   let files = []
   const notes = new Map() // path -> { text, links, tags }
 
+  function frontmatterOf(text) {
+    const m = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/.exec(text)
+    if (!m) return {}
+    try {
+      const fm = parseYaml(m[1])
+      return fm && typeof fm === 'object' && !Array.isArray(fm) ? fm : {}
+    } catch {
+      return {}
+    }
+  }
+
   function indexText(path, text) {
-    notes.set(path, { text, links: parseLinks(text), tags: parseTags(text) })
+    const frontmatter = frontmatterOf(text)
+    const fmTags = [frontmatter.tags ?? []].flat().map((t) => String(t).replace(/^#/, ''))
+    notes.set(path, { text, links: parseLinks(text), tags: [...new Set([...parseTags(text), ...fmTags])], frontmatter })
   }
 
   async function rebuild() {
@@ -209,7 +223,18 @@ export function createIndex({ list, read }) {
     return edits
   }
 
+  // Every file, with a note's frontmatter, tags and resolved link targets (for .base views).
+  function entries() {
+    return files.map((path) => {
+      const note = notes.get(path)
+      if (!note) return { path, frontmatter: {}, tags: [], links: [] }
+      const links = note.links.map((l) => resolveEntry(l, path, files)).filter(Boolean)
+      return { path, frontmatter: note.frontmatter, tags: note.tags, links }
+    })
+  }
+
   return {
+    entries,
     rebuild,
     update,
     backlinks,
