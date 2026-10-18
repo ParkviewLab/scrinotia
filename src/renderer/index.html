@@ -12,14 +12,46 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <link rel="stylesheet" href="/src/theme.css" />
   </head>
   <body>
-    <h1>granite-vaulting</h1>
-    <p id="version"></p>
-    <label>Theme
-      <select id="theme">
-        <option value="dark">Dark</option>
-        <option value="light">Light</option>
-      </select>
-    </label>
+    <section id="start" class="start">
+      <h1>granite-vaulting</h1>
+      <p class="muted" id="version"></p>
+      <button id="open-folder" type="button">Open a vault folder…</button>
+      <h2>Recent vaults</h2>
+      <ul id="recent" class="recent"></ul>
+      <p id="start-error" class="error"></p>
+    </section>
+    <section id="workspace" class="workspace" hidden>
+      <aside class="sidebar">
+        <header class="sidebar-head">
+          <strong id="vault-name"></strong>
+          <span class="actions">
+            <button id="new-note" type="button" title="New note">+ Note</button>
+            <button id="new-folder" type="button" title="New folder">+ Folder</button>
+          </span>
+        </header>
+        <ul id="tree" class="tree" role="tree"></ul>
+        <footer class="sidebar-foot">
+          <button id="switch-vault" type="button">Switch vault</button>
+          <label>Theme
+            <select id="theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+        </footer>
+      </aside>
+      <main class="pane">
+        <header class="pane-head">
+          <span id="note-path" class="muted"></span>
+          <span class="actions" id="entry-actions" hidden>
+            <button id="rename" type="button">Rename</button>
+            <button id="delete" type="button">Move to trash</button>
+          </span>
+        </header>
+        <p id="pane-error" class="error"></p>
+        <pre id="note-body" class="note-body"></pre>
+      </main>
+    </section>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
