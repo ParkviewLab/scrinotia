@@ -30,13 +30,13 @@ R1.6. The client tolerates a vault of at least 10,000 notes without a perceptibl
 
 ### R2. Vault browser
 
-R2.1. A vault can be opened from a folder chooser, and recently opened vaults are listed.
+R2.1. A vault can be opened from a folder chooser, and recently opened vaults are listed. Several vaults can be open at once, each in its own window; opening a vault that is already open in another window brings that window forward instead.
 
 R2.2. A file tree shows folders, notes, and attachments, with expand and collapse.
 
 R2.3. The user can create, rename, move, and delete notes and folders. Deletion goes to the system trash, not permanent removal.
 
-R2.4. Renaming or moving a note updates the wikilinks that point to it, in the other notes of the vault.
+R2.4. Renaming or moving a note or folder updates the links that point to what moved, in the other notes of the vault, changing only each link's target text. A link elsewhere that the new name would otherwise capture (a nearer or shorter match) is rewritten to keep its previous target. A note changed on disk since it was indexed is left alone and reported.
 
 R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the tree, from a link, from search, and from a quick switcher (fuzzy search over note names).
 

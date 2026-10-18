@@ -16,6 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
       <h1>granite-vaulting</h1>
       <p class="muted" id="version"></p>
       <button id="open-folder" type="button">Open a vault folder…</button>
+      <button id="new-window" type="button">New window</button>
       <h2>Recent vaults</h2>
       <ul id="recent" class="recent"></ul>
       <p id="start-error" class="error"></p>
@@ -29,7 +30,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <button id="new-folder" type="button" title="New folder">+ Folder</button>
           </span>
         </header>
+        <input id="search" class="search" type="search" placeholder="Search (words, &quot;phrase&quot;, -word, tag:, file:, path:)" />
         <ul id="tree" class="tree" role="tree"></ul>
+        <ul id="results" class="results" hidden></ul>
         <footer class="sidebar-foot">
           <button id="switch-vault" type="button">Switch vault</button>
           <label>Theme
@@ -62,6 +65,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         <div id="editor" class="editor" hidden></div>
         <p id="note-body" class="note-body muted"></p>
       </main>
+      <aside class="links" id="links">
+        <h3>Backlinks <span id="backlinks-count" class="muted"></span></h3>
+        <ul id="backlinks" class="link-list"></ul>
+        <h3>Unlinked mentions <span id="unlinked-count" class="muted"></span></h3>
+        <ul id="unlinked" class="link-list"></ul>
+        <h3>Outgoing links <span id="outgoing-count" class="muted"></span></h3>
+        <ul id="outgoing" class="link-list"></ul>
+      </aside>
     </section>
     <script type="module" src="/src/main.js"></script>
   </body>

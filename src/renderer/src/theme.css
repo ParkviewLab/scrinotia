@@ -241,3 +241,72 @@ button:hover {
   border-radius: 4px;
 }
 .conflict[hidden] { display: none; }
+
+/* ---- search and links ---- */
+.workspace {
+  grid-template-columns: 280px 1fr 280px;
+}
+.search {
+  margin: 0 12px 6px;
+}
+.results {
+  flex: 1;
+  overflow: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+.results[hidden] {
+  display: none;
+}
+.results li,
+.link-list li {
+  padding: 3px 12px;
+  cursor: pointer;
+}
+.results li:hover,
+.link-list li:hover {
+  background: var(--select);
+}
+.results .hit-path,
+.link-list .hit-path {
+  display: block;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.results .hit-line,
+.link-list .hit-line {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.links {
+  background: var(--bg-side);
+  border-left: 1px solid var(--border);
+  overflow: auto;
+  padding: 8px 0;
+}
+.links h3 {
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 12px 12px 4px;
+}
+.link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.link-list .unresolved {
+  color: var(--muted);
+  font-style: italic;
+}
+.info {
+  color: var(--muted);
+}
