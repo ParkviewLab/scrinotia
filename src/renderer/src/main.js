@@ -15,7 +15,7 @@ import DOMPurify from 'dompurify'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
-const api = window.granite
+const api = window.scrinotia
 const $ = (id) => document.getElementById(id)
 
 const view = {
@@ -26,7 +26,7 @@ const view = {
   renaming: false, // an inline rename input is open; do not redraw the tree under it
 }
 
-// ---- theme (R6.2): dark by default; kept per vault in .granite-vaulting/ (R6.4) ----
+// ---- theme (R6.2): dark by default; kept per vault in .scrinotia/ (R6.4) ----
 const themeSelect = $('theme')
 function applyTheme(theme) {
   const t = theme === 'light' ? 'light' : 'dark'
@@ -180,7 +180,7 @@ function renderEntry(entry) {
   row.title = entry.path
   if (view.selected?.path === entry.path) row.classList.add('selected')
   row.draggable = true
-  row.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-gv-path', entry.path))
+  row.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-scrinotia-path', entry.path))
   row.addEventListener('click', (e) => select(entry, { newTab: e.metaKey || e.ctrlKey }))
   row.addEventListener('auxclick', (e) => {
     if (e.button === 1 && entry.type !== 'folder') select(entry, { newTab: true })
@@ -210,7 +210,7 @@ function renderEntry(entry) {
     row.addEventListener('drop', (e) => {
       e.preventDefault()
       e.stopPropagation()
-      moveInto(e.dataTransfer.getData('text/x-gv-path'), entry.path)
+      moveInto(e.dataTransfer.getData('text/x-scrinotia-path'), entry.path)
     })
     const ul = document.createElement('ul')
     ul.setAttribute('role', 'group')
@@ -224,7 +224,7 @@ function renderEntry(entry) {
 $('tree').addEventListener('dragover', (e) => e.preventDefault())
 $('tree').addEventListener('drop', (e) => {
   e.preventDefault()
-  moveInto(e.dataTransfer.getData('text/x-gv-path'), '')
+  moveInto(e.dataTransfer.getData('text/x-scrinotia-path'), '')
 })
 
 async function moveInto(from, folder) {
@@ -513,7 +513,7 @@ async function fillMermaid(host) {
       theme: document.documentElement.dataset.theme === 'light' ? 'default' : 'dark',
     })
     try {
-      const { svg } = await mermaidLib.render(`gv-mermaid-${++mermaidSeq}`, pre.textContent)
+      const { svg } = await mermaidLib.render(`scrinotia-mermaid-${++mermaidSeq}`, pre.textContent)
       box.innerHTML = DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true, html: true }, ADD_TAGS: ['foreignObject'] })
     } catch (err) {
       box.classList.add('missing')
@@ -1529,7 +1529,7 @@ api
 // split editor it goes where the file is dropped; in the preview, at the end.
 function draggableItem(path, li) {
   li.draggable = true
-  li.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-gv-path', path))
+  li.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-scrinotia-path', path))
   return li
 }
 
@@ -1545,7 +1545,7 @@ function linkFor(path) {
 
 function canDrop(e) {
   const t = e.dataTransfer?.types ?? []
-  return current && notes.get(current)?.kind === 'note' && (t.includes('Files') || t.includes('text/x-gv-path'))
+  return current && notes.get(current)?.kind === 'note' && (t.includes('Files') || t.includes('text/x-scrinotia-path'))
 }
 
 $('note-area').addEventListener(
@@ -1569,7 +1569,7 @@ $('note-area').addEventListener(
     const inEditor = noteMode === 'split' && $('editor').contains(e.target)
     const pos = inEditor ? editor.posAt(e.clientX, e.clientY) : null
     const paths = []
-    const vaultPath = e.dataTransfer.getData('text/x-gv-path')
+    const vaultPath = e.dataTransfer.getData('text/x-scrinotia-path')
     if (vaultPath) paths.push(vaultPath)
     for (const file of e.dataTransfer.files) {
       const source = api.pathForFile(file)

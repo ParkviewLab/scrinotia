@@ -5,7 +5,7 @@
 <p id="out">scripts did not run</p>
 <script>
   let reach = 'blocked'
-  try { reach = window.parent.granite ? 'REACHABLE' : 'blocked' } catch (e) { reach = 'blocked' }
+  try { reach = window.parent.scrinotia ? 'REACHABLE' : 'blocked' } catch (e) { reach = 'blocked' }
   let vault = 'pending'
   fetch(location.href.replace('page.html', 'data.json')).then(() => { vault = 'READABLE' }, () => { vault = 'blocked' })
     .finally(() => { document.getElementById('out').textContent = 'scripts ran; app: ' + reach + '; other vault files: ' + vault })

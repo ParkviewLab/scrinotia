@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import appIcon from '../../build/icon.png?asset'
 
-const SOURCE_URL = 'https://github.com/garycoding/granite-vaulting'
+const SOURCE_URL = 'https://github.com/garycoding/scrinotia'
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
@@ -46,7 +46,7 @@ function iconData() {
 let aboutWin = null
 export function openAboutWindow() {
   if (aboutWin && !aboutWin.isDestroyed()) return aboutWin.focus()
-  const html = `<!doctype html><meta charset="utf-8"><title>About granite-vaulting</title><style>${STYLE}
+  const html = `<!doctype html><meta charset="utf-8"><title>About Scrinotia</title><style>${STYLE}
   .wrap{height:100%;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;-webkit-user-select:none;cursor:default}
   .icon{width:96px;height:96px;margin-bottom:10px}
   h1{margin:0;font-size:21px;font-weight:600}
@@ -57,10 +57,10 @@ export function openAboutWindow() {
 </style>
 <div class="wrap">
   <img class="icon" src="data:image/png;base64,${iconData()}" alt="">
-  <h1>granite-vaulting</h1>
+  <h1>Scrinotia</h1>
   <div class="ver">Version ${esc(app.getVersion())}</div>
   <p>An independent, local-first Markdown notes client.</p>
-  <p>granite-vaulting reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. It is an independent project, not affiliated with or endorsed by Obsidian. The .base format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
+  <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. It is an independent project, not affiliated with or endorsed by Obsidian. The .base format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
   <div class="copy">© 2026 Gary Frattarola · AGPL-3.0-or-later</div>
   <div class="links"><a href="${SOURCE_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
 </div>`
@@ -72,7 +72,7 @@ export function openAboutWindow() {
     maximizable: false,
     fullscreenable: false,
     backgroundColor: '#1e1f22',
-    title: 'About granite-vaulting',
+    title: 'About Scrinotia',
     webPreferences: { contextIsolation: true, sandbox: true },
   })
   aboutWin.setMenuBarVisibility(false)
@@ -155,7 +155,7 @@ export function openLicensesWindow() {
   .missing{padding:48px 0;text-align:center;color:var(--muted);line-height:1.9}
   code{background:var(--panel);padding:1px 6px;border-radius:3px}
 </style>
-<header><h1>Open Source Licenses</h1><div class="sub">granite-vaulting includes the open-source software below and is implemented, for .base files, from the references listed.</div></header>
+<header><h1>Open Source Licenses</h1><div class="sub">Scrinotia includes the open-source software below and is implemented, for .base files, from the references listed.</div></header>
 <main>${body}</main>`
   licWin = new BrowserWindow({
     width: 760,

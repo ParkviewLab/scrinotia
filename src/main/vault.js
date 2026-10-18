@@ -4,7 +4,7 @@
 // Filesystem access to one vault. Every path that crosses the IPC boundary is
 // vault-relative and is resolved through resolveInside, so the renderer can
 // never name a file outside the vault. Nothing here writes on open (R1.1), and
-// dot-entries (.obsidian/, .granite-vaulting/, .git/) are neither listed nor
+// dot-entries (.obsidian/, .scrinotia/, .git/) are neither listed nor
 // touched (R1.2).
 
 import { readdir, readFile, writeFile, rename, mkdir, stat, open, copyFile, constants } from 'node:fs/promises'
@@ -70,7 +70,7 @@ export async function readBytes(root, rel) {
 // Atomic replace: write a sibling temporary file, flush it, rename it over.
 export async function writeNote(root, rel, text) {
   const full = resolveInside(root, rel)
-  const tmp = join(dirname(full), `.${basename(full)}.gv-tmp`)
+  const tmp = join(dirname(full), `.${basename(full)}.scrinotia-tmp`)
   const fh = await open(tmp, 'w')
   try {
     await fh.writeFile(text, 'utf8')
