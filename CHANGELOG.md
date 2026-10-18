@@ -4,6 +4,26 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.9.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Show the name card at the top of About (#59)
+- Fit the About window to its content on a midnight ground (#61)
+
+### Docs
+
+- Trim the name note (#58)
+- Describe version 0.9.0 in the README (#62)
+
+### Maintenance
+
+- Add the sputnik model to brand/ (#60)
+
 ## [v0.8.0] - 2026-10-18
 
 ### Highlights
