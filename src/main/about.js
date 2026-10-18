@@ -51,7 +51,7 @@ let aboutWin = null
 export function openAboutWindow() {
   if (aboutWin && !aboutWin.isDestroyed()) return aboutWin.focus()
   const html = `<!doctype html><meta charset="utf-8"><title>About Scrinotia</title><style>${STYLE}
-  .wrap{height:100%;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;-webkit-user-select:none;cursor:default}
+  .wrap{height:100%;overflow:auto;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:safe center;text-align:center;-webkit-user-select:none;cursor:default}
   .icon{width:96px;height:96px;margin-bottom:10px}
   h1{margin:0;font-size:21px;font-weight:600}
   .ver{margin:3px 0 6px;color:var(--muted);font-size:12px}
@@ -61,6 +61,15 @@ export function openAboutWindow() {
   p{margin:0 0 10px;max-width:34em}
   .copy{margin:14px 0 10px;font-size:11px;color:var(--muted)}
   .links{display:flex;gap:18px;font-size:12px}
+  .name{color:var(--muted);font-size:12px}
+  .name p{margin:0 0 4px}
+  /* The statement on Obsidian (R7.3), closed until its line is clicked. */
+  details{max-width:34em;margin:4px 0 0;font-size:12px}
+  summary{list-style:none;cursor:pointer;color:var(--accent)}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:' ›';display:inline-block;margin-left:4px;transition:transform .15s}
+  details[open] summary::after{transform:rotate(90deg)}
+  details p{margin:8px 0 0;color:var(--muted)}
 </style>
 <div class="wrap">
   <img class="icon" src="data:image/png;base64,${iconData()}" alt="">
@@ -68,14 +77,21 @@ export function openAboutWindow() {
   <div class="ver">Version ${esc(app.getVersion())}</div>
   <div class="upd" id="upd">Checking for a newer version…</div>
   <p>An independent, local-first Markdown notes client.</p>
-  <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc. The .base file format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
+  <div class="name">
+    <p><b>Scrinotia</b>, from Latin <i>scrinium</i> (scroll-case) and <i>notitia</i> (knowledge, record), with haplology: “the scroll-case of knowledge”.</p>
+    <p><b>Pronunciation:</b> skri · NO · tee · a (/skrɪˈnoʊ.ti.ə/)</p>
+  </div>
+  <details>
+    <summary>The .base file format</summary>
+    <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc. The .base file format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
+  </details>
   <div class="copy">© 2026 Gary Frattarola · AGPL-3.0-or-later</div>
   <div class="links"><a href="${SOURCE_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
 </div>
 ${CLOSE_ON_ESCAPE}`
   aboutWin = new BrowserWindow({
     width: 520,
-    height: 540,
+    height: 600,
     resizable: false,
     minimizable: false,
     maximizable: false,
