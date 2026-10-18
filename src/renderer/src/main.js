@@ -1637,20 +1637,26 @@ function dragSplitter(side) {
     bar.setPointerCapture(e.pointerId)
     bar.classList.add('dragging')
     $('workspace').classList.add('resizing')
+    // The drag ends however the pointer is let go: released, cancelled, its
+    // capture lost (as when it is released outside the window), or moved
+    // with no button held; otherwise the panel would follow the pointer
+    // whenever it next crossed the splitter.
     const move = (ev) => {
+      if (ev.buttons === 0) return end()
       const w = side === 'left' ? ev.clientX : window.innerWidth - ev.clientX
       layout[side === 'left' ? 'leftWidth' : 'rightWidth'] = clampWidth(side, w)
       applyLayout()
     }
-    const up = () => {
+    const end = () => {
       bar.classList.remove('dragging')
       $('workspace').classList.remove('resizing')
       bar.removeEventListener('pointermove', move)
-      bar.removeEventListener('pointerup', up)
+      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) bar.removeEventListener(type, end)
+      if (bar.hasPointerCapture(e.pointerId)) bar.releasePointerCapture(e.pointerId)
       saveLayout()
     }
     bar.addEventListener('pointermove', move)
-    bar.addEventListener('pointerup', up)
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) bar.addEventListener(type, end)
   })
   bar.addEventListener('dblclick', () => {
     layout[side === 'left' ? 'leftWidth' : 'rightWidth'] = DEFAULT_WIDTH
