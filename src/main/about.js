@@ -10,7 +10,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
-import appIcon from '../../build/icon.png?asset'
+import nameCard from '../../brand/scrinotia-icon-kit/brand/scrinotia-name-card.png?asset'
 import { checkForUpdate } from './update.js'
 
 const SOURCE_URL = 'https://github.com/garycoding/scrinotia'
@@ -39,9 +39,9 @@ function lockDown(win) {
   })
 }
 
-function iconData() {
+function pngData(file) {
   try {
-    return readFileSync(appIcon).toString('base64')
+    return readFileSync(file).toString('base64')
   } catch {
     return ''
   }
@@ -52,8 +52,11 @@ export function openAboutWindow() {
   if (aboutWin && !aboutWin.isDestroyed()) return aboutWin.focus()
   const html = `<!doctype html><meta charset="utf-8"><title>About Scrinotia</title><style>${STYLE}
   .wrap{height:100%;overflow:auto;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:safe center;text-align:center;-webkit-user-select:none;cursor:default}
-  .icon{width:96px;height:96px;margin-bottom:10px}
-  h1{margin:0;font-size:21px;font-weight:600}
+  /* The kit's name card is a dark card on a cream margin (56 px of 1772 by
+     500); the frame shows the card alone, trimming 2 px more so that no
+     cream shows at its edge. */
+  .card{width:440px;aspect-ratio:1656/384;border-radius:16px;overflow:hidden;margin-bottom:14px;flex:none}
+  .card img{display:block;width:107.005%;margin:-3.502% 0 0 -3.502%}
   .ver{margin:3px 0 6px;color:var(--muted);font-size:12px}
   /* The update line keeps its height from the first paint, so the answer
      arriving from the network never shifts what is already on screen. */
@@ -61,8 +64,6 @@ export function openAboutWindow() {
   p{margin:0 0 10px;max-width:34em}
   .copy{margin:14px 0 10px;font-size:11px;color:var(--muted)}
   .links{display:flex;gap:18px;font-size:12px}
-  .name{color:var(--muted);font-size:12px}
-  .name p{margin:0 0 4px}
   /* The statement on Obsidian (R7.3), closed until its line is clicked. */
   details{max-width:34em;margin:4px 0 0;font-size:12px}
   summary{list-style:none;cursor:pointer;color:var(--accent)}
@@ -72,15 +73,10 @@ export function openAboutWindow() {
   details p{margin:8px 0 0;color:var(--muted)}
 </style>
 <div class="wrap">
-  <img class="icon" src="data:image/png;base64,${iconData()}" alt="">
-  <h1>Scrinotia</h1>
+  <div class="card"><img src="data:image/png;base64,${pngData(nameCard)}" alt="Scrinotia, pronounced skri-NO-tee-a: the scroll-case of knowledge, from scrinium and notitia"></div>
   <div class="ver">Version ${esc(app.getVersion())}</div>
   <div class="upd" id="upd">Checking for a newer version…</div>
   <p>An independent, local-first Markdown notes client.</p>
-  <div class="name">
-    <p><b>Scrinotia</b>, from Latin <i>scrinium</i> (scroll-case) and <i>notitia</i> (knowledge, record), with haplology: “the scroll-case of knowledge”.</p>
-    <p><b>Pronunciation:</b> skri · NO · tee · a (/skrɪˈnoʊ.ti.ə/)</p>
-  </div>
   <details>
     <summary>The .base file format</summary>
     <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc. The .base file format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
@@ -91,7 +87,7 @@ export function openAboutWindow() {
 ${CLOSE_ON_ESCAPE}`
   aboutWin = new BrowserWindow({
     width: 520,
-    height: 600,
+    height: 560,
     resizable: false,
     minimizable: false,
     maximizable: false,
