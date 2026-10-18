@@ -18,7 +18,7 @@ SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 [[annotations]]
-path = [".github/**", "package.json", "package-lock.json", "tests/fixtures/**"]
+path = [".github/**", "package.json", "package-lock.json", "electron-builder.yml", "tests/fixtures/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
