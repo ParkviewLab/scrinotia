@@ -10,6 +10,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
+import appIcon from '../../build/icon.png?asset'
 
 const SOURCE_URL = 'https://github.com/garycoding/granite-vaulting'
 
@@ -34,11 +35,20 @@ function lockDown(win) {
   })
 }
 
+function iconData() {
+  try {
+    return readFileSync(appIcon).toString('base64')
+  } catch {
+    return ''
+  }
+}
+
 let aboutWin = null
 export function openAboutWindow() {
   if (aboutWin && !aboutWin.isDestroyed()) return aboutWin.focus()
   const html = `<!doctype html><meta charset="utf-8"><title>About granite-vaulting</title><style>${STYLE}
   .wrap{height:100%;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;-webkit-user-select:none;cursor:default}
+  .icon{width:96px;height:96px;margin-bottom:10px}
   h1{margin:0;font-size:21px;font-weight:600}
   .ver{margin:3px 0 16px;color:var(--muted);font-size:12px}
   p{margin:0 0 10px;max-width:34em}
@@ -46,6 +56,7 @@ export function openAboutWindow() {
   .links{display:flex;gap:18px;font-size:12px}
 </style>
 <div class="wrap">
+  <img class="icon" src="data:image/png;base64,${iconData()}" alt="">
   <h1>granite-vaulting</h1>
   <div class="ver">Version ${esc(app.getVersion())}</div>
   <p>An independent, local-first Markdown notes client.</p>
@@ -55,7 +66,7 @@ export function openAboutWindow() {
 </div>`
   aboutWin = new BrowserWindow({
     width: 520,
-    height: 420,
+    height: 540,
     resizable: false,
     minimizable: false,
     maximizable: false,

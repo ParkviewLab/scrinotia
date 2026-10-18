@@ -17,6 +17,7 @@ import { createIndex } from './linkIndex.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
 import { openAboutWindow, openLicensesWindow } from './about.js'
+import appIcon from '../../build/icon.png?asset'
 
 const state = createState(app.getPath('userData'))
 const contexts = new Map() // webContents id -> { win, root, watcher, index, flushed }
@@ -201,6 +202,8 @@ function createWindow() {
       // Chromium's PDF viewer, for PDF attachments.
       plugins: true,
     },
+    // Linux takes the window icon from here; macOS and Windows from the package.
+    ...(process.platform === 'linux' ? { icon: appIcon } : {}),
   })
   // No page, a vault HTML file included, may open windows of its own.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -260,6 +263,8 @@ app.on('before-quit', () => {
 })
 
 app.whenReady().then(() => {
+  // A packaged app carries its icon; running from source, the Dock shows it too.
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(appIcon)
   registerIpc()
   serveAssets()
   buildMenu()
