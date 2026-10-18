@@ -338,6 +338,15 @@ describe('renderBase', () => {
     expect(names.length).toBeGreaterThan(12)
     expect(names.filter((n) => !DEFAULT_SUMMARIES[n])).toEqual([])
   })
+  it('evaluates this as the embedding note', async () => {
+    const index = await vaultIndex()
+    const src = await readFile(join(ROOT, 'Bases', 'Linked.base'), 'utf8')
+    const embedded = renderBase(src, index.entries(), { basePath: 'Bases/Linked.base', thisPath: 'Dashboard.md', resolve: index.resolve, now: NOW })
+    expect(embedded.views[0].rows.map((r) => r.path)).toEqual(['Bases/Alpha.md'])
+    // Opened on its own, this is the base file, which nothing links to.
+    const alone = renderBase(src, index.entries(), { basePath: 'Bases/Linked.base', resolve: index.resolve, now: NOW })
+    expect(alone.views[0].rows).toEqual([])
+  })
   it('reports unsupported views, unknown keys, and bad YAML', () => {
     const out = renderBase('views:\n  - type: map\n    name: M\n  - type: cards\n    name: C\n  - type: list\n    name: L\nextra: 1\n', [])
     expect(out.views[0].error).toMatch(/map views are not supported$/)

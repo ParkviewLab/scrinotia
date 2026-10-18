@@ -113,7 +113,10 @@ function defaultLabel(id) {
 
 // entries: every file of the vault from the index; vault: { resolve(target,
 // from) }; basePath: the .base file's own path (for `this`); now: ms.
-export function renderBase(source, entries, { basePath = null, resolve = () => null, now = Date.now() } = {}) {
+// thisPath: the file `this` refers to: the base itself, or the note that
+// embeds it (R3.6).
+export function renderBase(source, entries, { basePath = null, thisPath = null, resolve = () => null, now = Date.now() } = {}) {
+  const thisFile = thisPath ?? basePath
   let def
   try {
     def = parseYaml(source) ?? {}
@@ -135,7 +138,7 @@ export function renderBase(source, entries, { basePath = null, resolve = () => n
       formulas[name] = new EvalError(`formula ${name}: ${err.message}`)
     }
   }
-  const ctx = createContext({ vault, formulas, thisEntry: basePath ? byPath.get(basePath) ?? { path: basePath, frontmatter: {} } : null, now })
+  const ctx = createContext({ vault, formulas, thisEntry: thisFile ? byPath.get(thisFile) ?? { path: thisFile, frontmatter: {} } : null, now })
   const notices = []
   for (const key of Object.keys(def)) {
     if (!['filters', 'formulas', 'properties', 'summaries', 'views'].includes(key)) notices.push(`The key “${key}” is not part of the format and is ignored.`)

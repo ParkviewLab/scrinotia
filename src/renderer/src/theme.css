@@ -485,3 +485,11 @@ button:hover {
 .base-group-head {
   margin: 14px 0 4px;
 }
+.preview .base-embed {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 1em 0;
+  overflow-x: auto;
+}

@@ -1,0 +1,6 @@
+filters: file.hasLink(this)
+views:
+  - type: list
+    name: Linking here
+    order:
+      - file.basename

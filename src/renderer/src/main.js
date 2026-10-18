@@ -247,6 +247,7 @@ const preview = createPreview({
     return hit ? assetBase + hit.split('/').map(encodeURIComponent).join('/') : null
   },
   resolves: (target) => resolveLink(target, current, files()) !== null,
+  resolvePath: (target) => resolveLink(target, current, files()),
 })
 
 // A base's preview is its views, computed from the saved file, so it is
@@ -259,6 +260,7 @@ function renderPreview() {
     return
   }
   preview.render(editor.text(), $('preview'))
+  fillBaseEmbeds()
 }
 
 function schedulePreview() {
@@ -341,7 +343,42 @@ async function showBase(path) {
   currentBase = path
   const out = await api.renderBase(path).catch((err) => ({ error: String(err.message ?? err), views: [] }))
   if (currentBase !== path) return
-  const host = $('preview')
+  drawBase($('preview'), out, {
+    selected: baseView,
+    onSelect: (n) => {
+      baseView = n
+      showBase(path)
+    },
+  })
+}
+
+// Bases embedded in the note shown (![[X.base]] or ![[X.base#View]]): each
+// placeholder the preview left is filled with the base's views, with `this`
+// referring to the note.
+async function fillBaseEmbeds() {
+  const note = current
+  for (const el of $('preview').querySelectorAll('.base-embed')) {
+    const out = await api.renderBase(el.dataset.base, note).catch((err) => ({ error: String(err.message ?? err), views: [] }))
+    if (current !== note) return
+    const want = el.dataset.view
+    if (want) {
+      const n = out.views.findIndex((v) => v.name === want)
+      if (n < 0) {
+        el.textContent = `No view named “${want}” in ${el.dataset.base}.`
+        el.classList.add('missing')
+        continue
+      }
+      drawBase(el, { ...out, views: [out.views[n]] }, { selected: 0, tabs: false })
+    } else {
+      const draw = (sel) => drawBase(el, out, { selected: sel, onSelect: draw })
+      draw(0)
+    }
+  }
+}
+
+// Draws a base's output into host: view tabs (unless tabs is false), then
+// the selected view as a table, cards or list.
+function drawBase(host, out, { selected = 0, onSelect = () => {}, tabs: showTabs = true } = {}) {
   host.replaceChildren()
   if (out.error) {
     const p = document.createElement('p')
@@ -350,22 +387,21 @@ async function showBase(path) {
     host.append(p)
     return
   }
-  baseView = Math.min(baseView, Math.max(out.views.length - 1, 0))
-  const tabs = document.createElement('div')
-  tabs.className = 'base-tabs'
-  out.views.forEach((v, n) => {
-    const b = document.createElement('button')
-    b.type = 'button'
-    b.textContent = v.name
-    b.classList.toggle('active', n === baseView)
-    b.addEventListener('click', () => {
-      baseView = n
-      showBase(path)
+  const chosen = Math.min(selected, Math.max(out.views.length - 1, 0))
+  if (showTabs) {
+    const tabs = document.createElement('div')
+    tabs.className = 'base-tabs'
+    out.views.forEach((v, n) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = v.name
+      b.classList.toggle('active', n === chosen)
+      b.addEventListener('click', () => onSelect(n))
+      tabs.append(b)
     })
-    tabs.append(b)
-  })
-  host.append(tabs)
-  const v = out.views[baseView]
+    host.append(tabs)
+  }
+  const v = out.views[chosen]
   if (!v) return
   if (v.error) {
     const p = document.createElement('p')
@@ -388,7 +424,9 @@ async function showBase(path) {
   }
   const count = document.createElement('p')
   count.className = 'muted'
-  count.textContent = `${v.rows.length} ${v.rows.length === 1 ? 'entry' : 'entries'}`
+  // With groupOrder, only the listed groups are shown, so count what is shown.
+  const shown = v.groups ? v.groups.reduce((n, g) => n + g.rows.length, 0) : v.rows.length
+  count.textContent = `${shown} ${shown === 1 ? 'entry' : 'entries'}`
   if (v.type === 'cards' || v.type === 'list') {
     host.append(renderItems(v, { openTarget, assetUrl }), count)
     return

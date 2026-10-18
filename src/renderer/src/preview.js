@@ -25,7 +25,8 @@ function propertiesTable(yaml) {
 }
 
 // assetUrl(target) -> URL of an embedded file, or null when it does not resolve.
-export function createPreview({ assetUrl, resolves }) {
+// resolvePath(target) -> the vault path a link resolves to, or null.
+export function createPreview({ assetUrl, resolves, resolvePath = () => null }) {
   const marked = new Marked({ gfm: true, breaks: false })
   marked.use({
     extensions: [
@@ -42,6 +43,12 @@ export function createPreview({ assetUrl, resolves }) {
           const { target, subpath, alias } = splitLink(token.body)
           const label = escapeHtml(alias ?? (target || `#${subpath ?? ''}`) + (alias || !subpath || !target ? '' : ` › ${subpath}`))
           const ref = escapeHtml(token.body.split('|')[0])
+          // An embedded base becomes a placeholder that the app fills with
+          // the base's views (or the one view named after #).
+          if (token.embed && /\.base$/i.test(target)) {
+            const path = resolvePath(target)
+            if (path) return `<span class="base-embed" data-base="${escapeHtml(path)}" data-view="${escapeHtml(subpath ?? '')}"></span>`
+          }
           if (token.embed && IMAGE.test(target)) {
             const url = assetUrl(target)
             if (url) return `<img class="embed-image" src="${escapeHtml(url)}" alt="${escapeHtml(alias ?? target)}">`
@@ -130,7 +137,7 @@ export function createPreview({ assetUrl, resolves }) {
     render(text, into) {
       const { yaml, body } = splitFrontmatter(text)
       const html = (yaml !== null ? propertiesTable(yaml) : '') + marked.parse(body)
-      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|gv-asset):|^#/i })
+      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|gv-asset):|^#/i })
       into.innerHTML = clean
       calloutPass(into)
       for (const box of into.querySelectorAll('input[type="checkbox"]')) box.disabled = true

@@ -7,3 +7,5 @@ tags: [x, y]
 cover: "[[diagram.png]]"
 ---
 # Alpha
+
+Listed on the [[Dashboard]].
