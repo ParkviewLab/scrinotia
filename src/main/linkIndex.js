@@ -9,6 +9,7 @@
 import { parseLinks, parseTags } from '../shared/markdown.js'
 import { resolveLink, resolveRelative } from '../shared/links.js'
 import { parse as parseYaml } from 'yaml'
+import MiniSearch from 'minisearch'
 
 const isNote = (p) => /\.md$/i.test(p)
 const baseName = (p) => p.slice(p.lastIndexOf('/') + 1)
@@ -35,6 +36,22 @@ export function createIndex({ list, read, stat = null }) {
   const notes = new Map() // path -> { text, links, tags }
   const stats = new Map() // path -> { size, ctime, mtime }
 
+  // The ranked text index (R5.4): BM25+ over each note's name, tags and text,
+  // kept in step with \`notes\` one document at a time.
+  const ranked = new MiniSearch({
+    idField: 'path',
+    fields: ['title', 'tags', 'body'],
+    processTerm: (term) => term.toLowerCase(),
+  })
+  function rankedPut(path, note) {
+    const doc = { path, title: baseName(path).replace(/\.md$/i, ''), tags: note.tags.join(' '), body: note.text }
+    if (ranked.has(path)) ranked.replace(doc)
+    else ranked.add(doc)
+  }
+  function rankedDrop(path) {
+    if (ranked.has(path)) ranked.discard(path)
+  }
+
   async function statOf(p) {
     if (!stat) return
     try {
@@ -58,7 +75,9 @@ export function createIndex({ list, read, stat = null }) {
   function indexText(path, text) {
     const frontmatter = frontmatterOf(text)
     const fmTags = [frontmatter.tags ?? []].flat().map((t) => String(t).replace(/^#/, ''))
-    notes.set(path, { text, links: parseLinks(text), tags: [...new Set([...parseTags(text), ...fmTags])], frontmatter })
+    const note = { text, links: parseLinks(text), tags: [...new Set([...parseTags(text), ...fmTags])], frontmatter }
+    notes.set(path, note)
+    rankedPut(path, note)
   }
 
   // Reads and stats run in batches, so a large vault is not read one file at a time.
@@ -69,6 +88,7 @@ export function createIndex({ list, read, stat = null }) {
   async function rebuild() {
     files = await list()
     notes.clear()
+    ranked.removeAll()
     stats.clear()
     await inBatches(files, statOf)
     await inBatches(files.filter(isNote), async (p) => {
@@ -83,7 +103,12 @@ export function createIndex({ list, read, stat = null }) {
   async function update(changed) {
     files = await list()
     const present = new Set(files)
-    for (const p of [...notes.keys()]) if (!present.has(p)) notes.delete(p)
+    for (const p of [...notes.keys()]) {
+      if (!present.has(p)) {
+        notes.delete(p)
+        rankedDrop(p)
+      }
+    }
     for (const p of [...stats.keys()]) if (!present.has(p)) stats.delete(p)
     for (const p of changed) if (present.has(p)) await statOf(p)
     for (const p of files) if (!stats.has(p)) await statOf(p)
@@ -93,6 +118,7 @@ export function createIndex({ list, read, stat = null }) {
         indexText(p, await read(p))
       } catch {
         notes.delete(p)
+        rankedDrop(p)
       }
     }
     // A changed folder may hide new notes; index any note not yet known.
@@ -155,47 +181,97 @@ export function createIndex({ list, read, stat = null }) {
   }
 
   // ---- search (R5) ----
-  // Terms: words and "quoted phrases" (all must match, case-insensitively),
-  // -term to exclude, and tag:, file:, path: restrictions.
+  // Plain words are ranked by BM25+ (all must match; a word matches by its
+  // prefix, and words of five letters or more also with one or two typos).
+  // "Quoted phrases" must appear exactly; /regular expressions/ must match;
+  // -term excludes; tag:, file: and path: restrict. Results without plain
+  // words are in path order; with them, best match first.
   function parseQuery(q) {
     const terms = []
-    const re = /(-?)(?:(tag|file|path):)?(?:"([^"]*)"|(\S+))/g
+    const re = /(-?)(?:(tag|file|path):)?(?:"([^"]*)"|\/((?:\\.|[^/\\])+)\/([a-z]*)|(\S+))/g
     for (const m of q.matchAll(re)) {
-      const value = (m[3] ?? m[4] ?? '').toLowerCase()
+      const negate = m[1] === '-'
+      const field = m[2] ?? 'text'
+      if (m[4] !== undefined) {
+        let regex
+        try {
+          regex = new RegExp(m[4], m[5].includes('i') ? m[5] : m[5] + 'i')
+        } catch (err) {
+          return { error: `Not a valid regular expression: /${m[4]}/ (${err.message})` }
+        }
+        terms.push({ negate, field, kind: 'regex', regex })
+        continue
+      }
+      const phrase = m[3] !== undefined
+      const value = (m[3] ?? m[6] ?? '').toLowerCase()
       if (!value) continue
-      terms.push({ negate: m[1] === '-', field: m[2] ?? 'text', value })
+      terms.push({ negate, field, kind: phrase ? 'phrase' : 'word', value })
     }
-    return terms
+    return { terms }
   }
 
   function search(q, limit = 200) {
-    const terms = parseQuery(q)
-    if (terms.length === 0) return []
+    const { terms, error } = parseQuery(q)
+    if (error) return { error, results: [] }
+    if (!terms.length) return { results: [] }
+    const words = terms.filter((t) => t.kind === 'word' && !t.negate && t.field === 'text').map((t) => t.value)
+    let scores = null
+    if (words.length) {
+      scores = new Map()
+      const hits = ranked.search(words.join(' '), {
+        combineWith: 'AND',
+        prefix: true,
+        fuzzy: (term) => (term.length >= 5 ? 0.2 : false),
+        boost: { title: 3, tags: 2 },
+      })
+      for (const h of hits) scores.set(h.id, h.score)
+    }
     const results = []
     for (const [path, note] of notes) {
+      if (scores && !scores.has(path)) continue
       const lowerText = note.text.toLowerCase()
       const lowerPath = path.toLowerCase()
       const test = (t) => {
-        if (t.field === 'tag') return note.tags.some((g) => g.toLowerCase() === t.value.replace(/^#/, '') || g.toLowerCase().startsWith(t.value.replace(/^#/, '') + '/'))
-        if (t.field === 'file') return baseName(lowerPath).includes(t.value)
-        if (t.field === 'path') return lowerPath.includes(t.value)
+        const subject = t.field === 'file' ? baseName(path) : t.field === 'path' ? path : null
+        if (t.field === 'tag') {
+          const want = (t.value ?? '').replace(/^#/, '')
+          return note.tags.some((g) => (t.kind === 'regex' ? t.regex.test(g) : g.toLowerCase() === want || g.toLowerCase().startsWith(want + '/')))
+        }
+        if (t.kind === 'regex') return t.regex.test(subject ?? note.text) || (!subject && t.regex.test(path))
+        if (subject) return subject.toLowerCase().includes(t.value)
+        // Plain words already matched through the ranked index; this checks
+        // the exclusions and phrases.
+        if (t.kind === 'word' && !t.negate) return true
         return lowerText.includes(t.value) || lowerPath.includes(t.value)
       }
       if (!terms.every((t) => test(t) !== t.negate)) continue
+      // Context lines: where phrases, regular expressions and words occur.
       const matches = []
+      const addAt = (at) => {
+        const { line, context } = lineAround(note.text, at)
+        if (!matches.some((x) => x.line === line)) matches.push({ line, context })
+      }
       for (const t of terms) {
         if (t.negate || t.field !== 'text') continue
+        if (t.kind === 'regex') {
+          const g = new RegExp(t.regex.source, t.regex.flags.includes('g') ? t.regex.flags : t.regex.flags + 'g')
+          for (const m of note.text.matchAll(g)) {
+            if (matches.length >= 5) break
+            addAt(m.index)
+            if (m[0] === '') break
+          }
+          continue
+        }
         let at = lowerText.indexOf(t.value)
         while (at >= 0 && matches.length < 5) {
-          const { line, context } = lineAround(note.text, at)
-          if (!matches.some((x) => x.line === line)) matches.push({ line, context })
+          addAt(at)
           at = lowerText.indexOf(t.value, at + t.value.length)
         }
       }
-      results.push({ path, matches: matches.sort((a, b) => a.line - b.line) })
-      if (results.length >= limit) break
+      results.push({ path, score: scores ? scores.get(path) : null, matches: matches.sort((a, b) => a.line - b.line) })
     }
-    return results.sort((a, b) => a.path.localeCompare(b.path))
+    results.sort((a, b) => (scores ? b.score - a.score : 0) || a.path.localeCompare(b.path))
+    return { results: results.slice(0, limit) }
   }
 
   // ---- link rewriting for a rename or move (R2.4) ----
