@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('granite', {
   readNote: (rel) => ipcRenderer.invoke('note:read', rel),
   writeNote: (rel, text) => ipcRenderer.invoke('note:write', rel, text),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),
+  statFile: (rel) => ipcRenderer.invoke('file:stat', rel),
+  openPath: (rel) => ipcRenderer.invoke('open:path', rel),
   onFlush: (fn) =>
     ipcRenderer.on('app:flush', async () => {
       try {
