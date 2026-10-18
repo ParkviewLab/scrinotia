@@ -41,6 +41,10 @@ npm run dev
 
 Releases are cut from the CLI and published by the tag-driven workflow, as the ParkviewLab handbook's `releases.md` describes.
 
+## Relation to Obsidian
+
+granite-vaulting reads vaults and `.base` files in the formats used by Obsidian, a product of Dynalist Inc. It is an independent project, not affiliated with or endorsed by Obsidian. The `.base` format is implemented from two MIT-licensed references, the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango), kept in [`docs/references/`](docs/references/README.md).
+
 ## Contributing
 
 See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). The client is licensed under AGPL-3.0-or-later; see [`LICENSING.md`](LICENSING.md).
