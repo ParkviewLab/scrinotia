@@ -1,0 +1,18 @@
+# Catch-all REUSE annotations; per-file SPDX headers still win where present.
+# Verify: uvx --from "reuse[charset-normalizer]" reuse lint
+version = 1
+
+SPDX-PackageName = "granite-vaulting"
+SPDX-PackageSupplier = "Gary Frattarola <garyf@parkviewlab.ai>"
+
+[[annotations]]
+path = ["docs/**", "README.md", "LICENSING.md", "REUSE.toml", ".gitignore", "AGENTS.md", "CLAUDE.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+[[annotations]]
+path = ["LICENSE"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
