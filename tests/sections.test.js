@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
-import { extractSection } from '../src/shared/sections.js'
+import { extractSection, listHeadings } from '../src/shared/sections.js'
 
 const NOTE = `---
 tags: [x]
@@ -29,6 +29,17 @@ Deep.
 ## Later
 
 Last.`
+
+describe('listHeadings', () => {
+  it('lists headings with levels and note line numbers, skipping frontmatter and code', () => {
+    expect(listHeadings(NOTE)).toEqual([
+      { level: 1, text: 'Title', line: 4 },
+      { level: 2, text: 'Goals', line: 8 },
+      { level: 3, text: 'Detail', line: 16 },
+      { level: 2, text: 'Later', line: 24 },
+    ])
+  })
+})
 
 describe('extractSection', () => {
   it('returns the body without frontmatter', () => {

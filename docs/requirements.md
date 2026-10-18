@@ -72,7 +72,7 @@ R4.4. An outgoing-links panel lists the links of the open note.
 
 R4.5. Tags (`#tag`, nested `#a/b`, and the frontmatter `tags` property) are recognised and listed in a tag pane; selecting a tag shows the notes that carry it.
 
-R4.6. An outline panel lists the headings of the open note and moves the cursor to the one chosen.
+R4.6. An outline panel lists the headings of the open note, indented by level (frontmatter and fenced code left out), and updates as the note is edited. Clicking a heading scrolls the preview to it and, in the split mode, moves the editor's cursor to its line.
 
 ### R5. Search
 
