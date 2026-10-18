@@ -4,6 +4,24 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- .base summaries and grouping (#17)
+- .base cards and list views, and editing a base in the split mode (#18)
+- Embed bases in notes (#20)
+- Show attachments in the pane and embedded in notes (#21)
+- About window, Help menu and Open Source Licenses window (#22)
+
+### Docs
+
+- Describe version 0.3.0 in the README (#23)
+
 ## [v0.2.0] - 2026-10-17
 
 ### Highlights
