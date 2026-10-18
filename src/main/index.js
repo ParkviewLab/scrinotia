@@ -16,6 +16,7 @@ import { createState } from './state.js'
 import { createIndex } from './linkIndex.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
+import { openAboutWindow, openLicensesWindow } from './about.js'
 
 const state = createState(app.getPath('userData'))
 const contexts = new Map() // webContents id -> { win, root, watcher, index, flushed }
@@ -146,6 +147,8 @@ function registerIpc() {
   on('vault:tree', (e) => vault.scanVault(rootOf(e)))
   on('window:new', () => void createWindow())
   on('note:read', (e, rel) => vault.readNote(rootOf(e), rel))
+  on('app:about', () => openAboutWindow())
+  on('app:licenses', () => openLicensesWindow())
   on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
   on('open:path', async (e, rel) => {
     // shell.openPath returns an error message, or '' on success.
@@ -223,8 +226,17 @@ function createWindow() {
 
 function buildMenu() {
   const isMac = process.platform === 'darwin'
+  const about = { label: 'About granite-vaulting', click: () => openAboutWindow() }
+  const licenses = { label: 'Open Source Licenses…', click: () => openLicensesWindow() }
   const template = [
-    ...(isMac ? [{ role: 'appMenu' }] : []),
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [about, licenses, { type: 'separator' }, { role: 'services' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }],
+          },
+        ]
+      : []),
     {
       label: 'File',
       submenu: [
@@ -236,6 +248,9 @@ function buildMenu() {
     { role: 'editMenu' },
     { role: 'viewMenu' },
     { role: 'windowMenu' },
+    // Help carries About and the licences on every platform, so Windows and
+    // Linux, which have no application menu, reach them too.
+    { role: 'help', submenu: [about, licenses] },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
