@@ -2,18 +2,30 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // Machine-specific application state, kept outside every vault (R6.5).
+// legacyDir is the folder the app used before its rename; its state.json is
+// read until this one is first written, so recent vaults, tabs and layout
+// carry over.
 
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const MAX_RECENT = 10
 
-export function createState(dir) {
+export function createState(dir, legacyDir) {
   const file = join(dir, 'state.json')
+
+  async function readState() {
+    try {
+      return await readFile(file, 'utf8')
+    } catch (err) {
+      if (err.code !== 'ENOENT' || !legacyDir) throw err
+      return readFile(join(legacyDir, 'state.json'), 'utf8')
+    }
+  }
 
   async function load() {
     try {
-      const data = JSON.parse(await readFile(file, 'utf8'))
+      const data = JSON.parse(await readState())
       return {
         recentVaults: Array.isArray(data.recentVaults) ? data.recentVaults : [],
         tabs: data.tabs && typeof data.tabs === 'object' && !Array.isArray(data.tabs) ? data.tabs : {},

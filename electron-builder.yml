@@ -3,8 +3,8 @@
 # Run after `npm run build`. The macOS build signs + notarizes when the Apple secrets
 # are set, else unsigned (see the handbook's electron-tooling.md). Set appId /
 # productName / publish owner+repo for your app.
-appId: ai.parkviewlab.granite-vaulting
-productName: granite-vaulting
+appId: ai.parkviewlab.scrinotia
+productName: Scrinotia
 artifactName: ${name}-${version}-${arch}.${ext}
 directories:
   output: dist
@@ -13,6 +13,8 @@ files:
   - '!src/**'
   - '!docs/**'
   - '!scripts/**'
+  - '!brand/**'
+  - '!tests/**'
   - '!.github/**'
   - '!LICENSES/**'
   # Every dependency is bundled into out/ by electron-vite, so no module is
@@ -56,4 +58,4 @@ extraResources:
 publish:
   provider: github
   owner: garycoding
-  repo: granite-vaulting
+  repo: scrinotia

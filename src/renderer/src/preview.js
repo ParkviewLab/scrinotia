@@ -147,7 +147,7 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
           }
           src = assetUrl(decoded) ?? ''
         }
-        if (!/^(https?:|gv-asset:)/i.test(src)) return `<span class="missing">${escapeHtml(text || href)}</span>`
+        if (!/^(https?:|scrinotia-asset:)/i.test(src)) return `<span class="missing">${escapeHtml(text || href)}</span>`
         const t = title ? ` title="${escapeHtml(title)}"` : ''
         return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text)}"${t}>`
       },
@@ -187,7 +187,7 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
       // Block markers (a trailing ^id that an embed can point to) are not shown.
       const body = raw.replace(/[ \t]\^[A-Za-z0-9-]+[ \t]*$/gm, '')
       const html = (yaml !== null ? propertiesTable(yaml) : '') + marked.parse(body)
-      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|gv-asset):|^#/i })
+      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i })
       into.innerHTML = clean
       calloutPass(into)
       for (const box of into.querySelectorAll('input[type="checkbox"]')) box.disabled = true

@@ -19,16 +19,16 @@ import { readSettings, writeSettings } from './vaultSettings.js'
 import { openAboutWindow, openLicensesWindow } from './about.js'
 import appIcon from '../../build/icon.png?asset'
 
-const state = createState(app.getPath('userData'))
+const state = createState(app.getPath('userData'), join(app.getPath('appData'), 'granite-vaulting'))
 const contexts = new Map() // webContents id -> { win, root, watcher, index, flushed }
 let quitting = false
 
-// Embedded images are served to the preview as gv-asset://<window token>/<path>,
+// Embedded images are served to the preview as scrinotia-asset://<window token>/<path>,
 // resolved inside that window's vault only.
-protocol.registerSchemesAsPrivileged([{ scheme: 'gv-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
+protocol.registerSchemesAsPrivileged([{ scheme: 'scrinotia-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 
 function serveAssets() {
-  protocol.handle('gv-asset', async (request) => {
+  protocol.handle('scrinotia-asset', async (request) => {
     try {
       const url = new URL(request.url)
       const ctx = [...contexts.values()].find((c) => c.token === url.hostname)
@@ -101,8 +101,8 @@ async function openVault(ctx, dir) {
   await ctx.index.rebuild()
   startWatching(ctx)
   await state.addRecentVault(full)
-  ctx.win.setTitle(`${basename(full)} – granite-vaulting`)
-  return { root: full, name: basename(full), assetBase: `gv-asset://${ctx.token}/`, tree: await vault.scanVault(full) }
+  ctx.win.setTitle(`${basename(full)} – Scrinotia`)
+  return { root: full, name: basename(full), assetBase: `scrinotia-asset://${ctx.token}/`, tree: await vault.scanVault(full) }
 }
 
 function filesUnder(ctx, rel) {
@@ -220,7 +220,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: 'granite-vaulting',
+    title: 'Scrinotia',
     backgroundColor: '#1e1f22',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -257,7 +257,7 @@ function createWindow() {
 
 function buildMenu() {
   const isMac = process.platform === 'darwin'
-  const about = { label: 'About granite-vaulting', click: () => openAboutWindow() }
+  const about = { label: 'About Scrinotia', click: () => openAboutWindow() }
   const licenses = { label: 'Open Source Licenses…', click: () => openLicensesWindow() }
   const template = [
     ...(isMac

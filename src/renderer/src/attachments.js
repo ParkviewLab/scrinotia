@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // Attachments (R2.6): images, PDFs, audio and video are shown from the vault
-// through the gv-asset protocol; text-like files are shown as read-only
+// through the scrinotia-asset protocol; text-like files are shown as read-only
 // text; STL models are shown in a 3D viewer (modelViewer.js); HTML is
 // rendered in a sandboxed frame whose scripts run in an origin of their own,
 // cut off from the app and the rest of the vault; anything else is
@@ -38,7 +38,7 @@ function formatSize(bytes) {
   return u === 0 ? `${n} bytes` : `${n.toFixed(1)} ${units[u]}`
 }
 
-// path: vault-relative; url: its gv-asset URL; api: the preload API;
+// path: vault-relative; url: its scrinotia-asset URL; api: the preload API;
 // embedded: a smaller form inside a note.
 export async function renderAttachment(host, { path, url, api, embedded = false }) {
   host.replaceChildren()
@@ -75,7 +75,7 @@ export async function renderAttachment(host, { path, url, api, embedded = false 
       const frame = document.createElement('iframe')
       // Scripts run, but without allow-same-origin the page has an opaque
       // origin: it cannot reach the app, its preload interface, or other
-      // vault files (the gv-asset server sends no cross-origin permission),
+      // vault files (the scrinotia-asset server sends no cross-origin permission),
       // and it cannot open pop-ups or navigate the app.
       frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-modals')
       frame.src = url

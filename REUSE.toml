@@ -2,7 +2,7 @@
 # Verify: uvx --from "reuse[charset-normalizer]" reuse lint
 version = 1
 
-SPDX-PackageName = "granite-vaulting"
+SPDX-PackageName = "Scrinotia"
 SPDX-PackageSupplier = "Gary Frattarola <garyf@parkviewlab.ai>"
 
 [[annotations]]
@@ -35,9 +35,10 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 Steph Ango"
 SPDX-License-Identifier = "MIT"
 
-# The app icon is a mark: all rights reserved, not relicensed by the repository.
+# The app icon and the brand kit it comes from are a mark: all rights
+# reserved, not relicensed by the repository.
 [[annotations]]
-path = ["build/icon.png", "build/icon.svg"]
+path = ["build/icon.png", "build/icon.svg", "build/icon.icns", "brand/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "LicenseRef-AllRightsReserved"

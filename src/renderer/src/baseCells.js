@@ -42,7 +42,7 @@ export function renderCell(cell, { openTarget, assetUrl }) {
     }
     case 'html': {
       const span = document.createElement('span')
-      span.innerHTML = DOMPurify.sanitize(cell.html, { ALLOWED_URI_REGEXP: /^(?:https?|mailto|gv-asset):|^#/i })
+      span.innerHTML = DOMPurify.sanitize(cell.html, { ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i })
       return span
     }
     case 'error': {
