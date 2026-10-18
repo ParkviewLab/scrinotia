@@ -156,9 +156,9 @@ function registerIpc() {
   on('search', (e, query) => (rootOf(e), ctxOf(e).index.search(query)))
   on('settings:get', (e, name) => readSettings(rootOf(e), name))
   on('settings:set', (e, name, values) => writeSettings(rootOf(e), name, values))
-  on('base:render', async (e, rel) => {
+  on('base:render', async (e, rel, thisPath = null) => {
     const index = ctxOf(e).index
-    return renderBase(await vault.readNote(rootOf(e), rel), index.entries(), { basePath: rel, resolve: index.resolve, now: Date.now() })
+    return renderBase(await vault.readNote(rootOf(e), rel), index.entries(), { basePath: rel, thisPath, resolve: index.resolve, now: Date.now() })
   })
   on('open:external', (_e, url) => {
     if (!/^(https?|mailto):/i.test(url)) throw new Error(`not an external link: ${url}`)
