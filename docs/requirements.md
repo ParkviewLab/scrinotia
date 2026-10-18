@@ -32,7 +32,7 @@ R1.6. The client tolerates a vault of at least 10,000 notes without a perceptibl
 
 R2.1. A vault can be opened from a folder chooser, and recently opened vaults are listed. Several vaults can be open at once, each in its own window; opening a vault that is already open in another window brings that window forward instead.
 
-R2.2. A file tree shows folders, notes, and attachments, with expand and collapse.
+R2.2. A file tree shows folders, notes, and attachments, with expand and collapse. Within each folder, files (notes, `.base` files and attachments, sorted together by name) come before subfolders (sorted by name).
 
 R2.3. The user can create, rename, move, and delete notes and folders. Deletion goes to the system trash, not permanent removal.
 
