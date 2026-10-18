@@ -139,9 +139,18 @@ export function createIndex({ list, read, stat = null }) {
     }))
   }
 
+  // Each tag with the number of notes carrying it or a tag nested under it;
+  // a note counts once for a parent however many of its children it has.
   function tags() {
     const counts = new Map()
-    for (const note of notes.values()) for (const t of new Set(note.tags)) counts.set(t, (counts.get(t) ?? 0) + 1)
+    for (const note of notes.values()) {
+      const names = new Set()
+      for (const t of note.tags) {
+        const parts = t.split('/')
+        for (let i = 1; i <= parts.length; i++) names.add(parts.slice(0, i).join('/'))
+      }
+      for (const t of names) counts.set(t, (counts.get(t) ?? 0) + 1)
+    }
     return [...counts].sort((a, b) => a[0].localeCompare(b[0]))
   }
 

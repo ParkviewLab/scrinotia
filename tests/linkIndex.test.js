@@ -53,6 +53,11 @@ describe('backlinks and mentions', () => {
     ])
     expect(index.tags()).toEqual([['idea', 1], ['x', 1]])
   })
+  it('counts a note once for a parent tag', async () => {
+    const { index } = memoryVault({ 'a.md': '#p/x #p/y', 'b.md': '#p/x', 'c.md': '#q' })
+    await index.rebuild()
+    expect(index.tags()).toEqual([['p', 2], ['p/x', 2], ['p/y', 1], ['q', 1]])
+  })
 })
 
 describe('search', () => {

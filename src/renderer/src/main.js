@@ -908,6 +908,7 @@ $('search').addEventListener('keydown', (e) => {
 })
 
 async function runSearch() {
+  if (sidePane === 'tags') return
   const q = $('search').value.trim()
   const seq = ++searchSeq
   if (!q) {
@@ -1230,6 +1231,74 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
+// ---- tags pane (R4.5): every tag with the number of notes carrying it,
+// nested tags under their parents; a click searches for the tag ----
+let sidePane = 'files'
+function setSidePane(which) {
+  sidePane = which
+  $('show-files').classList.toggle('active', which === 'files')
+  $('show-tags').classList.toggle('active', which === 'tags')
+  $('tag-list').hidden = which !== 'tags'
+  if (which === 'tags') {
+    $('tree').hidden = true
+    $('results').hidden = true
+    renderTags()
+  } else runSearch()
+}
+$('show-files').addEventListener('click', () => setSidePane('files'))
+$('show-tags').addEventListener('click', () => setSidePane('tags'))
+
+// A tag's count is the notes carrying it or any tag nested under it.
+function tagRows(pairs, notesByTag) {
+  const names = new Set()
+  for (const [tag] of pairs) {
+    const parts = tag.split('/')
+    for (let i = 1; i <= parts.length; i++) names.add(parts.slice(0, i).join('/'))
+  }
+  return [...names]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))
+    .map((name) => ({ name, depth: name.split('/').length - 1, label: name.split('/').pop(), count: notesByTag(name) }))
+}
+
+async function renderTags() {
+  let pairs = []
+  try {
+    pairs = await api.tags()
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+  if (sidePane !== 'tags') return
+  // pairs: [tag, notes carrying it or a tag nested under it], parents included.
+  const counts = new Map(pairs)
+  const rows = tagRows(pairs, (name) => counts.get(name) ?? 0)
+  const list = $('tag-list')
+  if (!rows.length) {
+    const li = document.createElement('li')
+    li.className = 'info'
+    li.textContent = 'No tags in this vault.'
+    list.replaceChildren(li)
+    return
+  }
+  list.replaceChildren(
+    ...rows.map((r) => {
+      const li = document.createElement('li')
+      li.style.paddingLeft = `${12 + r.depth * 14}px`
+      const name = document.createElement('span')
+      name.textContent = `#${r.label}`
+      const count = document.createElement('span')
+      count.className = 'muted tag-count'
+      count.textContent = String(r.count)
+      li.append(name, count)
+      li.title = `#${r.name}`
+      li.addEventListener('click', () => {
+        $('search').value = `tag:${r.name}`
+        setSidePane('files')
+      })
+      return li
+    }),
+  )
+}
+
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return
   await refreshTree()
@@ -1261,6 +1330,7 @@ api.onVaultChanged(async (paths) => {
   else if (!current) renderPane()
   else renderLinks()
   if ($('search').value.trim()) runSearch()
+  if (sidePane === 'tags') renderTags()
 })
 
 $('version').textContent = `version ${api.version}`
