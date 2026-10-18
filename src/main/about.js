@@ -47,11 +47,22 @@ function pngData(file) {
   }
 }
 
+// Reports the content's height to main whenever it changes, as a console
+// message "scrinotia-about-height <px>".
+const FIT_TO_CONTENT = `<script>(() => { const wrap = document.querySelector('.wrap'); new ResizeObserver(() => console.info('scrinotia-about-height ' + Math.ceil(wrap.getBoundingClientRect().height))).observe(wrap) })()</script>`
+
+// The name card's ground, from the icon kit's palette.
+const MIDNIGHT = '#0B1226'
+const ABOUT_WIDTH = 520
+
 let aboutWin = null
 export function openAboutWindow() {
   if (aboutWin && !aboutWin.isDestroyed()) return aboutWin.focus()
   const html = `<!doctype html><meta charset="utf-8"><title>About Scrinotia</title><style>${STYLE}
-  .wrap{height:100%;overflow:auto;padding:28px 34px;display:flex;flex-direction:column;align-items:center;justify-content:safe center;text-align:center;-webkit-user-select:none;cursor:default}
+  /* The window takes the height of this content (see openAboutWindow), on
+     the name card's midnight blue. */
+  html,body{height:auto;overflow:hidden;background:${MIDNIGHT}}
+  .wrap{padding:28px 34px 30px;display:flex;flex-direction:column;align-items:center;text-align:center;-webkit-user-select:none;cursor:default}
   /* The kit's name card is a dark card on a cream margin (56 px of 1772 by
      500); the frame shows the card alone, trimming 2 px more so that no
      cream shows at its edge. */
@@ -84,18 +95,37 @@ export function openAboutWindow() {
   <div class="copy">© 2026 Gary Frattarola · AGPL-3.0-or-later</div>
   <div class="links"><a href="${SOURCE_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
 </div>
-${CLOSE_ON_ESCAPE}`
+${CLOSE_ON_ESCAPE}
+${FIT_TO_CONTENT}`
   aboutWin = new BrowserWindow({
-    width: 520,
-    height: 560,
+    width: ABOUT_WIDTH,
+    height: 420,
+    useContentSize: true,
+    show: false,
     resizable: false,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
-    backgroundColor: '#1e1f22',
+    backgroundColor: MIDNIGHT,
     title: 'About Scrinotia',
     webPreferences: { contextIsolation: true, sandbox: true },
   })
+  // The window is as tall as its content, so opening or closing "The .base
+  // file format" grows or shrinks it. The page reports its height in a
+  // console message (see FIT_TO_CONTENT), which reaches main at once without
+  // a preload; a window's size is set from its top left corner, so the top
+  // stays where it is. It is shown once the first height is known, or after
+  // half a second whatever happens.
+  const shown = aboutWin
+  shown.webContents.on('console-message', (e, _level, legacyMessage) => {
+    const height = Number(/^scrinotia-about-height (\d+)$/.exec(e.message ?? legacyMessage)?.[1])
+    if (shown.isDestroyed() || !(height > 0)) return
+    shown.setContentSize(ABOUT_WIDTH, Math.min(height, 900))
+    if (!shown.isVisible()) shown.show()
+  })
+  setTimeout(() => {
+    if (!shown.isDestroyed() && !shown.isVisible()) shown.show()
+  }, 500)
   aboutWin.setMenuBarVisibility(false)
   lockDown(aboutWin)
   aboutWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
