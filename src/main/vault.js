@@ -31,8 +31,10 @@ function toRel(root, full) {
   return relative(resolve(root), full).split(sep).join('/')
 }
 
+// Files (notes, bases and attachments, by name together) before folders.
 function compareEntries(a, b) {
-  if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+  const folders = (a.type === 'folder') - (b.type === 'folder')
+  if (folders) return folders
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
 }
 
