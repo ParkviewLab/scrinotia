@@ -59,6 +59,7 @@ async function loadVaultSettings() {
     appearance = values
     applyTheme(values.theme)
     setModelColour(values.modelColour)
+    applyFonts(values.fonts)
     if (conflicts.length) {
       showError($('pane-error'), `Ignored a synchronisation conflict copy of the vault settings: ${conflicts.join(', ')}`)
     }
@@ -66,6 +67,7 @@ async function loadVaultSettings() {
     appearance = {}
     applyTheme('dark')
     setModelColour(null)
+    applyFonts(null)
   }
 }
 
@@ -76,6 +78,7 @@ function openSettings() {
   if ($('workspace').hidden || !$('settings').hidden) return
   settingsColour = normaliseColour(appearance.modelColour)
   drawSettings()
+  drawFontChoices()
   $('settings').hidden = false
   mountPreviewModel($('settings-preview'))
   $('settings-h').focus()
@@ -117,6 +120,72 @@ $('settings').addEventListener('keydown', (e) => {
 $('settings').addEventListener('mousedown', (e) => {
   if (e.target === $('settings')) closeSettings()
 })
+
+// ---- fonts (R6.9): four CSS variables, each a chosen family before its default stack ----
+const FONT_ROLES = ['ui', 'body', 'heading', 'mono']
+function fontsOf(stored) {
+  const out = {}
+  for (const role of FONT_ROLES) {
+    const f = stored && typeof stored[role] === 'string' ? stored[role].replace(/[\n\r]/g, '').trim() : ''
+    if (f) out[role] = f
+  }
+  return out
+}
+const cssFamily = (family) => `"${family.replace(/["\\]/g, '\\$&')}"`
+function applyFonts(stored) {
+  const fonts = fontsOf(stored)
+  for (const role of FONT_ROLES) {
+    const style = document.documentElement.style
+    if (fonts[role]) style.setProperty(`--font-${role}`, `${cssFamily(fonts[role])}, var(--font-${role}-default)`)
+    else style.removeProperty(`--font-${role}`)
+  }
+}
+// The installed families, read once, when the dialog first needs them.
+let installedFamilies = null
+async function fontFamilies() {
+  installedFamilies ??= (async () => {
+    try {
+      const fonts = await window.queryLocalFonts()
+      return [...new Set(fonts.map((f) => f.family))].sort((a, b) => a.localeCompare(b))
+    } catch {
+      return []
+    }
+  })()
+  return installedFamilies
+}
+// Drawn at once with the stored choices, then again when the list of
+// installed fonts arrives (reading it can take a second the first time).
+async function drawFontChoices() {
+  fillFontChoices([])
+  fillFontChoices(await fontFamilies())
+}
+function fillFontChoices(families) {
+  const fonts = fontsOf(appearance.fonts)
+  for (const role of FONT_ROLES) {
+    const select = $(`settings-font-${role}`)
+    // A stored family missing here is still listed, so the choice is visible.
+    const names = fonts[role] && !families.includes(fonts[role]) ? [fonts[role], ...families] : families
+    const options = [new Option(role === 'heading' ? 'Default (the body font)' : 'Default', '')]
+    for (const name of names) options.push(new Option(name, name))
+    select.replaceChildren(...options)
+    select.value = fonts[role] ?? ''
+    drawFontSample(role)
+  }
+}
+function drawFontSample(role) {
+  const sample = $(`settings-font-${role}-sample`)
+  sample.style.fontFamily = `var(--font-${role})`
+}
+for (const role of FONT_ROLES) {
+  $(`settings-font-${role}`).addEventListener('change', (e) => {
+    const fonts = fontsOf(appearance.fonts)
+    if (e.target.value) fonts[role] = e.target.value
+    else delete fonts[role]
+    applyFonts(fonts)
+    saveAppearance({ fonts })
+  })
+}
+
 api.onSettings(openSettings)
 // The menu's accelerator normally opens it; this covers a focus the menu misses.
 window.addEventListener('keydown', (e) => {

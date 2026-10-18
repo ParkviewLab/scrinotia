@@ -2,6 +2,18 @@
 SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 SPDX-License-Identifier: AGPL-3.0-or-later
 */
+/* Fonts (R6.9): the Settings dialog sets these per vault; a family missing
+   on this machine falls through to the default stack after it. */
+:root {
+  --font-ui-default: system-ui, sans-serif;
+  --font-body-default: system-ui, sans-serif;
+  --font-heading-default: var(--font-body);
+  --font-mono-default: ui-monospace, Menlo, monospace;
+  --font-ui: var(--font-ui-default);
+  --font-body: var(--font-body-default);
+  --font-heading: var(--font-heading-default);
+  --font-mono: var(--font-mono-default);
+}
 :root[data-theme='dark'] {
   color-scheme: dark;
   --bg: #1e1f22;
@@ -35,7 +47,7 @@ body {
 body {
   background: var(--bg);
   color: var(--fg);
-  font: 14px/1.5 system-ui, sans-serif;
+  font: 14px/1.5 var(--font-ui);
 }
 button,
 select,
@@ -171,7 +183,7 @@ button:hover {
   overflow: auto;
   margin: 0;
   padding: 16px 32px;
-  font: 14px/1.6 ui-monospace, Menlo, monospace;
+  font: 14px/1.6 var(--font-mono);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -214,7 +226,7 @@ button:hover {
   outline: none;
 }
 .editor .cm-scroller {
-  font: 14px/1.6 ui-monospace, Menlo, monospace;
+  font: 14px/1.6 var(--font-mono);
   padding: 16px 0;
 }
 .editor .cm-content {
@@ -235,13 +247,14 @@ button:hover {
   min-height: 0;
   overflow: auto;
   padding: 16px 32px 48px;
-  font: 15px/1.65 system-ui, sans-serif;
+  font: 15px/1.65 var(--font-body);
 }
 .mode-preview .preview > * {
   max-width: 760px;
   margin-left: auto;
   margin-right: auto;
 }
+.preview :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading); }
 .preview h1 { font-size: 1.8em; }
 .preview h2 { font-size: 1.45em; }
 .preview h3 { font-size: 1.2em; }
@@ -250,7 +263,7 @@ button:hover {
 .preview a.unresolved { opacity: 0.6; text-decoration: underline dotted; }
 .preview a.embed-link::before { content: '↳ '; color: var(--muted); }
 .preview mark { background: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; border-radius: 2px; }
-.preview code { font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; background: var(--select); border-radius: 3px; padding: 0 3px; }
+.preview code { font-family: var(--font-mono); font-size: 0.9em; background: var(--select); border-radius: 3px; padding: 0 3px; }
 .preview pre { background: var(--bg-side); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; overflow: auto; }
 .preview pre code { background: none; padding: 0; }
 .preview blockquote { border-left: 3px solid var(--border); margin-left: 0; padding-left: 12px; color: var(--muted); }
@@ -583,7 +596,7 @@ button:hover {
   width: 100%;
 }
 .attachment-text {
-  font: 13px/1.5 ui-monospace, Menlo, monospace;
+  font: 13px/1.5 var(--font-mono);
   white-space: pre-wrap;
   word-break: break-word;
   background: var(--bg-side);
@@ -698,6 +711,8 @@ button:hover {
 /* ---- settings (R6.8) ---- */
 .settings-box {
   width: min(460px, 90vw);
+  max-height: 80vh;
+  overflow: auto;
   padding: 16px 18px;
 }
 .settings-box h2 {
@@ -745,6 +760,28 @@ button:hover {
   display: block;
   width: 100%;
   height: 100%;
+}
+.settings-fonts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: center;
+}
+.settings-fonts select {
+  min-width: 0;
+}
+.settings-sample {
+  grid-column: 2;
+  margin-bottom: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-sample-heading {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--fg);
 }
 .settings-buttons {
   display: flex;

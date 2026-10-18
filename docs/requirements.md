@@ -108,6 +108,8 @@ R6.7. The left panel (files, tags, search) and the right panel (outline and link
 
 R6.8. A Settings dialog, opened with Settings… in the application menu on macOS and in the File menu elsewhere (Cmd/Ctrl+,), changes the settings of the vault open in its window. It sets the colour of STL models (R2.6) with hue, saturation and lightness sliders, a swatch, a preview model lit as the viewer lights models, and Reset, which restores the default. Models already shown take the colour as the sliders move. The colour is one for both themes and a vault-level setting (R6.4), kept with the theme in `appearance.json`.
 
+R6.9. The Settings dialog also chooses four fonts from those installed on the machine, each with a Default that keeps the font used before: the interface font (file tree, panels, tabs, buttons and dialogs inside the window; the operating system's menus and title bars keep its own), the preview's body text (embedded notes included), the preview's headings (by default, the body font), and the monospaced font (code in the preview, the source editor, and text files shown in the pane). Each choice shows a sample in the font, takes effect at once, and is a vault-level setting (R6.4) kept in `appearance.json` by family name; where the family is not installed, as on another machine, that text uses the default.
+
 ### R7. Licence
 
 R7.1. The client is licensed under AGPL-3.0-or-later; each source file carries the licence identifier, and the repository carries the licence text.
