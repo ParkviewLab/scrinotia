@@ -14,6 +14,24 @@ function folderOf(path) {
   return i < 0 ? '' : path.slice(0, i)
 }
 
+// Files grouped by lower-cased file name, built once per file list, so that
+// resolving a link looks up its candidates instead of scanning every file.
+const byNameCache = new WeakMap()
+function byName(files) {
+  let map = byNameCache.get(files)
+  if (!map) {
+    map = new Map()
+    for (const f of files) {
+      const name = lower(f.slice(f.lastIndexOf('/') + 1))
+      const list = map.get(name)
+      if (list) list.push(f)
+      else map.set(name, [f])
+    }
+    byNameCache.set(files, map)
+  }
+  return map
+}
+
 // files: vault-relative paths of every file. Returns the resolved path or null.
 export function resolveLink(target, fromPath, files) {
   let t = target.trim().replace(/^\/+/, '')
@@ -21,7 +39,9 @@ export function resolveLink(target, fromPath, files) {
   const wanted = [lower(t)]
   if (!/\.[a-z0-9]+$/i.test(t) || !/\.md$/i.test(t)) wanted.push(lower(t) + '.md')
   const hasSlash = t.includes('/')
-  const matches = files.filter((f) => {
+  const names = byName(files)
+  const candidates = wanted.flatMap((w) => names.get(w.slice(w.lastIndexOf('/') + 1)) ?? [])
+  const matches = [...new Set(candidates)].filter((f) => {
     const lf = lower(f)
     return wanted.some((w) => (hasSlash ? lf === w || lf.endsWith('/' + w) : lf.slice(lf.lastIndexOf('/') + 1) === w))
   })

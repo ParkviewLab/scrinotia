@@ -93,6 +93,7 @@ async function openVault(ctx, dir) {
   ctx.index = createIndex({
     list: async () => flatten(await vault.scanVault(full)),
     read: (rel) => vault.readNote(full, rel),
+    stat: (rel) => vault.statFile(full, rel),
   })
   await ctx.index.rebuild()
   startWatching(ctx)
@@ -155,7 +156,10 @@ function registerIpc() {
   on('search', (e, query) => (rootOf(e), ctxOf(e).index.search(query)))
   on('settings:get', (e, name) => readSettings(rootOf(e), name))
   on('settings:set', (e, name, values) => writeSettings(rootOf(e), name, values))
-  on('base:render', async (e, rel) => renderBase(await vault.readNote(rootOf(e), rel), ctxOf(e).index.entries()))
+  on('base:render', async (e, rel) => {
+    const index = ctxOf(e).index
+    return renderBase(await vault.readNote(rootOf(e), rel), index.entries(), { basePath: rel, resolve: index.resolve, now: Date.now() })
+  })
   on('open:external', (_e, url) => {
     if (!/^(https?|mailto):/i.test(url)) throw new Error(`not an external link: ${url}`)
     return shell.openExternal(url)

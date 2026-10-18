@@ -122,3 +122,12 @@ export async function move(root, fromRel, toRel) {
 export async function trash(root, rel, trashItem) {
   await trashItem(resolveInside(root, rel))
 }
+
+// Size and times of a file. The creation time is the birth time where the
+// filesystem records one; where it reports none (0), the earlier of the
+// change and modification times stands in for it.
+export async function statFile(root, rel) {
+  const st = await stat(resolveInside(root, rel))
+  const born = st.birthtimeMs > 0 ? st.birthtimeMs : Math.min(st.ctimeMs, st.mtimeMs)
+  return { size: st.size, ctime: Math.round(born), mtime: Math.round(st.mtimeMs) }
+}
