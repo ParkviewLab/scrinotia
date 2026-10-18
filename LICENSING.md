@@ -15,6 +15,7 @@ Different kinds of content carry different licenses (encoded in [`REUSE.toml`](R
 | Code, build scripts, configs, lockfiles | `AGPL-3.0-or-later` |
 | Documentation (`docs/`, `README.md`, this file) | `CC-BY-4.0` |
 | Third-party references (`docs/references/obsidian-api/`, `docs/references/obsidian-bases-skill/`) | `MIT`, their own copyright |
+| The Scrinotia icon and brand assets (`build/icon.*`, `brand/`) | All rights reserved (`LicenseRef-AllRightsReserved`), not covered by the AGPL |
 
 ## Third-party references
 
