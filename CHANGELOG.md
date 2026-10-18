@@ -4,6 +4,21 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.13.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Open notes with the Properties drawer closed (#74)
+- Darker main background in the dark theme (#75)
+
+### Docs
+
+- Describe version 0.13.0 in the README (#76)
+
 ## [v0.12.0] - 2026-10-18
 
 ### Highlights
