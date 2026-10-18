@@ -1,3 +1,8 @@
 # What this repository publishes (dev-tools assemble-workflows; see the handbook ci.md).
 targets = ["installers"]
 dev = true
+
+[[slots]]
+job = "installers"
+reason = "macOS signing is set up only when its secrets exist; the part's empty values make electron-builder fail instead of building unsigned"
+workflow = "release"
