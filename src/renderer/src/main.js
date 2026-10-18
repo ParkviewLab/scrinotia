@@ -20,11 +20,33 @@ const view = {
   renaming: false, // an inline rename input is open; do not redraw the tree under it
 }
 
-// ---- theme (R6.2): dark by default, held for the session ----
+// ---- theme (R6.2): dark by default; kept per vault in .granite-vaulting/ (R6.4) ----
 const themeSelect = $('theme')
-themeSelect.addEventListener('change', () => {
-  document.documentElement.dataset.theme = themeSelect.value
+function applyTheme(theme) {
+  const t = theme === 'light' ? 'light' : 'dark'
+  document.documentElement.dataset.theme = t
+  themeSelect.value = t
+}
+themeSelect.addEventListener('change', async () => {
+  applyTheme(themeSelect.value)
+  try {
+    await api.setSettings('appearance', { theme: themeSelect.value })
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
 })
+
+async function loadVaultSettings() {
+  try {
+    const { values, conflicts } = await api.getSettings('appearance')
+    applyTheme(values.theme)
+    if (conflicts.length) {
+      showError($('pane-error'), `Ignored a synchronisation conflict copy of the vault settings: ${conflicts.join(', ')}`)
+    }
+  } catch {
+    applyTheme('dark')
+  }
+}
 
 // ---- helpers ----
 function parentOf(path) {
@@ -106,7 +128,8 @@ async function enterVault(opener) {
     $('start').hidden = true
     $('workspace').hidden = false
     renderTree()
-    renderPane()
+    await renderPane()
+    await loadVaultSettings()
   } catch (err) {
     showError($('start-error'), err)
   }
