@@ -102,6 +102,8 @@ R6.5. State specific to one machine (recent vaults, window size and position, op
 
 R6.6. Installable packages for both platforms are produced from a single build process.
 
+R6.7. The left panel (files, tags, search) and the right panel (outline and links) are drawers: each opens and closes with a button at its edge of the note pane's header, the View menu, or Cmd/Ctrl+\ (left) and Cmd/Ctrl+Shift+\ (right), and the note pane takes the room. When open, each is resized by dragging the splitter beside it (160 to 600 px, leaving the note pane at least 320 px; a double click restores 280 px). Open state and widths are remembered on the machine.
+
 ### R7. Licence
 
 R7.1. The client is licensed under AGPL-3.0-or-later; each source file carries the licence identifier, and the repository carries the licence text.

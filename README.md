@@ -27,7 +27,7 @@ Download the installer for your system from the repository's [Releases page](htt
 
 ## Use
 
-About granite-vaulting and the open-source licences are in the Help menu (and, on macOS, the application menu).
+The side panels are drawers: open and close them with the buttons at either end of the note's header or Cmd/Ctrl+\ and Cmd/Ctrl+Shift+\, and drag the bar beside a panel to resize it. About granite-vaulting and the open-source licences are in the Help menu (and, on macOS, the application menu).
 
 Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Cmd/Ctrl+O opens the quick switcher: type part of a name and press Enter. Select a note to see its preview. To open a note or link in a new tab, right-click it and choose Open in new tab (or Cmd/Ctrl+click it); Cmd/Ctrl+W closes a tab, and each vault's tabs are restored the next time it opens; choose Edit (split) to change it. The panel on the right shows the note's outline (click a heading to go to it) and lists its backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it. The Tags button above it lists the vault's tags; clicking one searches for it.
 

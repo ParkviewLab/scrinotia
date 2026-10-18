@@ -139,6 +139,8 @@ function registerIpc() {
   on('vault:recent', () => state.recentVaults())
   on('vault:forget', (_e, dir) => state.removeRecentVault(dir))
   on('tabs:get', (e) => state.tabsFor(rootOf(e)))
+  on('layout:get', () => state.layout())
+  on('layout:set', (_e, layout) => state.setLayout(layout))
   on('tabs:set', (e, tabs) => state.setTabsFor(rootOf(e), tabs))
   // A native context menu: items are { id, label } or { type: 'separator' };
   // resolves with the chosen id, or null when the menu is dismissed.
@@ -271,7 +273,22 @@ function buildMenu() {
       ],
     },
     { role: 'editMenu' },
-    { role: 'viewMenu' },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Toggle Left Panel', accelerator: 'CmdOrCtrl+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'left') },
+        { label: 'Toggle Right Panel', accelerator: 'CmdOrCtrl+Shift+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'right') },
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
     { role: 'windowMenu' },
     // Help carries About and the licences on every platform, so Windows and
     // Linux, which have no application menu, reach them too.
