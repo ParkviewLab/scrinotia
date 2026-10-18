@@ -138,6 +138,19 @@ function registerIpc() {
   const on = (channel, fn) => ipcMain.handle(channel, (e, ...args) => fn(e, ...args))
   on('vault:recent', () => state.recentVaults())
   on('vault:forget', (_e, dir) => state.removeRecentVault(dir))
+  on('tabs:get', (e) => state.tabsFor(rootOf(e)))
+  on('tabs:set', (e, tabs) => state.setTabsFor(rootOf(e), tabs))
+  // A native context menu: items are { id, label } or { type: 'separator' };
+  // resolves with the chosen id, or null when the menu is dismissed.
+  on('ui:menu', (e, items) =>
+    new Promise((resolveChoice) => {
+      let chosen = null
+      const menu = Menu.buildFromTemplate(
+        items.map((it) => (it.type === 'separator' ? { type: 'separator' } : { label: String(it.label), enabled: it.enabled !== false, click: () => (chosen = it.id) })),
+      )
+      menu.popup({ window: BrowserWindow.fromWebContents(e.sender), callback: () => setTimeout(() => resolveChoice(chosen), 0) })
+    }),
+  )
   on('vault:choose', async (e) => {
     const ctx = ctxOf(e)
     const result = await dialog.showOpenDialog(ctx.win, { properties: ['openDirectory'] })

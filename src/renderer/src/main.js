@@ -134,6 +134,7 @@ async function enterVault(opener) {
     $('vault-name').title = opened.root
     $('start').hidden = true
     $('workspace').hidden = false
+    await restoreTabs()
     renderTree()
     await renderPane()
     await loadVaultSettings()
@@ -178,6 +179,24 @@ function renderEntry(entry) {
   row.addEventListener('click', (e) => select(entry, { newTab: e.metaKey || e.ctrlKey }))
   row.addEventListener('auxclick', (e) => {
     if (e.button === 1 && entry.type !== 'folder') select(entry, { newTab: true })
+  })
+  row.addEventListener('contextmenu', async (e) => {
+    e.preventDefault()
+    const isFolder = entry.type === 'folder'
+    const choice = await api.menu([
+      ...(isFolder ? [] : [{ id: 'open', label: 'Open' }, { id: 'tab', label: 'Open in new tab' }, { type: 'separator' }]),
+      { id: 'rename', label: 'Rename' },
+      { id: 'trash', label: 'Move to trash' },
+    ])
+    if (choice === 'open') select(entry)
+    if (choice === 'tab') select(entry, { newTab: true })
+    if (choice === 'rename' || choice === 'trash') {
+      view.selected = { path: entry.path, type: entry.type }
+      renderTree()
+      renderPane()
+      if (choice === 'rename') startRename()
+      else $('delete').click()
+    }
   })
   li.append(row)
   if (entry.type === 'folder') {
@@ -272,7 +291,43 @@ function retab(map) {
   renderTabs()
 }
 
+// Tabs are remembered per vault on this machine (R2.5, R6.5) and restored
+// when the vault opens, leaving out files that no longer exist.
+let saveTabsTimer = null
+let restoringTabs = false
+function saveTabs() {
+  if (restoringTabs || $('workspace').hidden) return
+  clearTimeout(saveTabsTimer)
+  saveTabsTimer = setTimeout(() => api.setTabs({ list: tabs.list, active: tabs.active }).catch(() => {}), 300)
+}
+async function restoreTabs() {
+  restoringTabs = true
+  try {
+    const saved = await api.getTabs()
+    const list = saved.list.filter((p) => findEntry(view.tree, p))
+    const activePath = saved.list[saved.active]
+    tabs.list = list
+    tabs.active = list.length ? Math.max(0, list.indexOf(activePath)) : -1
+    view.openNote = tabs.list[tabs.active] ?? null
+    if (view.openNote) {
+      view.selected = { path: view.openNote, type: findEntry(view.tree, view.openNote)?.type ?? 'note' }
+      let folder = parentOf(view.openNote)
+      while (folder) {
+        view.expanded.add(folder)
+        folder = parentOf(folder)
+      }
+    }
+  } catch {
+    tabs.list = []
+    tabs.active = -1
+  } finally {
+    restoringTabs = false
+  }
+  renderTabs()
+}
+
 function renderTabs() {
+  saveTabs()
   const nav = $('tabs')
   nav.hidden = tabs.list.length === 0
   nav.replaceChildren(
@@ -297,6 +352,22 @@ function renderTabs() {
       tab.addEventListener('click', () => activateTab(i))
       tab.addEventListener('auxclick', (e) => {
         if (e.button === 1) closeTab(i)
+      })
+      tab.addEventListener('contextmenu', async (e) => {
+        e.preventDefault()
+        const choice = await api.menu([
+          { id: 'close', label: 'Close tab' },
+          { id: 'others', label: 'Close other tabs', enabled: tabs.list.length > 1 },
+        ])
+        if (choice === 'close') closeTab(i)
+        if (choice === 'others') {
+          const keep = tabs.list[i]
+          tabs.list = [keep]
+          tabs.active = 0
+          view.openNote = keep
+          renderTabs()
+          renderPane()
+        }
       })
       return tab
     }),
@@ -518,6 +589,16 @@ function previewLink(e, newTab) {
 $('preview').addEventListener('click', (e) => previewLink(e, e.metaKey || e.ctrlKey))
 $('preview').addEventListener('auxclick', (e) => {
   if (e.button === 1) previewLink(e, true)
+})
+$('preview').addEventListener('contextmenu', async (e) => {
+  const el = e.target.closest('[data-wikilink], [data-href]')
+  if (!el) return
+  e.preventDefault()
+  const choice = await api.menu([
+    { id: 'open', label: 'Open' },
+    { id: 'tab', label: 'Open in new tab' },
+  ])
+  if (choice) previewLink({ target: el, preventDefault() {} }, choice === 'tab')
 })
 
 function files() {
@@ -860,7 +941,21 @@ function hitItem(primary, secondary, onClick, cls) {
     b.textContent = secondary
     li.append(b)
   }
-  if (onClick) li.addEventListener('click', onClick)
+  if (onClick) {
+    // onClick(newTab): Cmd/Ctrl+click and a middle click open a new tab.
+    li.addEventListener('click', (e) => onClick(e.metaKey || e.ctrlKey))
+    li.addEventListener('auxclick', (e) => {
+      if (e.button === 1) onClick(true)
+    })
+    li.addEventListener('contextmenu', async (e) => {
+      e.preventDefault()
+      const choice = await api.menu([
+        { id: 'open', label: 'Open' },
+        { id: 'tab', label: 'Open in new tab' },
+      ])
+      if (choice) onClick(choice === 'tab')
+    })
+  }
   return li
 }
 
@@ -878,14 +973,14 @@ async function renderLinks() {
   try {
     const [back, unlinked, out] = await Promise.all([api.backlinks(path), api.unlinkedMentions(path), api.outgoing(path)])
     if (path !== current) return
-    fillList('backlinks', back.map((b) => hitItem(b.source.replace(/\.md$/i, ''), b.context, () => openPath(b.source))))
-    fillList('unlinked', unlinked.map((m) => hitItem(m.source.replace(/\.md$/i, ''), m.context, () => openPath(m.source))))
+    fillList('backlinks', back.map((b) => hitItem(b.source.replace(/\.md$/i, ''), b.context, (newTab) => openPath(b.source, { newTab }))))
+    fillList('unlinked', unlinked.map((m) => hitItem(m.source.replace(/\.md$/i, ''), m.context, (newTab) => openPath(m.source, { newTab }))))
     fillList(
       'outgoing',
       out.map((o) =>
         o.resolved
-          ? hitItem(o.text, o.resolved, () => openPath(o.resolved))
-          : hitItem(o.text, 'not found', () => follow({ kind: 'wikilink', ref: o.target }), 'unresolved'),
+          ? hitItem(o.text, o.resolved, (newTab) => openPath(o.resolved, { newTab }))
+          : hitItem(o.text, 'not found', (newTab) => follow({ kind: 'wikilink', ref: o.target, newTab }), 'unresolved'),
       ),
     )
   } catch (err) {
@@ -932,7 +1027,7 @@ async function runSearch() {
     hitItem(
       r.path.replace(/\.md$/i, ''),
       r.matches.map((m) => m.context).join(' · '),
-      () => openPath(r.path),
+      (newTab) => openPath(r.path, { newTab }),
     ),
   )
   if (items.length === 0) {
@@ -1199,10 +1294,10 @@ function drawSwitcher() {
   )
   $('switcher-list').querySelector('.active')?.scrollIntoView({ block: 'nearest' })
 }
-function chooseSwitcher(i) {
+function chooseSwitcher(i, newTab = false) {
   const p = switcher.items[i]
   closeSwitcher()
-  if (p) openPath(p)
+  if (p) openPath(p, { newTab })
 }
 $('switcher-input').addEventListener('input', () => {
   switcher.at = 0
@@ -1216,7 +1311,7 @@ $('switcher-input').addEventListener('keydown', (e) => {
     drawSwitcher()
   } else if (e.key === 'Enter') {
     e.preventDefault()
-    chooseSwitcher(switcher.at)
+    chooseSwitcher(switcher.at, e.metaKey || e.ctrlKey)
   } else if (e.key === 'Escape') {
     e.preventDefault()
     closeSwitcher()
