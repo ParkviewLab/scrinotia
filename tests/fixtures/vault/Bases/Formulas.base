@@ -1,0 +1,32 @@
+filters:
+  and:
+    - file.inFolder("Bases")
+    - file.ext == "md"
+formulas:
+  total: price * quantity
+  days_left: 'if(due, (date(due) - today()).days, "")'
+  label: 'if(priority == 1, "high", if(priority == 2, "medium", "low"))'
+properties:
+  formula.total:
+    displayName: Total
+  formula.days_left:
+    displayName: Days left
+  formula.label:
+    displayName: Label
+  author:
+    displayName: Author
+  file.tags:
+    displayName: Tags
+views:
+  - type: table
+    name: All
+    order:
+      - file.basename
+      - formula.total
+      - formula.days_left
+      - formula.label
+      - author
+      - file.tags
+    sort:
+      - property: formula.label
+        direction: ASC
