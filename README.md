@@ -12,7 +12,7 @@ Version 0.4.0. The requirements are in [`docs/requirements.md`](docs/requirement
 - **Attachments:** images, PDFs, audio, video, text, HTML (scripts sandboxed) and STL models (a 3D viewer with orbit, zoom and pan) are shown in the pane and embedded in notes; other files show their details and open in the system's application.
 - **Math and diagrams:** `$…$` and `$$…$$` math (KaTeX) and `mermaid` code blocks (Mermaid, without its ELK layout) are rendered in the preview.
 - **Embedded notes:** `![[Note]]`, `![[Note#Heading]]` and `![[Note#^id]]` show the note, section or block in a box, one level deep, with Show all for long notes.
-- **Search:** ranked best match first (BM25+); words (prefixes, and typos in longer words, still match), `"phrases"`, `/regular expressions/`, `-exclusions`, `tag:`, `file:` and `path:`.
+- **Search:** ranked best match first (BM25+); words (prefixes, and typos in longer words, still match), `"phrases"`, `/regular expressions/`, `-exclusions`, `tag:`, `file:` and `path:`; the displayed text of HTML attachments is searched too.
 - **`.base` files:** table, cards and list views with filters, formulas (the full function library of the references, including dates and durations), note, file and formula properties, sorts, limits, grouping, summaries and display names; a value that cannot be computed is marked in its cell; a base can be edited in the split mode beside its views, and embedded in a note with `![[Name.base]]` or `![[Name.base#View]]`. Requirement R3.6 gives the scope and R3.6.1 the choices made where the references are silent.
 - **Settings:** a dark and a light theme, dark by default, kept per vault in `.granite-vaulting/` so that a synchronisation tool such as Syncthing carries it with the vault.
 

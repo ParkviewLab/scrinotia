@@ -96,6 +96,23 @@ describe('search', () => {
     expect(paths(index.search('-/\\d{4}/'))).toEqual(['b.md'])
     expect(index.search('/[unclosed/').error).toMatch(/Not a valid regular expression/)
   })
+  it('searches the displayed text of HTML attachments', async () => {
+    const { store, index } = memoryVault({
+      'note.md': 'A note about kites.',
+      'guide.html': '<html><head><title>Guide</title><script>var kites = 1</script></head><body><p>How to fly kites in the wind.</p></body></html>',
+      'other.html': '<p>Nothing here.</p>',
+    })
+    await index.rebuild()
+    const out = index.search('kites')
+    expect(out.results.map((r) => r.path).sort()).toEqual(['guide.html', 'note.md'])
+    expect(out.results.find((r) => r.path === 'guide.html').matches[0].context).toBe('How to fly kites in the wind.')
+    expect(index.search('var').results).toEqual([])
+    expect(index.backlinks('guide.html')).toEqual([])
+    store.set('guide.html', '<p>Now about boats.</p>')
+    await index.update(['guide.html'])
+    expect(index.search('kites').results.map((r) => r.path)).toEqual(['note.md'])
+    expect(index.search('boats').results.map((r) => r.path)).toEqual(['guide.html'])
+  })
   it('keeps the ranked index in step with changes', async () => {
     const { store, index } = memoryVault({ 'a.md': 'apple', 'b.md': 'banana' })
     await index.rebuild()
