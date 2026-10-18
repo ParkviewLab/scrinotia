@@ -14,9 +14,13 @@ export function createState(dir) {
   async function load() {
     try {
       const data = JSON.parse(await readFile(file, 'utf8'))
-      return { recentVaults: Array.isArray(data.recentVaults) ? data.recentVaults : [] }
+      return {
+        recentVaults: Array.isArray(data.recentVaults) ? data.recentVaults : [],
+        tabs: data.tabs && typeof data.tabs === 'object' && !Array.isArray(data.tabs) ? data.tabs : {},
+        layout: data.layout && typeof data.layout === 'object' && !Array.isArray(data.layout) ? data.layout : {},
+      }
     } catch {
-      return { recentVaults: [] }
+      return { recentVaults: [], tabs: {}, layout: {} }
     }
   }
 
@@ -36,6 +40,25 @@ export function createState(dir) {
       state.recentVaults = [root, ...state.recentVaults.filter((r) => r !== root)].slice(0, MAX_RECENT)
       await save(state)
       return state.recentVaults
+    },
+    // Open tabs per vault (R2.5): { list: [vault paths], active: index }.
+    // The side drawers (R6.7): { leftOpen, rightOpen, leftWidth, rightWidth }.
+    async layout() {
+      return (await load()).layout
+    },
+    async setLayout(layout) {
+      const state = await load()
+      state.layout = layout
+      await save(state)
+    },
+    async tabsFor(root) {
+      const t = (await load()).tabs[root]
+      return t && Array.isArray(t.list) ? { list: t.list.filter((p) => typeof p === 'string'), active: Number.isInteger(t.active) ? t.active : 0 } : { list: [], active: -1 }
+    },
+    async setTabsFor(root, tabs) {
+      const state = await load()
+      state.tabs[root] = { list: tabs.list, active: tabs.active }
+      await save(state)
     },
     async removeRecentVault(root) {
       const state = await load()

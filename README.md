@@ -4,14 +4,15 @@ An independent, local-first Markdown notes client for macOS and Ubuntu. It opens
 
 ## Status
 
-Version 0.4.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.5.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
 - **Links:** wikilinks (`[[note]]`, `[[note#heading|alias]]`, `![[image.png]]`) and local Markdown links are followed on click; backlinks, unlinked mentions and outgoing links are listed beside the note; renaming or moving a note updates the links that point to it, and nothing else in those notes.
-- **Attachments:** images, PDFs, audio, video, text and HTML (scripts sandboxed) are shown in the pane and embedded in notes; other files show their details and open in the system's application.
+- **Attachments:** images, PDFs, audio, video, text, HTML (scripts sandboxed) and STL models (a 3D viewer with orbit, zoom and pan) are shown in the pane and embedded in notes; other files show their details and open in the system's application.
+- **Math and diagrams:** `$…$` and `$$…$$` math (KaTeX) and `mermaid` code blocks (Mermaid, without its ELK layout) are rendered in the preview.
 - **Embedded notes:** `![[Note]]`, `![[Note#Heading]]` and `![[Note#^id]]` show the note, section or block in a box, one level deep, with Show all for long notes.
-- **Search:** ranked best match first (BM25+); words (prefixes, and typos in longer words, still match), `"phrases"`, `/regular expressions/`, `-exclusions`, `tag:`, `file:` and `path:`.
+- **Search:** ranked best match first (BM25+); words (prefixes, and typos in longer words, still match), `"phrases"`, `/regular expressions/`, `-exclusions`, `tag:`, `file:` and `path:`; the displayed text of HTML attachments is searched too.
 - **`.base` files:** table, cards and list views with filters, formulas (the full function library of the references, including dates and durations), note, file and formula properties, sorts, limits, grouping, summaries and display names; a value that cannot be computed is marked in its cell; a base can be edited in the split mode beside its views, and embedded in a note with `![[Name.base]]` or `![[Name.base#View]]`. Requirement R3.6 gives the scope and R3.6.1 the choices made where the references are silent.
 - **Settings:** a dark and a light theme, dark by default, kept per vault in `.granite-vaulting/` so that a synchronisation tool such as Syncthing carries it with the vault.
 
@@ -26,9 +27,9 @@ Download the installer for your system from the repository's [Releases page](htt
 
 ## Use
 
-About granite-vaulting and the open-source licences are in the Help menu (and, on macOS, the application menu).
+The side panels are drawers: open and close them with the buttons at either end of the note's header or Cmd/Ctrl+\ and Cmd/Ctrl+Shift+\, and drag the bar beside a panel to resize it. About granite-vaulting and the open-source licences are in the Help menu (and, on macOS, the application menu).
 
-Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Cmd/Ctrl+O opens the quick switcher: type part of a name and press Enter. Select a note to see its preview (Cmd/Ctrl+click opens it in a new tab; Cmd/Ctrl+W closes a tab); choose Edit (split) to change it. The panel on the right shows the note's outline (click a heading to go to it) and lists its backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it. The Tags button above it lists the vault's tags; clicking one searches for it.
+Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Cmd/Ctrl+O opens the quick switcher: type part of a name and press Enter. Select a note to see its preview. To open a note or link in a new tab, right-click it and choose Open in new tab (or Cmd/Ctrl+click it); Cmd/Ctrl+W closes a tab, and each vault's tabs are restored the next time it opens; choose Edit (split) to change it. The panel on the right shows the note's outline (click a heading to go to it) and lists its backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it. The Tags button above it lists the vault's tags; clicking one searches for it.
 
 ## Develop
 

@@ -26,6 +26,8 @@ const selfKey = `${pkg.name}@${pkg.version}`
 
 const list = Object.entries(raw)
   .filter(([key]) => key !== selfKey) // drop the app itself
+  // elkjs is installed with Mermaid but replaced by a stub and not packaged.
+  .filter(([key]) => !key.startsWith('elkjs@'))
   .map(([key, v]) => {
     const at = key.lastIndexOf('@') // name may itself start with '@' (scoped)
     return {

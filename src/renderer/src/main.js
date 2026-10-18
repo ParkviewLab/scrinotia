@@ -10,6 +10,8 @@ import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
+import 'katex/dist/katex.min.css'
+import DOMPurify from 'dompurify'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -28,8 +30,11 @@ const view = {
 const themeSelect = $('theme')
 function applyTheme(theme) {
   const t = theme === 'light' ? 'light' : 'dark'
+  const changed = document.documentElement.dataset.theme !== t
   document.documentElement.dataset.theme = t
   themeSelect.value = t
+  // Diagrams are drawn in the theme's colours, so a change redraws them.
+  if (changed && typeof current !== 'undefined' && current) renderPreview()
 }
 themeSelect.addEventListener('change', async () => {
   applyTheme(themeSelect.value)
@@ -134,6 +139,7 @@ async function enterVault(opener) {
     $('vault-name').title = opened.root
     $('start').hidden = true
     $('workspace').hidden = false
+    await restoreTabs()
     renderTree()
     await renderPane()
     await loadVaultSettings()
@@ -178,6 +184,24 @@ function renderEntry(entry) {
   row.addEventListener('click', (e) => select(entry, { newTab: e.metaKey || e.ctrlKey }))
   row.addEventListener('auxclick', (e) => {
     if (e.button === 1 && entry.type !== 'folder') select(entry, { newTab: true })
+  })
+  row.addEventListener('contextmenu', async (e) => {
+    e.preventDefault()
+    const isFolder = entry.type === 'folder'
+    const choice = await api.menu([
+      ...(isFolder ? [] : [{ id: 'open', label: 'Open' }, { id: 'tab', label: 'Open in new tab' }, { type: 'separator' }]),
+      { id: 'rename', label: 'Rename' },
+      { id: 'trash', label: 'Move to trash' },
+    ])
+    if (choice === 'open') select(entry)
+    if (choice === 'tab') select(entry, { newTab: true })
+    if (choice === 'rename' || choice === 'trash') {
+      view.selected = { path: entry.path, type: entry.type }
+      renderTree()
+      renderPane()
+      if (choice === 'rename') startRename()
+      else $('delete').click()
+    }
   })
   li.append(row)
   if (entry.type === 'folder') {
@@ -272,7 +296,43 @@ function retab(map) {
   renderTabs()
 }
 
+// Tabs are remembered per vault on this machine (R2.5, R6.5) and restored
+// when the vault opens, leaving out files that no longer exist.
+let saveTabsTimer = null
+let restoringTabs = false
+function saveTabs() {
+  if (restoringTabs || $('workspace').hidden) return
+  clearTimeout(saveTabsTimer)
+  saveTabsTimer = setTimeout(() => api.setTabs({ list: tabs.list, active: tabs.active }).catch(() => {}), 300)
+}
+async function restoreTabs() {
+  restoringTabs = true
+  try {
+    const saved = await api.getTabs()
+    const list = saved.list.filter((p) => findEntry(view.tree, p))
+    const activePath = saved.list[saved.active]
+    tabs.list = list
+    tabs.active = list.length ? Math.max(0, list.indexOf(activePath)) : -1
+    view.openNote = tabs.list[tabs.active] ?? null
+    if (view.openNote) {
+      view.selected = { path: view.openNote, type: findEntry(view.tree, view.openNote)?.type ?? 'note' }
+      let folder = parentOf(view.openNote)
+      while (folder) {
+        view.expanded.add(folder)
+        folder = parentOf(folder)
+      }
+    }
+  } catch {
+    tabs.list = []
+    tabs.active = -1
+  } finally {
+    restoringTabs = false
+  }
+  renderTabs()
+}
+
 function renderTabs() {
+  saveTabs()
   const nav = $('tabs')
   nav.hidden = tabs.list.length === 0
   nav.replaceChildren(
@@ -297,6 +357,22 @@ function renderTabs() {
       tab.addEventListener('click', () => activateTab(i))
       tab.addEventListener('auxclick', (e) => {
         if (e.button === 1) closeTab(i)
+      })
+      tab.addEventListener('contextmenu', async (e) => {
+        e.preventDefault()
+        const choice = await api.menu([
+          { id: 'close', label: 'Close tab' },
+          { id: 'others', label: 'Close other tabs', enabled: tabs.list.length > 1 },
+        ])
+        if (choice === 'close') closeTab(i)
+        if (choice === 'others') {
+          const keep = tabs.list[i]
+          tabs.list = [keep]
+          tabs.active = 0
+          view.openNote = keep
+          renderTabs()
+          renderPane()
+        }
       })
       return tab
     }),
@@ -409,6 +485,42 @@ async function fillEmbeds() {
   if (current !== note) return
   fillBaseEmbeds()
   fillAttachmentEmbeds()
+  fillMermaid($('preview'))
+}
+
+// Mermaid diagrams (R3.8): loaded only when a note has one; drawn with the
+// strict security level, in the theme's colours; an invalid diagram shows
+// its error in place of the drawing.
+let mermaidLib = null
+let mermaidSeq = 0
+async function fillMermaid(host) {
+  const blocks = [...host.querySelectorAll('pre.mermaid-src')]
+  if (!blocks.length) return
+  if (!mermaidLib) mermaidLib = (await import('mermaid')).default
+  for (const pre of blocks) {
+    const box = document.createElement('div')
+    box.className = 'mermaid-diagram'
+    // A diagram's own front-matter config (such as layout: elk) can persist
+    // in Mermaid's global configuration, so each diagram starts from ours.
+    mermaidLib.mermaidAPI?.reset?.()
+    mermaidLib.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      layout: 'dagre',
+      // Labels as SVG text, not HTML inside the SVG, so the sanitising pass keeps them.
+      htmlLabels: false,
+      flowchart: { htmlLabels: false },
+      theme: document.documentElement.dataset.theme === 'light' ? 'default' : 'dark',
+    })
+    try {
+      const { svg } = await mermaidLib.render(`gv-mermaid-${++mermaidSeq}`, pre.textContent)
+      box.innerHTML = DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true, html: true }, ADD_TAGS: ['foreignObject'] })
+    } catch (err) {
+      box.classList.add('missing')
+      box.textContent = `Mermaid: ${String(err.message ?? err).split('\n')[0]}`
+    }
+    if (pre.isConnected) pre.replaceWith(box)
+  }
 }
 
 // Embedded notes (R3.7): each placeholder becomes a box with the note's name
@@ -518,6 +630,16 @@ function previewLink(e, newTab) {
 $('preview').addEventListener('click', (e) => previewLink(e, e.metaKey || e.ctrlKey))
 $('preview').addEventListener('auxclick', (e) => {
   if (e.button === 1) previewLink(e, true)
+})
+$('preview').addEventListener('contextmenu', async (e) => {
+  const el = e.target.closest('[data-wikilink], [data-href]')
+  if (!el) return
+  e.preventDefault()
+  const choice = await api.menu([
+    { id: 'open', label: 'Open' },
+    { id: 'tab', label: 'Open in new tab' },
+  ])
+  if (choice) previewLink({ target: el, preventDefault() {} }, choice === 'tab')
 })
 
 function files() {
@@ -860,7 +982,21 @@ function hitItem(primary, secondary, onClick, cls) {
     b.textContent = secondary
     li.append(b)
   }
-  if (onClick) li.addEventListener('click', onClick)
+  if (onClick) {
+    // onClick(newTab): Cmd/Ctrl+click and a middle click open a new tab.
+    li.addEventListener('click', (e) => onClick(e.metaKey || e.ctrlKey))
+    li.addEventListener('auxclick', (e) => {
+      if (e.button === 1) onClick(true)
+    })
+    li.addEventListener('contextmenu', async (e) => {
+      e.preventDefault()
+      const choice = await api.menu([
+        { id: 'open', label: 'Open' },
+        { id: 'tab', label: 'Open in new tab' },
+      ])
+      if (choice) onClick(choice === 'tab')
+    })
+  }
   return li
 }
 
@@ -878,14 +1014,14 @@ async function renderLinks() {
   try {
     const [back, unlinked, out] = await Promise.all([api.backlinks(path), api.unlinkedMentions(path), api.outgoing(path)])
     if (path !== current) return
-    fillList('backlinks', back.map((b) => hitItem(b.source.replace(/\.md$/i, ''), b.context, () => openPath(b.source))))
-    fillList('unlinked', unlinked.map((m) => hitItem(m.source.replace(/\.md$/i, ''), m.context, () => openPath(m.source))))
+    fillList('backlinks', back.map((b) => hitItem(b.source.replace(/\.md$/i, ''), b.context, (newTab) => openPath(b.source, { newTab }))))
+    fillList('unlinked', unlinked.map((m) => hitItem(m.source.replace(/\.md$/i, ''), m.context, (newTab) => openPath(m.source, { newTab }))))
     fillList(
       'outgoing',
       out.map((o) =>
         o.resolved
-          ? hitItem(o.text, o.resolved, () => openPath(o.resolved))
-          : hitItem(o.text, 'not found', () => follow({ kind: 'wikilink', ref: o.target }), 'unresolved'),
+          ? hitItem(o.text, o.resolved, (newTab) => openPath(o.resolved, { newTab }))
+          : hitItem(o.text, 'not found', (newTab) => follow({ kind: 'wikilink', ref: o.target, newTab }), 'unresolved'),
       ),
     )
   } catch (err) {
@@ -932,7 +1068,7 @@ async function runSearch() {
     hitItem(
       r.path.replace(/\.md$/i, ''),
       r.matches.map((m) => m.context).join(' · '),
-      () => openPath(r.path),
+      (newTab) => openPath(r.path, { newTab }),
     ),
   )
   if (items.length === 0) {
@@ -1199,10 +1335,10 @@ function drawSwitcher() {
   )
   $('switcher-list').querySelector('.active')?.scrollIntoView({ block: 'nearest' })
 }
-function chooseSwitcher(i) {
+function chooseSwitcher(i, newTab = false) {
   const p = switcher.items[i]
   closeSwitcher()
-  if (p) openPath(p)
+  if (p) openPath(p, { newTab })
 }
 $('switcher-input').addEventListener('input', () => {
   switcher.at = 0
@@ -1216,7 +1352,7 @@ $('switcher-input').addEventListener('keydown', (e) => {
     drawSwitcher()
   } else if (e.key === 'Enter') {
     e.preventDefault()
-    chooseSwitcher(switcher.at)
+    chooseSwitcher(switcher.at, e.metaKey || e.ctrlKey)
   } else if (e.key === 'Escape') {
     e.preventDefault()
     closeSwitcher()
@@ -1301,6 +1437,90 @@ async function renderTags() {
     }),
   )
 }
+
+// ---- drawers (R6.7): each side panel opens and closes (its button in the
+// note pane's header, the View menu, Cmd/Ctrl+\ and Cmd/Ctrl+Shift+\), and
+// its width is set by dragging the splitter beside it (double-click resets).
+// The state is remembered on this machine. ----
+const DEFAULT_WIDTH = 280
+const layout = { leftOpen: true, rightOpen: true, leftWidth: DEFAULT_WIDTH, rightWidth: DEFAULT_WIDTH }
+let saveLayoutTimer = null
+
+function applyLayout() {
+  const ws = $('workspace')
+  ws.style.setProperty('--left-width', `${layout.leftWidth}px`)
+  ws.style.setProperty('--right-width', `${layout.rightWidth}px`)
+  ws.classList.toggle('left-closed', !layout.leftOpen)
+  ws.classList.toggle('right-closed', !layout.rightOpen)
+  $('toggle-left').classList.toggle('closed', !layout.leftOpen)
+  $('toggle-right').classList.toggle('closed', !layout.rightOpen)
+  editor.view.requestMeasure()
+}
+
+function saveLayout() {
+  clearTimeout(saveLayoutTimer)
+  saveLayoutTimer = setTimeout(() => api.setLayout({ ...layout }).catch(() => {}), 300)
+}
+
+function toggleDrawer(side) {
+  if (side === 'left') layout.leftOpen = !layout.leftOpen
+  else layout.rightOpen = !layout.rightOpen
+  applyLayout()
+  saveLayout()
+}
+
+// Each drawer is at least 160 px and at most 600 px, and the note pane keeps
+// at least 320 px.
+function clampWidth(side, w) {
+  const other = side === 'left' ? (layout.rightOpen ? layout.rightWidth : 0) : layout.leftOpen ? layout.leftWidth : 0
+  const room = window.innerWidth - other - 320 - 10
+  return Math.round(Math.max(160, Math.min(600, room, w)))
+}
+
+function dragSplitter(side) {
+  const bar = $(side === 'left' ? 'split-left' : 'split-right')
+  bar.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    bar.setPointerCapture(e.pointerId)
+    bar.classList.add('dragging')
+    $('workspace').classList.add('resizing')
+    const move = (ev) => {
+      const w = side === 'left' ? ev.clientX : window.innerWidth - ev.clientX
+      layout[side === 'left' ? 'leftWidth' : 'rightWidth'] = clampWidth(side, w)
+      applyLayout()
+    }
+    const up = () => {
+      bar.classList.remove('dragging')
+      $('workspace').classList.remove('resizing')
+      bar.removeEventListener('pointermove', move)
+      bar.removeEventListener('pointerup', up)
+      saveLayout()
+    }
+    bar.addEventListener('pointermove', move)
+    bar.addEventListener('pointerup', up)
+  })
+  bar.addEventListener('dblclick', () => {
+    layout[side === 'left' ? 'leftWidth' : 'rightWidth'] = DEFAULT_WIDTH
+    applyLayout()
+    saveLayout()
+  })
+}
+
+$('toggle-left').addEventListener('click', () => toggleDrawer('left'))
+$('toggle-right').addEventListener('click', () => toggleDrawer('right'))
+api.onToggleDrawer(toggleDrawer)
+dragSplitter('left')
+dragSplitter('right')
+api
+  .getLayout()
+  .then((saved) => {
+    if (typeof saved.leftOpen === 'boolean') layout.leftOpen = saved.leftOpen
+    if (typeof saved.rightOpen === 'boolean') layout.rightOpen = saved.rightOpen
+    if (Number.isFinite(saved.leftWidth)) layout.leftWidth = Math.max(160, Math.min(600, saved.leftWidth))
+    if (Number.isFinite(saved.rightWidth)) layout.rightWidth = Math.max(160, Math.min(600, saved.rightWidth))
+  })
+  .catch(() => {})
+  .finally(applyLayout)
 
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return

@@ -49,9 +49,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
           </label>
         </footer>
       </aside>
+      <div class="splitter" id="split-left" role="separator" aria-orientation="vertical" title="Drag to resize; double-click to reset"></div>
       <main class="pane">
         <nav id="tabs" class="tabs" role="tablist"></nav>
         <header class="pane-head">
+          <button id="toggle-left" type="button" class="drawer-toggle" title="Show or hide the left panel (Cmd/Ctrl+\)"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor"/><rect x="2.5" y="3.5" width="4" height="9" fill="currentColor" opacity="0.6"/></svg></button>
           <span id="note-path" class="muted"></span>
           <span class="actions" id="modes" hidden>
             <button id="mode-preview" type="button" class="active">Preview</button>
@@ -61,6 +63,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <button id="rename" type="button">Rename</button>
             <button id="delete" type="button">Move to trash</button>
           </span>
+          <button id="toggle-right" type="button" class="drawer-toggle" title="Show or hide the right panel (Cmd/Ctrl+Shift+\)"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor"/><rect x="9.5" y="3.5" width="4" height="9" fill="currentColor" opacity="0.6"/></svg></button>
         </header>
         <p id="pane-error" class="error"></p>
         <div id="conflict" class="conflict" hidden>
@@ -74,6 +77,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         </div>
         <p id="note-body" class="note-body muted"></p>
       </main>
+      <div class="splitter" id="split-right" role="separator" aria-orientation="vertical" title="Drag to resize; double-click to reset"></div>
       <aside class="links" id="links">
         <h3>Outline</h3>
         <ul id="outline" class="outline"></ul>
@@ -89,7 +93,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
       <div class="switcher-box" role="dialog" aria-label="Quick switcher">
         <input id="switcher-input" type="text" placeholder="Type to find a note or file…" autocomplete="off" />
         <ul id="switcher-list" class="switcher-list" role="listbox"></ul>
-        <p class="switcher-hint muted">↑ ↓ to choose · Enter to open · Esc to close</p>
+        <p class="switcher-hint muted">↑ ↓ to choose · Enter to open · Cmd/Ctrl+Enter to open in a new tab · Esc to close</p>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>

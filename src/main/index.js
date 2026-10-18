@@ -138,6 +138,21 @@ function registerIpc() {
   const on = (channel, fn) => ipcMain.handle(channel, (e, ...args) => fn(e, ...args))
   on('vault:recent', () => state.recentVaults())
   on('vault:forget', (_e, dir) => state.removeRecentVault(dir))
+  on('tabs:get', (e) => state.tabsFor(rootOf(e)))
+  on('layout:get', () => state.layout())
+  on('layout:set', (_e, layout) => state.setLayout(layout))
+  on('tabs:set', (e, tabs) => state.setTabsFor(rootOf(e), tabs))
+  // A native context menu: items are { id, label } or { type: 'separator' };
+  // resolves with the chosen id, or null when the menu is dismissed.
+  on('ui:menu', (e, items) =>
+    new Promise((resolveChoice) => {
+      let chosen = null
+      const menu = Menu.buildFromTemplate(
+        items.map((it) => (it.type === 'separator' ? { type: 'separator' } : { label: String(it.label), enabled: it.enabled !== false, click: () => (chosen = it.id) })),
+      )
+      menu.popup({ window: BrowserWindow.fromWebContents(e.sender), callback: () => setTimeout(() => resolveChoice(chosen), 0) })
+    }),
+  )
   on('vault:choose', async (e) => {
     const ctx = ctxOf(e)
     const result = await dialog.showOpenDialog(ctx.win, { properties: ['openDirectory'] })
@@ -151,6 +166,7 @@ function registerIpc() {
   on('app:about', () => openAboutWindow())
   on('app:licenses', () => openLicensesWindow())
   on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
+  on('file:readBytes', (e, rel) => vault.readBytes(rootOf(e), rel))
   on('open:path', async (e, rel) => {
     // shell.openPath returns an error message, or '' on success.
     return shell.openPath(vault.resolveInside(rootOf(e), rel))
@@ -257,7 +273,22 @@ function buildMenu() {
       ],
     },
     { role: 'editMenu' },
-    { role: 'viewMenu' },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Toggle Left Panel', accelerator: 'CmdOrCtrl+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'left') },
+        { label: 'Toggle Right Panel', accelerator: 'CmdOrCtrl+Shift+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'right') },
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
     { role: 'windowMenu' },
     // Help carries About and the licences on every platform, so Windows and
     // Linux, which have no application menu, reach them too.
