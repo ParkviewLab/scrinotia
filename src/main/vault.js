@@ -62,6 +62,11 @@ export async function readNote(root, rel) {
   return readFile(resolveInside(root, rel), 'utf8')
 }
 
+// The raw bytes of a vault file, for viewers that parse a binary format.
+export async function readBytes(root, rel) {
+  return readFile(resolveInside(root, rel))
+}
+
 // Atomic replace: write a sibling temporary file, flush it, rename it over.
 export async function writeNote(root, rel, text) {
   const full = resolveInside(root, rel)
