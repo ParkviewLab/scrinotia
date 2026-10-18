@@ -4,6 +4,20 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.10.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Light STL models from 45° up-right with cast shadows (#64)
+
+### Docs
+
+- Describe version 0.10.0 in the README (#65)
+
 ## [v0.9.0] - 2026-10-18
 
 ### Highlights
