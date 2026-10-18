@@ -25,5 +25,10 @@ contextBridge.exposeInMainWorld('granite', {
   createFolder: (folder) => ipcRenderer.invoke('entry:createFolder', folder),
   move: (from, to) => ipcRenderer.invoke('entry:move', from, to),
   trash: (rel) => ipcRenderer.invoke('entry:trash', rel),
+  newWindow: () => ipcRenderer.invoke('window:new'),
+  backlinks: (rel) => ipcRenderer.invoke('links:backlinks', rel),
+  unlinkedMentions: (rel) => ipcRenderer.invoke('links:unlinked', rel),
+  outgoing: (rel) => ipcRenderer.invoke('links:outgoing', rel),
+  search: (query) => ipcRenderer.invoke('search', query),
   onVaultChanged: (fn) => ipcRenderer.on('vault:changed', (_e, paths) => fn(paths)),
 })

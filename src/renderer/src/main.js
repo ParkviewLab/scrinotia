@@ -87,10 +87,18 @@ async function enterVault(opener) {
   try {
     const opened = await opener()
     if (!opened) return
+    if (opened.elsewhere) {
+      $('start-error').textContent = `${opened.name} is already open in another window.`
+      return
+    }
     view.tree = opened.tree
     view.selected = null
     view.openNote = null
     view.expanded = new Set()
+    notes.clear()
+    current = null
+    $('search').value = ''
+    runSearch()
     $('vault-name').textContent = opened.name
     $('vault-name').title = opened.root
     $('start').hidden = true
@@ -103,6 +111,7 @@ async function enterVault(opener) {
 }
 
 $('open-folder').addEventListener('click', () => enterVault(api.chooseVault))
+$('new-window').addEventListener('click', () => api.newWindow())
 $('switch-vault').addEventListener('click', () => {
   $('workspace').hidden = true
   $('start').hidden = false
@@ -282,6 +291,100 @@ async function renderPane() {
   $('entry-actions').hidden = !view.selected
   $('note-path').textContent = view.openNote ?? view.selected?.path ?? ''
   await showNote(view.openNote)
+  await renderLinks()
+}
+
+// ---- links panel (R4.3, R4.4) ----
+function hitItem(primary, secondary, onClick, cls) {
+  const li = document.createElement('li')
+  const a = document.createElement('span')
+  a.className = `hit-path${cls ? ' ' + cls : ''}`
+  a.textContent = primary
+  li.append(a)
+  if (secondary) {
+    const b = document.createElement('span')
+    b.className = 'hit-line'
+    b.textContent = secondary
+    li.append(b)
+  }
+  if (onClick) li.addEventListener('click', onClick)
+  return li
+}
+
+function fillList(id, items) {
+  $(id).replaceChildren(...items)
+  $(`${id}-count`).textContent = items.length ? String(items.length) : ''
+}
+
+async function renderLinks() {
+  const path = current
+  if (!path) {
+    for (const id of ['backlinks', 'unlinked', 'outgoing']) fillList(id, [])
+    return
+  }
+  try {
+    const [back, unlinked, out] = await Promise.all([api.backlinks(path), api.unlinkedMentions(path), api.outgoing(path)])
+    if (path !== current) return
+    fillList('backlinks', back.map((b) => hitItem(b.source.replace(/\.md$/i, ''), b.context, () => openPath(b.source))))
+    fillList('unlinked', unlinked.map((m) => hitItem(m.source.replace(/\.md$/i, ''), m.context, () => openPath(m.source))))
+    fillList(
+      'outgoing',
+      out.map((o) =>
+        o.resolved
+          ? hitItem(o.text, o.resolved, () => openPath(o.resolved))
+          : hitItem(o.text, 'not found', () => follow({ kind: 'wikilink', ref: o.target }), 'unresolved'),
+      ),
+    )
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+}
+
+// ---- search (R5) ----
+let searchTimer = null
+let searchSeq = 0
+$('search').addEventListener('input', () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(runSearch, 150)
+})
+$('search').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    $('search').value = ''
+    runSearch()
+  }
+})
+
+async function runSearch() {
+  const q = $('search').value.trim()
+  const seq = ++searchSeq
+  if (!q) {
+    $('results').hidden = true
+    $('tree').hidden = false
+    return
+  }
+  let results = []
+  try {
+    results = await api.search(q)
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+  if (seq !== searchSeq) return
+  $('tree').hidden = true
+  $('results').hidden = false
+  const items = results.map((r) =>
+    hitItem(
+      r.path.replace(/\.md$/i, ''),
+      r.matches.map((m) => m.context).join(' · '),
+      () => openPath(r.path),
+    ),
+  )
+  if (items.length === 0) {
+    const li = document.createElement('li')
+    li.className = 'info'
+    li.textContent = 'No matches.'
+    items.push(li)
+  }
+  $('results').replaceChildren(...items)
 }
 
 function forgetNotes(match) {
@@ -405,6 +508,9 @@ async function rename(from, to) {
   await flushAll()
   const done = await run(() => api.move(from, to))
   if (!done) return
+  if (done.skipped?.length) {
+    showError($('pane-error'), `Links were not updated in ${done.skipped.length} note(s) that changed meanwhile: ${done.skipped.join(', ')}`)
+  }
   const remap = (p) => (p === from ? to : p.startsWith(from + '/') ? to + p.slice(from.length) : p)
   if (view.selected) view.selected.path = remap(view.selected.path)
   if (view.openNote) view.openNote = remap(view.openNote)
@@ -529,6 +635,8 @@ api.onVaultChanged(async (paths) => {
     }
   }
   if (!current) renderPane()
+  else renderLinks()
+  if ($('search').value.trim()) runSearch()
 })
 
 $('version').textContent = `version ${api.version}`
