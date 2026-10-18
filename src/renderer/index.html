@@ -96,6 +96,23 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         <p class="switcher-hint muted">↑ ↓ to choose · Enter to open · Cmd/Ctrl+Enter to open in a new tab · Esc to close</p>
       </div>
     </div>
+    <div id="settings" class="switcher" hidden>
+      <div class="switcher-box settings-box" role="dialog" aria-labelledby="settings-title">
+        <h2 id="settings-title">Settings</h2>
+        <p class="muted settings-note">For this vault, kept in its <code>.scrinotia/</code> folder.</p>
+        <h3>STL models</h3>
+        <div class="settings-colour">
+          <div class="settings-sliders">
+            <label for="settings-h">Hue</label><input id="settings-h" type="range" min="0" max="360" step="1" /><span id="settings-h-value" class="muted"></span>
+            <label for="settings-s">Saturation</label><input id="settings-s" type="range" min="0" max="100" step="1" /><span id="settings-s-value" class="muted"></span>
+            <label for="settings-l">Lightness</label><input id="settings-l" type="range" min="0" max="100" step="1" /><span id="settings-l-value" class="muted"></span>
+          </div>
+          <div id="settings-swatch" class="settings-swatch" aria-hidden="true"></div>
+        </div>
+        <div id="settings-preview" class="settings-preview"></div>
+        <div class="settings-buttons"><button id="settings-reset" type="button">Reset</button><button id="settings-done" type="button">Done</button></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

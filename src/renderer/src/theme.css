@@ -695,6 +695,64 @@ button:hover {
   font-size: 0.8em;
 }
 
+/* ---- settings (R6.8) ---- */
+.settings-box {
+  width: min(460px, 90vw);
+  padding: 16px 18px;
+}
+.settings-box h2 {
+  margin: 0;
+  font-size: 1.1em;
+}
+.settings-box h3 {
+  margin: 14px 0 8px;
+  font-size: 0.95em;
+}
+.settings-note {
+  margin: 2px 0 0;
+  font-size: 0.85em;
+}
+.settings-colour {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.settings-sliders {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto 1fr 3.2em;
+  gap: 6px 10px;
+  align-items: center;
+}
+.settings-sliders span {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.settings-swatch {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.settings-preview {
+  height: 180px;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.settings-preview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.settings-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 /* ---- outline ---- */
 .outline {
   list-style: none;
