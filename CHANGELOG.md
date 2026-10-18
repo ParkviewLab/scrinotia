@@ -4,6 +4,21 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.7.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Rename the app to Scrinotia (#46)
+
+### Docs
+
+- State that the Scrinotia artwork is all rights reserved (#47)
+- Describe version 0.7.0 and the use of the name and icon (#48)
+
 ## [v0.6.0] - 2026-10-18
 
 ### Highlights
