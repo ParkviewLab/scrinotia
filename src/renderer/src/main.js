@@ -584,9 +584,24 @@ function renderPreview() {
     return
   }
   preview.render(editor.text(), $('preview'))
+  // The note's Properties stay as the reader left them while the note is
+  // open; the split view redraws the preview on each edit.
+  if (propertiesOpen !== current) propertiesOpen = null
+  if (propertiesOpen) $('preview').querySelector(':scope > details.properties')?.setAttribute('open', '')
   fillEmbeds()
   renderOutline()
 }
+// The note whose Properties drawer the reader has opened, while that note
+// stays open; opening any note, that one included, starts it closed.
+let propertiesOpen = null
+$('preview').addEventListener(
+  'toggle',
+  (e) => {
+    if (!e.target.matches?.('details.properties') || e.target.parentElement !== $('preview')) return
+    propertiesOpen = e.target.open ? current : null
+  },
+  true,
+)
 
 // ---- outline (R4.6): the note's headings; a click goes to the heading in
 // the preview and, in split mode, puts the editor's cursor on its line ----

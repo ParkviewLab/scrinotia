@@ -22,7 +22,9 @@ export function splitFrontmatter(text) {
 }
 
 function propertiesTable(yaml) {
-  return `<details class="properties" open><summary>Properties</summary><pre>${escapeHtml(yaml)}</pre></details>`
+  // Closed by default; main.js reopens it on a redraw of a note whose
+  // Properties the reader opened.
+  return `<details class="properties"><summary>Properties</summary><pre>${escapeHtml(yaml)}</pre></details>`
 }
 
 // assetUrl(target) -> URL of an embedded file, or null when it does not resolve.
