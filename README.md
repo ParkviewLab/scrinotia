@@ -15,7 +15,7 @@ Version 0.3.0. The requirements are in [`docs/requirements.md`](docs/requirement
 - **`.base` files:** table, cards and list views with filters, formulas (the full function library of the references, including dates and durations), note, file and formula properties, sorts, limits, grouping, summaries and display names; a value that cannot be computed is marked in its cell; a base can be edited in the split mode beside its views, and embedded in a note with `![[Name.base]]` or `![[Name.base#View]]`. Requirement R3.6 gives the scope and R3.6.1 the choices made where the references are silent.
 - **Settings:** a dark and a light theme, dark by default, kept per vault in `.granite-vaulting/` so that a synchronisation tool such as Syncthing carries it with the vault.
 
-Not yet present: tabs, a quick switcher, an outline and a tags pane, and regular-expression search.
+Not yet present: tabs, an outline and a tags pane, and regular-expression search.
 
 ## Install
 
@@ -29,7 +29,7 @@ Download the installer for your system from the repository's [Releases page](htt
 
 About granite-vaulting and the open-source licences are in the Help menu (and, on macOS, the application menu).
 
-Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Select a note to see its preview; choose Edit (split) to change it. The panel on the right lists the note's backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it.
+Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Cmd/Ctrl+O opens the quick switcher: type part of a name and press Enter. Select a note to see its preview; choose Edit (split) to change it. The panel on the right lists the note's backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it.
 
 ## Develop
 

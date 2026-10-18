@@ -244,6 +244,11 @@ function buildMenu() {
       label: 'File',
       submenu: [
         { label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
+        {
+          label: 'Quick Switcher…',
+          accelerator: 'CmdOrCtrl+O',
+          click: (_item, win) => win?.webContents.send('ui:quick-switcher'),
+        },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },
       ],

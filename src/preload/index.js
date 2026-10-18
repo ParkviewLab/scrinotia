@@ -37,5 +37,6 @@ contextBridge.exposeInMainWorld('granite', {
   renderBase: (rel, thisPath = null) => ipcRenderer.invoke('base:render', rel, thisPath),
   getSettings: (name) => ipcRenderer.invoke('settings:get', name),
   setSettings: (name, values) => ipcRenderer.invoke('settings:set', name, values),
+  onQuickSwitcher: (fn) => ipcRenderer.on('ui:quick-switcher', () => fn()),
   onVaultChanged: (fn) => ipcRenderer.on('vault:changed', (_e, paths) => fn(paths)),
 })

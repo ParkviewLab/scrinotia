@@ -9,6 +9,7 @@ import { createPreview } from './preview.js'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection } from '../../shared/sections.js'
+import { fuzzyRank } from './fuzzy.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -1021,6 +1022,80 @@ function startRename() {
 }
 
 // ---- external changes (R1.5) ----
+// ---- quick switcher (R2.5): Cmd/Ctrl+O, type part of a name, Enter ----
+const switcher = { items: [], at: 0 }
+function openSwitcher() {
+  if ($('workspace').hidden) return
+  $('switcher').hidden = false
+  $('switcher-input').value = ''
+  drawSwitcher()
+  $('switcher-input').focus()
+}
+function closeSwitcher() {
+  $('switcher').hidden = true
+}
+function drawSwitcher() {
+  const q = $('switcher-input').value
+  const all = files()
+  // With no query, notes in tree order; otherwise the best fuzzy matches.
+  switcher.items = q.trim() ? fuzzyRank(q, all, 50) : all.filter((p) => /\.md$/i.test(p)).slice(0, 50)
+  switcher.at = Math.min(switcher.at, Math.max(0, switcher.items.length - 1))
+  if (!q.trim()) switcher.at = 0
+  $('switcher-list').replaceChildren(
+    ...switcher.items.map((p, i) => {
+      const li = document.createElement('li')
+      li.className = i === switcher.at ? 'active' : ''
+      li.setAttribute('role', 'option')
+      const name = document.createElement('span')
+      name.textContent = p.slice(p.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+      const folder = document.createElement('span')
+      folder.className = 'muted'
+      folder.textContent = p.includes('/') ? ` ${p.slice(0, p.lastIndexOf('/'))}` : ''
+      li.append(name, folder)
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        chooseSwitcher(i)
+      })
+      return li
+    }),
+  )
+  $('switcher-list').querySelector('.active')?.scrollIntoView({ block: 'nearest' })
+}
+function chooseSwitcher(i) {
+  const p = switcher.items[i]
+  closeSwitcher()
+  if (p) openPath(p)
+}
+$('switcher-input').addEventListener('input', () => {
+  switcher.at = 0
+  drawSwitcher()
+})
+$('switcher-input').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    const n = switcher.items.length
+    if (n) switcher.at = (switcher.at + (e.key === 'ArrowDown' ? 1 : n - 1)) % n
+    drawSwitcher()
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    chooseSwitcher(switcher.at)
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    closeSwitcher()
+  }
+})
+$('switcher').addEventListener('mousedown', (e) => {
+  if (e.target === $('switcher')) closeSwitcher()
+})
+api.onQuickSwitcher(openSwitcher)
+// The menu's accelerator normally opens it; this covers a focus the menu misses.
+window.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') {
+    e.preventDefault()
+    openSwitcher()
+  }
+})
+
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return
   await refreshTree()
