@@ -4,6 +4,20 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.11.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- List files before folders in the file tree (#67)
+
+### Docs
+
+- Describe version 0.11.0 in the README (#68)
+
 ## [v0.10.0] - 2026-10-18
 
 ### Highlights
