@@ -4,6 +4,20 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Drop files on a note to copy them in and link them (#43)
+
+### Docs
+
+- Describe version 0.6.0 in the README (#44)
+
 ## [v0.5.0] - 2026-10-18
 
 ### Highlights
