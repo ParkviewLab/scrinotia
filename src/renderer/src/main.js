@@ -8,7 +8,7 @@ import { createEditor } from './editor/editor.js'
 import { createPreview } from './preview.js'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
-import { extractSection } from '../../shared/sections.js'
+import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
@@ -273,6 +273,36 @@ function renderPreview() {
   }
   preview.render(editor.text(), $('preview'))
   fillEmbeds()
+  renderOutline()
+}
+
+// ---- outline (R4.6): the note's headings; a click goes to the heading in
+// the preview and, in split mode, puts the editor's cursor on its line ----
+function renderOutline() {
+  const list = $('outline')
+  if (!current || notes.get(current)?.kind === 'base') {
+    list.replaceChildren()
+    return
+  }
+  const heads = listHeadings(editor.text())
+  const top = Math.min(...heads.map((h) => h.level))
+  list.replaceChildren(
+    ...heads.map((h, k) => {
+      const li = document.createElement('li')
+      li.textContent = h.text
+      li.style.paddingLeft = `${12 + (h.level - top) * 14}px`
+      li.title = h.text
+      li.addEventListener('click', () => goToHeading(k, h.line))
+      return li
+    }),
+  )
+}
+
+function goToHeading(k, line) {
+  // The preview's own headings, in order, leaving out embedded notes and the properties block.
+  const els = [...$('preview').querySelectorAll('h1, h2, h3, h4, h5, h6')].filter((el) => !el.closest('.note-embed, .properties, .callout'))
+  els[k]?.scrollIntoView({ block: 'start' })
+  if (noteMode === 'split') editor.gotoLine(line)
 }
 
 async function fillEmbeds() {
@@ -710,6 +740,7 @@ async function renderPane() {
   $('entry-actions').hidden = !view.selected
   $('note-path').textContent = view.openNote ?? view.selected?.path ?? ''
   await showNote(view.openNote)
+  renderOutline()
   await renderLinks()
 }
 

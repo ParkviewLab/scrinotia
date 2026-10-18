@@ -49,3 +49,20 @@ export function extractSection(text, subpath) {
   }
   return start < 0 ? null : lines.slice(start).join('\n')
 }
+
+// The headings of a note (R4.6), for the outline: level, text and 1-based
+// line number in the whole note, leaving out frontmatter and fenced code.
+export function listHeadings(text) {
+  const lines = text.split(/\r?\n/)
+  const fm = FRONTMATTER.exec(text)
+  const skip = fm ? fm[0].split(/\r?\n/).length - 1 : 0
+  const out = []
+  let inFence = false
+  for (let i = skip; i < lines.length; i++) {
+    if (/^\s*(```|~~~)/.test(lines[i])) inFence = !inFence
+    if (inFence) continue
+    const m = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(lines[i])
+    if (m && m[2]) out.push({ level: m[1].length, text: m[2].replace(/\s\^[A-Za-z0-9-]+$/, ''), line: i + 1 })
+  }
+  return out
+}

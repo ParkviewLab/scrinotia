@@ -47,5 +47,10 @@ export function createEditor(parent, { onUserChange, onScroll }) {
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, annotations: [External.of(true)] })
     },
     focus: () => view.focus(),
+    // Puts the cursor at the start of a 1-based line and scrolls it to the top.
+    gotoLine(n) {
+      const line = view.state.doc.line(Math.max(1, Math.min(n, view.state.doc.lines)))
+      view.dispatch({ selection: { anchor: line.from }, effects: EditorView.scrollIntoView(line.from, { y: 'start' }) })
+    },
   }
 }
