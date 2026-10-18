@@ -15,7 +15,8 @@
     "legal:notices": "generate-license-file --input ./package.json --output ./legal/THIRD-PARTY-NOTICES.txt --overwrite --eol lf --ci",
     "legal:list": "license-checker-rseidelsohn --production --json --out ./legal/oss-licenses.json && node scripts/clean-oss-licenses.mjs",
     "legal": "npm run legal:prepare && npm run legal:notices && npm run legal:list",
-    "build:dist": "npm run legal && electron-vite build && electron-builder"
+    "build:dist": "npm run legal && electron-vite build && electron-builder",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -26,6 +27,7 @@
     "generate-license-file": "^4.2.1",
     "globals": "^17.6.0",
     "license-checker-rseidelsohn": "^5.0.1",
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "vitest": "^4.1.12"
   }
 }
