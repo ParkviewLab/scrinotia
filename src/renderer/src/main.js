@@ -139,6 +139,14 @@ async function enterVault(opener) {
 
 $('open-folder').addEventListener('click', () => enterVault(api.chooseVault))
 $('new-window').addEventListener('click', () => api.newWindow())
+$('about-link').addEventListener('click', (e) => {
+  e.preventDefault()
+  api.openAbout()
+})
+$('licenses-link').addEventListener('click', (e) => {
+  e.preventDefault()
+  api.openLicenses()
+})
 $('switch-vault').addEventListener('click', () => {
   $('workspace').hidden = true
   $('start').hidden = false

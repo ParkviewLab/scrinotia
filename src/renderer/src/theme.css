@@ -543,3 +543,8 @@ button:hover {
   display: block;
   margin: 1em 0;
 }
+.start-links a {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
