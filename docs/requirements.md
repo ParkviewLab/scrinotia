@@ -1,6 +1,6 @@
 # granite-vaulting: requirements, draft 1
 
-Status: draft for review. Provisional location; it moves to `docs/requirements.md` of a garycoding repository once that repository is named. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
+Status: draft for review. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
 
 ## Purpose
 
@@ -30,19 +30,19 @@ R1.6. The client tolerates a vault of at least 10,000 notes without a perceptibl
 
 ### R2. Vault browser
 
-R2.1. A vault can be opened from a folder chooser, and recently opened vaults are listed.
+R2.1. A vault can be opened from a folder chooser, and recently opened vaults are listed. Several vaults can be open at once, each in its own window; opening a vault that is already open in another window brings that window forward instead.
 
 R2.2. A file tree shows folders, notes, and attachments, with expand and collapse.
 
 R2.3. The user can create, rename, move, and delete notes and folders. Deletion goes to the system trash, not permanent removal.
 
-R2.4. Renaming or moving a note updates the wikilinks that point to it, in the other notes of the vault.
+R2.4. Renaming or moving a note or folder updates the links that point to what moved, in the other notes of the vault, changing only each link's target text. A link elsewhere that the new name would otherwise capture (a nearer or shorter match) is rewritten to keep its previous target. A note changed on disk since it was indexed is left alone and reported.
 
 R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the tree, from a link, from search, and from a quick switcher (fuzzy search over note names).
 
 ### R3. Live-preview editor
 
-R3.1. The editor shows Markdown source in the line being edited and rendered formatting elsewhere. A source-only mode and a reading (rendered, read-only) mode are also provided.
+R3.1. A note is shown in one of two modes: a read-only rendered preview, and a split view with the Markdown source editor on the left and the rendered preview on the right, updated as the user types. The preview is the default. (Amended 2026-10-17; it replaces the earlier in-place live preview.)
 
 R3.2. Supported syntax in v1: headings, emphasis, strong, strikethrough, inline code, fenced code blocks, block quotes, ordered, unordered, and task lists (with clickable checkboxes), horizontal rules, tables, links, images, footnotes, inline and block comments (`%%`), highlights (`==`), callouts (`> [!type]`), and frontmatter (shown as a collapsible properties block).
 
@@ -51,6 +51,8 @@ R3.3. Embeds of images and of other notes (`![[...]]`) render in place. Math (`$
 R3.4. Saving is automatic after a short pause in typing. Undo and redo cover the whole editing session of a note.
 
 R3.5. Standard text-editing keyboard behaviour on both platforms (platform-appropriate modifier keys), and list continuation and indentation.
+
+R3.6. A `.base` file opens as a set of table views of the vault's notes, one tab per view. Supported: filters as expressions combined with and, or and not; comparisons, `!`, `&&`, `||`; `file.name`, `file.ext`, `file.path`, `file.folder`, `file.inFolder()`, `file.hasTag()`, `file.hasLink()` and frontmatter properties; table views with order, sort, limit and display names. Anything else is reported in the pane, not guessed. Clicking a note's name opens it.
 
 ### R4. Links and backlinks
 
@@ -78,7 +80,7 @@ R5.3. The search index is a cache outside the vault, rebuildable at any time fro
 
 R6.1. Runs on macOS (current and previous major release) and Ubuntu (current LTS), on Apple silicon and x86-64 where the technology allows.
 
-R6.2. Light and dark appearance, following the system setting.
+R6.2. A dark and a light theme are provided, and the user chooses between them. The default is the dark theme, whatever the system setting; the choice is a vault-level setting (R6.4).
 
 R6.3. All data stays on the machine. No network access, accounts, telemetry, or update checks in v1.
 

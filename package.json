@@ -1,0 +1,45 @@
+{
+  "name": "granite-vaulting",
+  "version": "0.1.0",
+  "description": "An independent, local-first Markdown notes client",
+  "author": "Gary Frattarola <garyf@parkviewlab.ai>",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "lint": "eslint .",
+    "legal:prepare": "node scripts/prepare-legal.mjs",
+    "legal:notices": "generate-license-file --input ./package.json --output ./legal/THIRD-PARTY-NOTICES.txt --overwrite --eol lf --ci",
+    "legal:list": "license-checker-rseidelsohn --production --json --out ./legal/oss-licenses.json && node scripts/clean-oss-licenses.mjs",
+    "legal": "npm run legal:prepare && npm run legal:notices && npm run legal:list",
+    "build:dist": "npm run legal && electron-vite build && electron-builder",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.16.1",
+    "electron-vite": "^5.0.0",
+    "eslint": "^10.5.0",
+    "generate-license-file": "^4.2.1",
+    "globals": "^17.6.0",
+    "license-checker-rseidelsohn": "^5.0.1",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.12"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
+    "@lezer/highlight": "^1.2.5",
+    "@lezer/markdown": "^1.8.0",
+    "dompurify": "^3.4.17",
+    "marked": "^18.1.1",
+    "yaml": "^2.9.1"
+  }
+}

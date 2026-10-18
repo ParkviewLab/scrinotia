@@ -1,0 +1,81 @@
+<!doctype html>
+<!--
+SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' gv-asset: https: data:" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>granite-vaulting</title>
+    <link rel="stylesheet" href="/src/theme.css" />
+  </head>
+  <body>
+    <section id="start" class="start">
+      <h1>granite-vaulting</h1>
+      <p class="muted" id="version"></p>
+      <button id="open-folder" type="button">Open a vault folder…</button>
+      <button id="new-window" type="button">New window</button>
+      <h2>Recent vaults</h2>
+      <ul id="recent" class="recent"></ul>
+      <p id="start-error" class="error"></p>
+    </section>
+    <section id="workspace" class="workspace" hidden>
+      <aside class="sidebar">
+        <header class="sidebar-head">
+          <strong id="vault-name"></strong>
+          <span class="actions">
+            <button id="new-note" type="button" title="New note">+ Note</button>
+            <button id="new-folder" type="button" title="New folder">+ Folder</button>
+          </span>
+        </header>
+        <input id="search" class="search" type="search" placeholder="Search (words, &quot;phrase&quot;, -word, tag:, file:, path:)" />
+        <ul id="tree" class="tree" role="tree"></ul>
+        <ul id="results" class="results" hidden></ul>
+        <footer class="sidebar-foot">
+          <button id="switch-vault" type="button">Switch vault</button>
+          <label>Theme
+            <select id="theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+        </footer>
+      </aside>
+      <main class="pane">
+        <header class="pane-head">
+          <span id="note-path" class="muted"></span>
+          <span class="actions" id="modes" hidden>
+            <button id="mode-preview" type="button" class="active">Preview</button>
+            <button id="mode-split" type="button">Edit (split)</button>
+          </span>
+          <span class="actions" id="entry-actions" hidden>
+            <button id="rename" type="button">Rename</button>
+            <button id="delete" type="button">Move to trash</button>
+          </span>
+        </header>
+        <p id="pane-error" class="error"></p>
+        <div id="conflict" class="conflict" hidden>
+          This note changed on disk while you have unsaved edits.
+          <button id="keep-mine" type="button">Keep my version</button>
+          <button id="load-disk" type="button">Load the disk version</button>
+        </div>
+        <div id="note-area" class="note-area mode-preview" hidden>
+          <div id="editor" class="editor"></div>
+          <article id="preview" class="preview"></article>
+        </div>
+        <p id="note-body" class="note-body muted"></p>
+      </main>
+      <aside class="links" id="links">
+        <h3>Backlinks <span id="backlinks-count" class="muted"></span></h3>
+        <ul id="backlinks" class="link-list"></ul>
+        <h3>Unlinked mentions <span id="unlinked-count" class="muted"></span></h3>
+        <ul id="unlinked" class="link-list"></ul>
+        <h3>Outgoing links <span id="outgoing-count" class="muted"></span></h3>
+        <ul id="outgoing" class="link-list"></ul>
+      </aside>
+    </section>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
