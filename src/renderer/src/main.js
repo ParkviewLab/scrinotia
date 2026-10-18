@@ -917,8 +917,11 @@ async function runSearch() {
     return
   }
   let results = []
+  let problem = null
   try {
-    results = await api.search(q)
+    const out = await api.search(q)
+    results = out.results
+    problem = out.error ?? null
   } catch (err) {
     showError($('pane-error'), err)
   }
@@ -935,7 +938,7 @@ async function runSearch() {
   if (items.length === 0) {
     const li = document.createElement('li')
     li.className = 'info'
-    li.textContent = 'No matches.'
+    li.textContent = problem ?? 'No matches.'
     items.push(li)
   }
   $('results').replaceChildren(...items)

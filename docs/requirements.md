@@ -78,9 +78,11 @@ R4.6. An outline panel lists the headings of the open note, indented by level (f
 
 R5.1. Full-text search across the vault, returning matching notes with context lines and highlighted matches, updating as the vault changes.
 
-R5.2. Search supports plain words, quoted phrases, exclusion, and restriction by tag, by file name, and by path. Regular expressions and further operators are open for decision.
+R5.2. Search supports plain words (all must match; a word matches by its prefix, and a word of five letters or more also with one or two typos), "quoted phrases" (exact), /regular expressions/ (case-insensitive unless flags say otherwise; an invalid one is reported), exclusion with `-`, and restriction by `tag:`, `file:` and `path:`.
 
 R5.3. The search index is a cache outside the vault, rebuildable at any time from the files, and never the source of truth.
+
+R5.4. Results are ranked by BM25+ (MiniSearch, MIT) over each note's name, tags and text, with the name weighted three times and tags twice the body, best match first; a search without plain words lists its results in path order. The ranked index is kept up to date one note at a time as the vault changes.
 
 ### R6. Application
 
