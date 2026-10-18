@@ -4,7 +4,7 @@ An independent, local-first Markdown notes client for macOS and Ubuntu. It opens
 
 ## Status
 
-Version 0.5.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.6.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
