@@ -9,3 +9,5 @@
 ![[data.json]]
 
 ![[archive.zip]]
+
+![[part.stl]]
