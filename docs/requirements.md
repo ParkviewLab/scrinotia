@@ -86,6 +86,8 @@ R5.3. The search index is a cache outside the vault, rebuildable at any time fro
 
 R5.4. Results are ranked by BM25+ (MiniSearch, MIT) over each note's name, tags and text, with the name weighted three times and tags twice the body, best match first; a search without plain words lists its results in path order. The ranked index is kept up to date one note at a time as the vault changes.
 
+R5.5. Search also covers the displayed text of HTML attachments: the page's title and the text of its body, without scripts, styles or markup. Text a page's scripts would add when it runs is not searched, since the page is not run. HTML pages take no part in links, backlinks, tags or `.base` views, and open in the attachment viewer from the results.
+
 ### R6. Application
 
 R6.1. Runs on macOS (current and previous major release) and Ubuntu (current LTS), on Apple silicon and x86-64 where the technology allows.

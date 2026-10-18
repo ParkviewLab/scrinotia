@@ -10,8 +10,10 @@ import { parseLinks, parseTags } from '../shared/markdown.js'
 import { resolveLink, resolveRelative } from '../shared/links.js'
 import { parse as parseYaml } from 'yaml'
 import MiniSearch from 'minisearch'
+import { htmlText } from './htmlText.js'
 
 const isNote = (p) => /\.md$/i.test(p)
+const isPage = (p) => /\.html?$/i.test(p)
 const baseName = (p) => p.slice(p.lastIndexOf('/') + 1)
 const folderOf = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '')
 const stem = (p) => baseName(p).replace(/\.md$/i, '')
@@ -35,6 +37,20 @@ export function createIndex({ list, read, stat = null }) {
   let files = []
   const notes = new Map() // path -> { text, links, tags }
   const stats = new Map() // path -> { size, ctime, mtime }
+  // HTML attachments, searched by their displayed text (R5.5); not notes, so
+  // they take no part in links, tags, backlinks or .base views.
+  const pages = new Map() // path -> { text, tags: [] }
+
+  async function indexPage(p) {
+    try {
+      const page = { text: htmlText(await read(p)), tags: [] }
+      pages.set(p, page)
+      rankedPut(p, page)
+    } catch {
+      pages.delete(p)
+      rankedDrop(p)
+    }
+  }
 
   // The ranked text index (R5.4): BM25+ over each note's name, tags and text,
   // kept in step with \`notes\` one document at a time.
@@ -88,9 +104,11 @@ export function createIndex({ list, read, stat = null }) {
   async function rebuild() {
     files = await list()
     notes.clear()
+    pages.clear()
     ranked.removeAll()
     stats.clear()
     await inBatches(files, statOf)
+    await inBatches(files.filter(isPage), indexPage)
     await inBatches(files.filter(isNote), async (p) => {
       try {
         indexText(p, await read(p))
@@ -110,6 +128,14 @@ export function createIndex({ list, read, stat = null }) {
       }
     }
     for (const p of [...stats.keys()]) if (!present.has(p)) stats.delete(p)
+    for (const p of [...pages.keys()]) {
+      if (!present.has(p)) {
+        pages.delete(p)
+        rankedDrop(p)
+      }
+    }
+    for (const p of changed) if (isPage(p) && present.has(p)) await indexPage(p)
+    for (const p of files) if (isPage(p) && !pages.has(p)) await indexPage(p)
     for (const p of changed) if (present.has(p)) await statOf(p)
     for (const p of files) if (!stats.has(p)) await statOf(p)
     for (const p of changed) {
@@ -227,7 +253,7 @@ export function createIndex({ list, read, stat = null }) {
       for (const h of hits) scores.set(h.id, h.score)
     }
     const results = []
-    for (const [path, note] of notes) {
+    for (const [path, note] of [...notes, ...pages]) {
       if (scores && !scores.has(path)) continue
       const lowerText = note.text.toLowerCase()
       const lowerPath = path.toLowerCase()
