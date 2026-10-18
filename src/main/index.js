@@ -5,7 +5,9 @@
 // and link index (R2.1); a vault already open in one window is focused rather
 // than opened twice. All filesystem access happens here.
 
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell, protocol, net } from 'electron'
+import { randomBytes } from 'node:crypto'
+import { pathToFileURL } from 'node:url'
 import { watch } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { join, basename, sep, resolve } from 'node:path'
@@ -16,6 +18,24 @@ import { createIndex } from './linkIndex.js'
 const state = createState(app.getPath('userData'))
 const contexts = new Map() // webContents id -> { win, root, watcher, index, flushed }
 let quitting = false
+
+// Embedded images are served to the preview as gv-asset://<window token>/<path>,
+// resolved inside that window's vault only.
+protocol.registerSchemesAsPrivileged([{ scheme: 'gv-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
+
+function serveAssets() {
+  protocol.handle('gv-asset', async (request) => {
+    try {
+      const url = new URL(request.url)
+      const ctx = [...contexts.values()].find((c) => c.token === url.hostname)
+      if (!ctx?.root) return new Response('not found', { status: 404 })
+      const rel = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
+      return net.fetch(pathToFileURL(vault.resolveInside(ctx.root, rel)).toString())
+    } catch {
+      return new Response('not found', { status: 404 })
+    }
+  })
+}
 
 function flatten(tree) {
   return tree.flatMap((e) => (e.children ? flatten(e.children) : [e.path]))
@@ -76,7 +96,7 @@ async function openVault(ctx, dir) {
   startWatching(ctx)
   await state.addRecentVault(full)
   ctx.win.setTitle(`${basename(full)} – granite-vaulting`)
-  return { root: full, name: basename(full), tree: await vault.scanVault(full) }
+  return { root: full, name: basename(full), assetBase: `gv-asset://${ctx.token}/`, tree: await vault.scanVault(full) }
 }
 
 function filesUnder(ctx, rel) {
@@ -163,7 +183,7 @@ function createWindow() {
     },
   })
   const id = win.webContents.id
-  const ctx = { win, root: null, watcher: null, index: null, flushed: false }
+  const ctx = { win, root: null, watcher: null, index: null, flushed: false, token: randomBytes(12).toString('hex') }
   contexts.set(id, ctx)
   // Unsaved edits are written before the window closes: the renderer is asked
   // to flush, and the close proceeds when it replies (or after 3 s).
@@ -207,6 +227,7 @@ app.on('before-quit', () => {
 
 app.whenReady().then(() => {
   registerIpc()
+  serveAssets()
   buildMenu()
   createWindow()
   app.on('activate', () => {

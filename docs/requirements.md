@@ -42,7 +42,7 @@ R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the
 
 ### R3. Live-preview editor
 
-R3.1. The editor shows Markdown source in the line being edited and rendered formatting elsewhere. A source-only mode and a reading (rendered, read-only) mode are also provided.
+R3.1. A note is shown in one of two modes: a read-only rendered preview, and a split view with the Markdown source editor on the left and the rendered preview on the right, updated as the user types. The preview is the default. (Amended 2026-10-17; it replaces the earlier in-place live preview.)
 
 R3.2. Supported syntax in v1: headings, emphasis, strong, strikethrough, inline code, fenced code blocks, block quotes, ordered, unordered, and task lists (with clickable checkboxes), horizontal rules, tables, links, images, footnotes, inline and block comments (`%%`), highlights (`==`), callouts (`> [!type]`), and frontmatter (shown as a collapsible properties block).
 
