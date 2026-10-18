@@ -16,8 +16,8 @@ import { EvalError, ErrorV, LinkV, FileV, HtmlV, ImageV, DateV, DurationV, typeO
 
 export { Unsupported }
 
-const VIEW_TYPES = ['table']
-const LATER_VIEW_TYPES = ['cards', 'list']
+const VIEW_TYPES = ['table', 'cards', 'list']
+const LATER_VIEW_TYPES = []
 
 // filters: a string, or a tree with exactly one of and, or, not.
 function compileFilter(node, where) {
