@@ -31,11 +31,18 @@ function flatten(tree) {
 }
 
 describe('scanVault', () => {
-  it('lists folders first, then files, and hides dot-entries', async () => {
+  it('lists files first, then folders, each by name, and hides dot-entries', async () => {
     const tree = await scanVault(root)
-    expect(tree.map((e) => e.name)).toEqual(['attachments', 'Bases', 'Embeds', 'Projects', 'Tangents', 'Attachments.md', 'BOM note.md', 'Dashboard.md', 'Embeds.md', 'Ideas.md', 'Math and diagrams.md', 'No newline.md', 'Welcome.md', 'Windows note.md'])
+    expect(tree.map((e) => e.name)).toEqual(['Attachments.md', 'BOM note.md', 'Dashboard.md', 'Embeds.md', 'Ideas.md', 'Math and diagrams.md', 'No newline.md', 'Welcome.md', 'Windows note.md', 'attachments', 'Bases', 'Embeds', 'Projects', 'Tangents'])
     expect(flatten(tree)).not.toContain('.obsidian')
     expect(flatten(tree)).toContain('Projects/Archive/Plan.md')
+  })
+
+  it('sorts notes, bases and attachments together by name', async () => {
+    const bases = (await scanVault(root)).find((e) => e.name === 'Bases').children
+    const files = bases.filter((e) => e.type !== 'folder').map((e) => e.name)
+    expect(files).toEqual([...files].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base', numeric: true })))
+    expect(new Set(bases.filter((e) => e.type !== 'folder').map((e) => e.type)).size).toBeGreaterThan(1)
   })
 
   it('classifies notes and attachments', async () => {
