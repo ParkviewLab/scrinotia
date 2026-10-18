@@ -1438,6 +1438,90 @@ async function renderTags() {
   )
 }
 
+// ---- drawers (R6.7): each side panel opens and closes (its button in the
+// note pane's header, the View menu, Cmd/Ctrl+\ and Cmd/Ctrl+Shift+\), and
+// its width is set by dragging the splitter beside it (double-click resets).
+// The state is remembered on this machine. ----
+const DEFAULT_WIDTH = 280
+const layout = { leftOpen: true, rightOpen: true, leftWidth: DEFAULT_WIDTH, rightWidth: DEFAULT_WIDTH }
+let saveLayoutTimer = null
+
+function applyLayout() {
+  const ws = $('workspace')
+  ws.style.setProperty('--left-width', `${layout.leftWidth}px`)
+  ws.style.setProperty('--right-width', `${layout.rightWidth}px`)
+  ws.classList.toggle('left-closed', !layout.leftOpen)
+  ws.classList.toggle('right-closed', !layout.rightOpen)
+  $('toggle-left').classList.toggle('closed', !layout.leftOpen)
+  $('toggle-right').classList.toggle('closed', !layout.rightOpen)
+  editor.view.requestMeasure()
+}
+
+function saveLayout() {
+  clearTimeout(saveLayoutTimer)
+  saveLayoutTimer = setTimeout(() => api.setLayout({ ...layout }).catch(() => {}), 300)
+}
+
+function toggleDrawer(side) {
+  if (side === 'left') layout.leftOpen = !layout.leftOpen
+  else layout.rightOpen = !layout.rightOpen
+  applyLayout()
+  saveLayout()
+}
+
+// Each drawer is at least 160 px and at most 600 px, and the note pane keeps
+// at least 320 px.
+function clampWidth(side, w) {
+  const other = side === 'left' ? (layout.rightOpen ? layout.rightWidth : 0) : layout.leftOpen ? layout.leftWidth : 0
+  const room = window.innerWidth - other - 320 - 10
+  return Math.round(Math.max(160, Math.min(600, room, w)))
+}
+
+function dragSplitter(side) {
+  const bar = $(side === 'left' ? 'split-left' : 'split-right')
+  bar.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    bar.setPointerCapture(e.pointerId)
+    bar.classList.add('dragging')
+    $('workspace').classList.add('resizing')
+    const move = (ev) => {
+      const w = side === 'left' ? ev.clientX : window.innerWidth - ev.clientX
+      layout[side === 'left' ? 'leftWidth' : 'rightWidth'] = clampWidth(side, w)
+      applyLayout()
+    }
+    const up = () => {
+      bar.classList.remove('dragging')
+      $('workspace').classList.remove('resizing')
+      bar.removeEventListener('pointermove', move)
+      bar.removeEventListener('pointerup', up)
+      saveLayout()
+    }
+    bar.addEventListener('pointermove', move)
+    bar.addEventListener('pointerup', up)
+  })
+  bar.addEventListener('dblclick', () => {
+    layout[side === 'left' ? 'leftWidth' : 'rightWidth'] = DEFAULT_WIDTH
+    applyLayout()
+    saveLayout()
+  })
+}
+
+$('toggle-left').addEventListener('click', () => toggleDrawer('left'))
+$('toggle-right').addEventListener('click', () => toggleDrawer('right'))
+api.onToggleDrawer(toggleDrawer)
+dragSplitter('left')
+dragSplitter('right')
+api
+  .getLayout()
+  .then((saved) => {
+    if (typeof saved.leftOpen === 'boolean') layout.leftOpen = saved.leftOpen
+    if (typeof saved.rightOpen === 'boolean') layout.rightOpen = saved.rightOpen
+    if (Number.isFinite(saved.leftWidth)) layout.leftWidth = Math.max(160, Math.min(600, saved.leftWidth))
+    if (Number.isFinite(saved.rightWidth)) layout.rightWidth = Math.max(160, Math.min(600, saved.rightWidth))
+  })
+  .catch(() => {})
+  .finally(applyLayout)
+
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return
   await refreshTree()
