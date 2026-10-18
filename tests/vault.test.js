@@ -19,7 +19,7 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'vault')
 let root
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'gv-'))
+  root = await mkdtemp(join(tmpdir(), 'scrinotia-'))
   await cp(FIXTURE, root, { recursive: true })
 })
 afterEach(async () => {
@@ -69,7 +69,7 @@ describe('note operations', () => {
   it('reads and writes atomically, leaving no temporary file', async () => {
     await writeNote(root, 'Ideas.md', 'new text\r\n')
     expect(await readNote(root, 'Ideas.md')).toBe('new text\r\n')
-    expect((await readdir(root)).filter((n) => n.endsWith('.gv-tmp'))).toEqual([])
+    expect((await readdir(root)).filter((n) => n.endsWith('.scrinotia-tmp'))).toEqual([])
   })
 
   it('creates notes and folders under free names', async () => {

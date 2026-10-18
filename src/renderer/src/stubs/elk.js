@@ -8,6 +8,6 @@
 
 export default class ELK {
   layout() {
-    return Promise.reject(new Error('The ELK layout is not included in granite-vaulting (elkjs is EPL-2.0, outside the licences this app ships).'))
+    return Promise.reject(new Error('The ELK layout is not included in Scrinotia (elkjs is EPL-2.0, outside the licences this app ships).'))
   }
 }

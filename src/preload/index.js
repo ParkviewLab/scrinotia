@@ -3,7 +3,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import pkg from '../../package.json'
 
-contextBridge.exposeInMainWorld('granite', {
+contextBridge.exposeInMainWorld('scrinotia', {
   version: pkg.version,
   recentVaults: () => ipcRenderer.invoke('vault:recent'),
   forgetVault: (dir) => ipcRenderer.invoke('vault:forget', dir),

@@ -1,4 +1,4 @@
-# granite-vaulting: requirements, draft 1
+# Scrinotia: requirements, draft 1
 
 Status: draft for review. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
 
@@ -42,7 +42,7 @@ R2.5. Multiple notes can be open at once, in tabs; a note can be opened from the
 
 R2.6. An attachment opens in the pane, and embedded in a note (`![[file]]`) it shows in place: images, PDFs (in the browser engine's PDF viewer), audio and video (with players that can seek), and text-like files (read-only, up to 2 MB) are shown; HTML is rendered in a sandboxed frame whose scripts run in an origin of their own, so they cannot reach the app or read other vault files, and cannot open windows; any other file shows its name, size and modification time, with a button that opens it in the system's default application. No page may open a window of its own. STL models (binary and ASCII) are shown in a 3D viewer with orbit, zoom and pan, in the pane and embedded.
 
-R2.7. Dropping files on a note adds links to them. A file from outside the vault is copied into the vault's attachment folder (the vault setting `attachmentFolder` in `.granite-vaulting/files.json`, default `attachments`, created if missing) under its own name, or a numbered one if that is taken; the original is left in place. A file dragged from the file tree or the search results, or from elsewhere inside the vault, is linked where it is. The link is an embed (`![[name]]`) for files the preview shows inline (images, PDFs, audio, video, HTML, STL) and a plain link otherwise, in the shortest form that resolves to the file. In the split editor it goes where the file is dropped; in the preview, at the end of the note.
+R2.7. Dropping files on a note adds links to them. A file from outside the vault is copied into the vault's attachment folder (the vault setting `attachmentFolder` in `.scrinotia/files.json`, default `attachments`, created if missing) under its own name, or a numbered one if that is taken; the original is left in place. A file dragged from the file tree or the search results, or from elsewhere inside the vault, is linked where it is. The link is an embed (`![[name]]`) for files the preview shows inline (images, PDFs, audio, video, HTML, STL) and a plain link otherwise, in the shortest form that resolves to the file. In the split editor it goes where the file is dropped; in the preview, at the end of the note.
 
 ### R3. Live-preview editor
 
@@ -98,7 +98,7 @@ R6.2. A dark and a light theme are provided, and the user chooses between them. 
 
 R6.3. All data stays on the machine. No network access, accounts, telemetry, or update checks in v1.
 
-R6.4. Settings that belong to a vault and change rarely (theme, link-resolution options, folders excluded from indexing, editor preferences) are stored in `.granite-vaulting/` at the root of the vault, so that a file-synchronisation tool carries them to every machine that has the vault. The folder is created only when the user first changes such a setting, never merely on opening a vault. Each concern has its own small JSON file, written atomically, and a synchronisation conflict copy of one file is ignored with a notice, not treated as an error.
+R6.4. Settings that belong to a vault and change rarely (theme, link-resolution options, folders excluded from indexing, editor preferences) are stored in `.scrinotia/` at the root of the vault, so that a file-synchronisation tool carries them to every machine that has the vault. The folder is created only when the user first changes such a setting, never merely on opening a vault. Each concern has its own small JSON file, written atomically, and a synchronisation conflict copy of one file is ignored with a notice, not treated as an error.
 
 R6.5. State specific to one machine (recent vaults, window size and position, open tabs, scroll positions) and all caches, including the search index (R5.3), are stored outside the vault, in the platform's standard location, and are never synchronised through the vault.
 
@@ -112,7 +112,7 @@ R7.1. The client is licensed under AGPL-3.0-or-later; each source file carries t
 
 R7.2. Every dependency's licence must be compatible with AGPL-3.0-or-later (permissive licences such as MIT, BSD, ISC, and Apache-2.0 qualify); the dependency list and licences are recorded and checked.
 
-R7.3. The client is specified and written independently; no code, assets, icons, themes, or documentation of any proprietary product are copied. The only third-party descriptions of the vault formats the project uses are the MIT-licensed references in `docs/references/`, kept with their notices. The About dialog, the README and `LICENSING.md` state that granite-vaulting reads the formats used by Obsidian, a product of Dynalist Inc., that it is independent and not affiliated with or endorsed by Obsidian, and that `.base` is implemented from those two references. (Provenance note: the first `.base` subset, in v0.1.1, was written from two example files and from prior knowledge of the format, not from any document read for the purpose.)
+R7.3. The client is specified and written independently; no code, assets, icons, themes, or documentation of any proprietary product are copied. The only third-party descriptions of the vault formats the project uses are the MIT-licensed references in `docs/references/`, kept with their notices. The About dialog, the README and `LICENSING.md` state that Scrinotia reads the formats used by Obsidian, a product of Dynalist Inc., that it is independent and not affiliated with or endorsed by Obsidian, and that `.base` is implemented from those two references. (Provenance note: the first `.base` subset, in v0.1.1, was written from two example files and from prior knowledge of the format, not from any document read for the purpose.)
 
 ## Deferred beyond v1
 
@@ -122,7 +122,7 @@ Graph view, canvas, plugins and themes, publish and sync, mobile, math and Merma
 
 Q1. Resolved: the client is not a copy, and the requirements define the behaviour themselves. Amended 2026-10-18: for `.base` only, the two MIT-licensed references in `docs/references/` are the source; Obsidian's help site, which carries no licence, is not consulted.
 
-Q2. Resolved: the client neither reads nor writes `.obsidian/` or any comparable folder (R1.2). Vault-level settings live in `.granite-vaulting/` inside the vault; machine-specific state and caches live outside it (R6.4, R6.5).
+Q2. Resolved: the client neither reads nor writes `.obsidian/` or any comparable folder (R1.2). Vault-level settings live in `.scrinotia/` inside the vault; machine-specific state and caches live outside it (R6.4, R6.5).
 
 Q3. Resolved: Electron, with CodeMirror 6 for the editor; Node tooling is accepted for this exploration. The reasoning that led to it follows.
 
