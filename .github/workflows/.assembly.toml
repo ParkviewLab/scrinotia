@@ -1,0 +1,3 @@
+# What this repository publishes (dev-tools assemble-workflows; see the handbook ci.md).
+targets = ["installers"]
+dev = true
