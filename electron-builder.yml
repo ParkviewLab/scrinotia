@@ -1,0 +1,54 @@
+# electron-builder — packages the electron-vite build (out/) into platform
+# installers: .dmg (macOS), NSIS .exe (Windows), .AppImage + .deb (Linux).
+# Run after `npm run build`. The macOS build signs + notarizes when the Apple secrets
+# are set, else unsigned (see the handbook's electron-tooling.md). Set appId /
+# productName / publish owner+repo for your app.
+appId: ai.parkviewlab.granite-vaulting
+productName: granite-vaulting
+artifactName: ${name}-${version}-${arch}.${ext}
+directories:
+  output: dist
+  buildResources: build
+files:
+  - '!src/**'
+  - '!docs/**'
+  - '!scripts/**'
+  - '!.github/**'
+  - '!LICENSES/**'
+  - '!{electron.vite.config.js,eslint.config.mjs,electron-builder.yml,REUSE.toml,LICENSING.md,CHANGELOG.md,README.md,AGENTS.md,CLAUDE.md,.gitignore}'
+mac:
+  category: public.app-category.productivity
+  target: dmg
+  hardenedRuntime: true
+  # When the Apple secrets are present, the installers job's macOS leg signs with a
+  # Developer ID Application cert (CSC_LINK / CSC_KEY_PASSWORD) and notarizes via an App
+  # Store Connect API key (APPLE_API_KEY / _ID / _ISSUER); absent them the build is
+  # unsigned. Notarization activates from those env vars; electron-builder applies its
+  # default Electron entitlements under the hardened runtime, so no custom entitlements
+  # plist is needed.
+win:
+  target: nsis
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: ${productName}
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+  maintainer: Gary Frattarola <garyf@parkviewlab.ai>
+npmRebuild: false
+# Ship the generated license/notice bundle (run `npm run legal` first; CI does
+# this before packaging). electron-builder deletes LICENSES.chromium.html from the
+# macOS .app, so legal/ carries its own copy → one path on all OSes. See
+# electron-tooling.md → "License notices + in-app viewer".
+extraResources:
+  - from: legal
+    to: legal
+    filter: ['**/*']
+publish:
+  provider: github
+  owner: garycoding
+  repo: granite-vaulting
