@@ -64,4 +64,4 @@ brand/
 
 ## Licence
 
-The artwork was made for this project and ships under the repository's licence (AGPL-3.0) unless the maintainer chooses otherwise.
+The artwork was made for this project and is not covered by the repository's AGPL licence: © 2026 Gary Frattarola, all rights reserved (`LicenseRef-AllRightsReserved`, recorded in the repository's `REUSE.toml` and `LICENSING.md`).
