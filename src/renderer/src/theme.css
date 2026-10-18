@@ -646,3 +646,48 @@ button:hover {
   background: var(--select);
   color: var(--accent);
 }
+
+/* ---- tabs ---- */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex: none;
+}
+.tabs[hidden] {
+  display: none;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--bg-side);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab.active {
+  background: var(--bg);
+  color: var(--fg);
+}
+.tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-close {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  color: var(--muted);
+  line-height: 1;
+}
+.tab-close:hover {
+  color: var(--fg);
+}

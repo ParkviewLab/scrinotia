@@ -121,6 +121,9 @@ async function enterVault(opener) {
     view.tree = opened.tree
     view.selected = null
     view.openNote = null
+    tabs.list = []
+    tabs.active = -1
+    renderTabs()
     view.expanded = new Set()
     notes.clear()
     current = null
@@ -172,7 +175,10 @@ function renderEntry(entry) {
   if (view.selected?.path === entry.path) row.classList.add('selected')
   row.draggable = true
   row.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-gv-path', entry.path))
-  row.addEventListener('click', () => select(entry))
+  row.addEventListener('click', (e) => select(entry, { newTab: e.metaKey || e.ctrlKey }))
+  row.addEventListener('auxclick', (e) => {
+    if (e.button === 1 && entry.type !== 'folder') select(entry, { newTab: true })
+  })
   li.append(row)
   if (entry.type === 'folder') {
     if (view.expanded.has(entry.path)) li.classList.add('open')
@@ -204,23 +210,115 @@ async function moveInto(from, folder) {
   await rename(from, join(folder, name))
 }
 
-function select(entry) {
+function select(entry, { newTab = false } = {}) {
   view.selected = { path: entry.path, type: entry.type }
   if (entry.type === 'folder') {
     if (view.expanded.has(entry.path)) view.expanded.delete(entry.path)
     else view.expanded.add(entry.path)
   } else {
-    view.openNote = entry.path
+    showInTab(entry.path, { newTab })
   }
   renderTree()
   renderPane()
 }
 
+// ---- tabs (R2.5): one tab per open file. A click opens a file in the
+// current tab; Cmd/Ctrl+click or a middle click opens it in a new one; a
+// file already open in a tab is brought forward instead of opened twice. ----
+const tabs = { list: [], active: -1 }
+
+function showInTab(path, { newTab = false } = {}) {
+  const at = tabs.list.indexOf(path)
+  if (at >= 0) tabs.active = at
+  else if (newTab || tabs.active < 0) {
+    tabs.list.splice(tabs.active + 1, 0, path)
+    tabs.active += 1
+  } else tabs.list[tabs.active] = path
+  view.openNote = path
+  renderTabs()
+}
+
+function activateTab(i) {
+  if (i < 0 || i >= tabs.list.length) return
+  tabs.active = i
+  view.openNote = tabs.list[i]
+  view.selected = { path: view.openNote, type: findEntry(view.tree, view.openNote)?.type ?? 'note' }
+  renderTabs()
+  renderTree()
+  renderPane()
+}
+
+function closeTab(i) {
+  if (i < 0 || i >= tabs.list.length) return
+  tabs.list.splice(i, 1)
+  if (tabs.active >= tabs.list.length || i < tabs.active) tabs.active -= 1
+  if (tabs.active < 0 && tabs.list.length) tabs.active = 0
+  view.openNote = tabs.list[tabs.active] ?? null
+  view.selected = view.openNote ? { path: view.openNote, type: findEntry(view.tree, view.openNote)?.type ?? 'note' } : null
+  renderTabs()
+  renderTree()
+  renderPane()
+}
+
+// After files move or vanish: remap or drop their tabs.
+function retab(map) {
+  const before = tabs.list[tabs.active]
+  tabs.list = tabs.list.map(map).filter(Boolean)
+  tabs.list = tabs.list.filter((p, i) => tabs.list.indexOf(p) === i)
+  const now = before ? map(before) : null
+  tabs.active = now ? tabs.list.indexOf(now) : Math.min(tabs.active, tabs.list.length - 1)
+  if (tabs.active < 0 && tabs.list.length) tabs.active = 0
+  view.openNote = tabs.list[tabs.active] ?? null
+  renderTabs()
+}
+
+function renderTabs() {
+  const nav = $('tabs')
+  nav.hidden = tabs.list.length === 0
+  nav.replaceChildren(
+    ...tabs.list.map((p, i) => {
+      const tab = document.createElement('div')
+      tab.className = `tab${i === tabs.active ? ' active' : ''}`
+      tab.setAttribute('role', 'tab')
+      tab.title = p
+      const label = document.createElement('span')
+      label.className = 'tab-label'
+      label.textContent = p.slice(p.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+      const x = document.createElement('button')
+      x.type = 'button'
+      x.className = 'tab-close'
+      x.textContent = '×'
+      x.title = 'Close tab'
+      x.addEventListener('click', (e) => {
+        e.stopPropagation()
+        closeTab(i)
+      })
+      tab.append(label, x)
+      tab.addEventListener('click', () => activateTab(i))
+      tab.addEventListener('auxclick', (e) => {
+        if (e.button === 1) closeTab(i)
+      })
+      return tab
+    }),
+  )
+}
+
+api.onCloseTab(() => {
+  if (tabs.list.length) closeTab(tabs.active)
+})
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'Tab' && tabs.list.length > 1) {
+    e.preventDefault()
+    const n = tabs.list.length
+    activateTab((tabs.active + (e.shiftKey ? n - 1 : 1)) % n)
+  }
+})
+
 async function refreshTree() {
   view.tree = await api.tree()
   if (view.renaming) return
   if (view.selected && !findEntry(view.tree, view.selected.path)) view.selected = null
-  if (view.openNote && !findEntry(view.tree, view.openNote)) view.openNote = null
+  if (tabs.list.some((p) => !findEntry(view.tree, p))) retab((p) => (findEntry(view.tree, p) ? p : null))
   renderTree()
 }
 
@@ -408,13 +506,18 @@ function setNoteMode(mode) {
   }
 }
 
-$('preview').addEventListener('click', (e) => {
+// Links follow on click; Cmd/Ctrl+click or a middle click opens a new tab.
+function previewLink(e, newTab) {
   const el = e.target.closest('[data-wikilink], [data-href]')
   if (!el) return
   e.preventDefault()
   const wikilink = el.getAttribute('data-wikilink')
-  if (wikilink !== null) follow({ kind: 'wikilink', ref: wikilink })
-  else follow({ kind: 'href', ref: el.getAttribute('data-href') })
+  if (wikilink !== null) follow({ kind: 'wikilink', ref: wikilink, newTab })
+  else follow({ kind: 'href', ref: el.getAttribute('data-href'), newTab })
+}
+$('preview').addEventListener('click', (e) => previewLink(e, e.metaKey || e.ctrlKey))
+$('preview').addEventListener('auxclick', (e) => {
+  if (e.button === 1) previewLink(e, true)
 })
 
 function files() {
@@ -855,9 +958,9 @@ function forgetNotes(match) {
 for (const mode of ['preview', 'split']) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
 
 // ---- following links ----
-async function openPath(path) {
+async function openPath(path, { newTab = false } = {}) {
   view.selected = { path, type: findEntry(view.tree, path)?.type ?? 'note' }
-  view.openNote = path
+  showInTab(path, { newTab })
   let folder = parentOf(path)
   while (folder) {
     view.expanded.add(folder)
@@ -867,7 +970,7 @@ async function openPath(path) {
   await renderPane()
 }
 
-async function follow({ kind, ref }) {
+async function follow({ kind, ref, newTab = false }) {
   if (kind === 'href') {
     if (/^[a-z][a-z0-9+.-]*:/i.test(ref)) {
       await run(() => api.openExternal(ref))
@@ -881,7 +984,7 @@ async function follow({ kind, ref }) {
     }
     const target = decoded.split('#')[0]
     const hit = target ? resolveRelative(target, current, files()) : null
-    if (hit) await openPath(hit)
+    if (hit) await openPath(hit, { newTab })
     else showError($('pane-error'), `No note at ${decoded}`)
     return
   }
@@ -889,7 +992,7 @@ async function follow({ kind, ref }) {
   if (!target) return
   const hit = resolveLink(target, current, files())
   if (hit) {
-    await openPath(hit)
+    await openPath(hit, { newTab })
     return
   }
   if (!window.confirm(`“${target}” does not exist. Create it?`)) return
@@ -897,7 +1000,7 @@ async function follow({ kind, ref }) {
   const rel = await run(() => api.createNote(parentOf(target), name))
   if (!rel) return
   await refreshTree()
-  await openPath(rel)
+  await openPath(rel, { newTab })
 }
 
 // ---- conflicts (R1.5) ----
@@ -959,7 +1062,7 @@ async function rename(from, to) {
   }
   const remap = (p) => (p === from ? to : p.startsWith(from + '/') ? to + p.slice(from.length) : p)
   if (view.selected) view.selected.path = remap(view.selected.path)
-  if (view.openNote) view.openNote = remap(view.openNote)
+  retab(remap)
   view.expanded = new Set([...view.expanded].map(remap))
   view.expanded.add(parentOf(to))
   rememberCurrent()
@@ -980,7 +1083,7 @@ $('new-note').addEventListener('click', async () => {
   if (!rel) return
   if (folder) view.expanded.add(folder)
   view.selected = { path: rel, type: 'note' }
-  view.openNote = rel
+  showInTab(rel, { newTab: true })
   await refreshTree()
   renderPane()
   startRename()
@@ -1008,7 +1111,7 @@ $('delete').addEventListener('click', async () => {
   })
   if (!done) return
   view.selected = null
-  if (view.openNote === sel.path || view.openNote?.startsWith(sel.path + '/')) view.openNote = null
+  retab((p) => (p === sel.path || p.startsWith(sel.path + '/') ? null : p))
   forgetNotes((p) => p === sel.path || p.startsWith(sel.path + '/'))
   await refreshTree()
   renderPane()
