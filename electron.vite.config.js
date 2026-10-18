@@ -12,7 +12,11 @@ export default defineConfig({
   },
   renderer: {
     resolve: {
-      alias: { '@': resolve('src/renderer/src') },
+      alias: {
+        '@': resolve('src/renderer/src'),
+        // elkjs (EPL-2.0) is replaced by a stub; see src/renderer/src/stubs/elk.js.
+        'elkjs/lib/elk.bundled.js': resolve('src/renderer/src/stubs/elk.js'),
+      },
     },
   },
 })

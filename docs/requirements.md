@@ -60,6 +60,8 @@ R3.6.1. Where the references are silent, the client chooses as follows. `file.na
 
 R3.7. An embedded note (`![[Note]]`, `![[Note#Heading]]` for the section under that heading, `![[Note#^id]]` for the paragraph or list item marked `^id`) shows in the preview as a read-only box headed by the note's name, which opens the note. A box taller than about 400 pixels scrolls inside itself and offers Show all and Show less. Only one level is shown: an embed inside an embedded note is a plain link, so a note that embeds itself, directly or through others, is never repeated. A box updates when its note changes on disk. A section or note that cannot be found is reported in the box. Block markers (`^id`) are not shown in the preview.
 
+R3.8. The preview renders math with KaTeX: `$$…$$` as a displayed block and `$…$` inline, where an inline `$` must not be followed by a space nor the closing `$` be preceded by one or followed by a digit, so that prices stay text; an invalid formula shows in red rather than failing the note. A fenced code block marked `mermaid` is drawn as a Mermaid diagram, in the theme's colours and with Mermaid's strict security level; an invalid diagram shows its error in its place. Mermaid's optional ELK layout is not included, because its library (elkjs) is EPL-2.0, outside the permissive licences the app ships; a diagram that asks for it reports so.
+
 ### R4. Links and backlinks
 
 R4.1. Wikilinks in all of these forms are recognised, followed, and autocompleted when typed after `[[`: `[[Note]]`, `[[Note|alias]]`, `[[Note#Heading]]`, `[[Note#^block-id]]`, and `[[folder/Note]]`. Ordinary Markdown links to notes (`[text](Note.md)`, with percent-encoding) are followed as well.

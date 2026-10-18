@@ -96,6 +96,9 @@ const HIGHLIGHTS = [
   { pkg: 'dompurify', label: 'DOMPurify', role: 'Sanitising rendered HTML' },
   { pkg: 'dayjs', label: 'Day.js', role: 'Dates in .base formulas' },
   { pkg: 'yaml', label: 'yaml', role: 'Frontmatter and .base files' },
+  { pkg: 'minisearch', label: 'MiniSearch', role: 'Ranked search (BM25+)' },
+  { pkg: 'katex', label: 'KaTeX', role: 'Math in notes' },
+  { pkg: 'mermaid', label: 'Mermaid', role: 'Diagrams in notes (without its ELK layout)' },
 ]
 
 const REFERENCES = [
