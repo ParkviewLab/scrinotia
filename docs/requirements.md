@@ -96,7 +96,7 @@ R6.1. Runs on macOS (current and previous major release) and Ubuntu (current LTS
 
 R6.2. A dark and a light theme are provided, and the user chooses between them. The default is the dark theme, whatever the system setting; the choice is a vault-level setting (R6.4).
 
-R6.3. All data stays on the machine. No network access, accounts, telemetry, or update checks in v1.
+R6.3. All data stays on the machine: no accounts and no telemetry. The client reaches the network in two cases only: images that a note links from the web, and the update check made when the About window opens, which asks GitHub once for the latest release's version, sends nothing beyond the request, and downloads nothing. (Amended 2026-10-18 for the update check.)
 
 R6.4. Settings that belong to a vault and change rarely (theme, link-resolution options, folders excluded from indexing, editor preferences) are stored in `.scrinotia/` at the root of the vault, so that a file-synchronisation tool carries them to every machine that has the vault. The folder is created only when the user first changes such a setting, never merely on opening a vault. Each concern has its own small JSON file, written atomically, and a synchronisation conflict copy of one file is ignored with a notice, not treated as an error.
 
@@ -105,6 +105,8 @@ R6.5. State specific to one machine (recent vaults, window size and position, op
 R6.6. Installable packages for both platforms are produced from a single build process.
 
 R6.7. The left panel (files, tags, search) and the right panel (outline and links) are drawers: each opens and closes with a button at its edge of the note pane's header, the View menu, or Cmd/Ctrl+\ (left) and Cmd/Ctrl+Shift+\ (right), and the note pane takes the room. When open, each is resized by dragging the splitter beside it (160 to 600 px, leaving the note pane at least 320 px; a double click restores 280 px). Open state and widths are remembered on the machine.
+
+R6.8. A Settings dialog, opened with Settings… in the application menu on macOS and in the File menu elsewhere (Cmd/Ctrl+,), changes the settings of the vault open in its window. It sets the colour of STL models (R2.6) with hue, saturation and lightness sliders, a swatch, a preview model lit as the viewer lights models, and Reset, which restores the default. Models already shown take the colour as the sliders move. The colour is one for both themes and a vault-level setting (R6.4), kept with the theme in `appearance.json`.
 
 ### R7. Licence
 

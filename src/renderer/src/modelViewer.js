@@ -6,12 +6,37 @@
 // loaded only when a model is first shown. The viewer releases its WebGL
 // context as soon as its element leaves the document, since the preview
 // replaces every embed on each redraw and Chromium allows few live contexts.
+//
+// The model's colour is one for both themes, set in the Settings dialog
+// (R6.8); every model on screen takes a new colour at once.
 
 const MODEL_LIMIT = 200 * 1024 * 1024
 
-const COLOURS = {
-  dark: { background: 0x17181a, mesh: 0x9aa9d8 },
-  light: { background: 0xf4f5f7, mesh: 0x5a6fa8 },
+const BACKGROUNDS = { dark: 0x17181a, light: 0xf4f5f7 }
+
+export const DEFAULT_MODEL_COLOUR = { h: 225, s: 40, l: 62 }
+
+// A colour as stored ({ h: 0–360, s: 0–100, l: 0–100 }), or the default when
+// the stored value is missing or malformed.
+export function normaliseColour(c) {
+  const ok = (v, max) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max
+  if (!c || !ok(c.h, 360) || !ok(c.s, 100) || !ok(c.l, 100)) return { ...DEFAULT_MODEL_COLOUR }
+  return { h: Math.round(c.h), s: Math.round(c.s), l: Math.round(c.l) }
+}
+
+export function colourCss(c) {
+  return `hsl(${c.h}, ${c.s}%, ${c.l}%)`
+}
+
+let modelColour = { ...DEFAULT_MODEL_COLOUR }
+const shown = new Set() // { material, draw } of each model on screen
+
+export function setModelColour(c) {
+  modelColour = normaliseColour(c)
+  for (const view of shown) {
+    view.material.color.setHSL(modelColour.h / 360, modelColour.s / 100, modelColour.l / 100, 'srgb')
+    view.draw()
+  }
 }
 
 let threeModules = null
@@ -57,6 +82,13 @@ function showError(container, message) {
   container.append(p)
 }
 
+// A torus knot in the model colour, for the Settings dialog's preview.
+export async function mountPreviewModel(container) {
+  const three = await loadThree()
+  if (!container.isConnected) return
+  show(container, three, new three.THREE.TorusKnotGeometry(1, 0.32, 160, 24))
+}
+
 // container: an element already in the document, sized by CSS.
 export async function mountModel(container, { path, api }) {
   let three, geometry
@@ -75,16 +107,21 @@ export async function mountModel(container, { path, api }) {
     geometry.dispose()
     return
   }
+  show(container, three, geometry)
+}
+
+function show(container, three, geometry) {
   const { THREE, OrbitControls } = three
-  const colours = COLOURS[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark']
+  const background = BACKGROUNDS[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark']
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(window.devicePixelRatio)
-  renderer.setClearColor(colours.background)
+  renderer.setClearColor(background)
   container.append(renderer.domElement)
 
   const scene = new THREE.Scene()
-  const material = new THREE.MeshStandardMaterial({ color: colours.mesh, metalness: 0.1, roughness: 0.6 })
+  const material = new THREE.MeshStandardMaterial({ metalness: 0.1, roughness: 0.6 })
+  material.color.setHSL(modelColour.h / 360, modelColour.s / 100, modelColour.l / 100, 'srgb')
   geometry.center()
   scene.add(new THREE.Mesh(geometry, material))
   scene.add(new THREE.AmbientLight(0xffffff, 0.6))
@@ -120,6 +157,8 @@ export async function mountModel(container, { path, api }) {
   const resizer = new ResizeObserver(resize)
   resizer.observe(container)
   controls.addEventListener('change', draw)
+  const view = { material, draw }
+  shown.add(view)
   resize()
 
   // The element is gone when the pane shows another file or the preview is
@@ -127,6 +166,7 @@ export async function mountModel(container, { path, api }) {
   // the viewer draws only when the view changes.
   const watcher = new MutationObserver(() => {
     if (container.isConnected) return
+    shown.delete(view)
     watcher.disconnect()
     resizer.disconnect()
     controls.dispose()

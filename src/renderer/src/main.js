@@ -10,6 +10,7 @@ import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
+import { setModelColour, mountPreviewModel, normaliseColour, colourCss, DEFAULT_MODEL_COLOUR } from './modelViewer.js'
 import 'katex/dist/katex.min.css'
 import DOMPurify from 'dompurify'
 import { splitLink } from '../../shared/markdown.js'
@@ -28,6 +29,17 @@ const view = {
 
 // ---- theme (R6.2): dark by default; kept per vault in .scrinotia/ (R6.4) ----
 const themeSelect = $('theme')
+// The vault's appearance.json as last read or written; each change writes the
+// whole object, so changing one setting keeps the others.
+let appearance = {}
+async function saveAppearance(changes) {
+  appearance = { ...appearance, ...changes }
+  try {
+    await api.setSettings('appearance', appearance)
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+}
 function applyTheme(theme) {
   const t = theme === 'light' ? 'light' : 'dark'
   const changed = document.documentElement.dataset.theme !== t
@@ -36,26 +48,83 @@ function applyTheme(theme) {
   // Diagrams are drawn in the theme's colours, so a change redraws them.
   if (changed && typeof current !== 'undefined' && current) renderPreview()
 }
-themeSelect.addEventListener('change', async () => {
+themeSelect.addEventListener('change', () => {
   applyTheme(themeSelect.value)
-  try {
-    await api.setSettings('appearance', { theme: themeSelect.value })
-  } catch (err) {
-    showError($('pane-error'), err)
-  }
+  saveAppearance({ theme: themeSelect.value })
 })
 
 async function loadVaultSettings() {
   try {
     const { values, conflicts } = await api.getSettings('appearance')
+    appearance = values
     applyTheme(values.theme)
+    setModelColour(values.modelColour)
     if (conflicts.length) {
       showError($('pane-error'), `Ignored a synchronisation conflict copy of the vault settings: ${conflicts.join(', ')}`)
     }
   } catch {
+    appearance = {}
     applyTheme('dark')
+    setModelColour(null)
   }
 }
+
+// ---- settings (R6.8): Cmd/Ctrl+, opens the dialog for this window's vault ----
+const SLIDERS = ['h', 's', 'l']
+let settingsColour = null
+function openSettings() {
+  if ($('workspace').hidden || !$('settings').hidden) return
+  settingsColour = normaliseColour(appearance.modelColour)
+  drawSettings()
+  $('settings').hidden = false
+  mountPreviewModel($('settings-preview'))
+  $('settings-h').focus()
+}
+function closeSettings() {
+  $('settings').hidden = true
+  // Removing the canvas releases the preview's WebGL context.
+  $('settings-preview').replaceChildren()
+}
+function drawSettings() {
+  for (const k of SLIDERS) {
+    $(`settings-${k}`).value = settingsColour[k]
+    $(`settings-${k}-value`).textContent = k === 'h' ? `${settingsColour.h}°` : `${settingsColour[k]}%`
+  }
+  $('settings-swatch').style.background = colourCss(settingsColour)
+}
+for (const k of SLIDERS) {
+  $(`settings-${k}`).addEventListener('input', (e) => {
+    settingsColour = { ...settingsColour, [k]: Number(e.target.value) }
+    drawSettings()
+    setModelColour(settingsColour)
+  })
+  // Saved when a drag ends, not on every step of it.
+  $(`settings-${k}`).addEventListener('change', () => saveAppearance({ modelColour: settingsColour }))
+}
+$('settings-reset').addEventListener('click', () => {
+  settingsColour = { ...DEFAULT_MODEL_COLOUR }
+  drawSettings()
+  setModelColour(settingsColour)
+  saveAppearance({ modelColour: settingsColour })
+})
+$('settings-done').addEventListener('click', closeSettings)
+$('settings').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    closeSettings()
+  }
+})
+$('settings').addEventListener('mousedown', (e) => {
+  if (e.target === $('settings')) closeSettings()
+})
+api.onSettings(openSettings)
+// The menu's accelerator normally opens it; this covers a focus the menu misses.
+window.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === ',') {
+    e.preventDefault()
+    openSettings()
+  }
+})
 
 // ---- helpers ----
 function parentOf(path) {
