@@ -17,6 +17,10 @@ Different kinds of content carry different licenses (encoded in [`REUSE.toml`](R
 | Third-party references (`docs/references/obsidian-api/`, `docs/references/obsidian-bases-skill/`) | `MIT`, their own copyright |
 | The Scrinotia icon and brand assets (`build/icon.*`, `brand/`) | All rights reserved (`LicenseRef-AllRightsReserved`), not covered by the AGPL |
 
+## The name and icon
+
+The name Scrinotia and the Scrinotia icon are used as trademarks of this project (unregistered). They identify the official project and its releases. The AGPL grants rights in the code, not in the name or the icon: a modified version may be distributed under the AGPL's terms, but under another name and with another icon, and must not suggest that it is the official Scrinotia. Stating that a build is based on Scrinotia is permitted. Unmodified releases may be redistributed with the name and icon.
+
 ## Third-party references
 
 [`docs/references/`](docs/references/README.md) holds two MIT-licensed works, copied unchanged with their notices, from which the `.base` support is implemented: the Obsidian API type definitions (© 2022 Dynalist Inc.) and the obsidian-bases skill (© 2026 Steph Ango). They remain under their MIT licences; `REUSE.toml` records them. Scrinotia is independent of Obsidian and not endorsed by it.

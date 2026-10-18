@@ -12,7 +12,7 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.6.0. The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.7.0, the first under the name Scrinotia (earlier versions were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
@@ -60,7 +60,7 @@ Scrinotia reads vaults and `.base` files in the formats used by Obsidian, a prod
 
 ## Contributing
 
-See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). The client is licensed under AGPL-3.0-or-later; see [`LICENSING.md`](LICENSING.md).
+See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). The client is licensed under AGPL-3.0-or-later; see [`LICENSING.md`](LICENSING.md). The name Scrinotia and its icon identify this project and are not covered by that licence: a modified version must use another name and icon.
 
 ---
 <sub>© 2026 Gary Frattarola · Licensed under [CC-BY-4.0](LICENSES/CC-BY-4.0.txt)</sub>
