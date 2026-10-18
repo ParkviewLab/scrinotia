@@ -480,6 +480,12 @@ function listMethod(list, name, args) {
       return args.some((a) => list.some((x) => valueEquals(x, a)))
     case 'flat':
       return list.flat(Infinity)
+    // mean() is not in the functions reference but is used by its own custom
+    // summary example (values.mean()); it averages the numbers in the list.
+    case 'mean': {
+      const ns = list.filter((v) => typeof v === 'number')
+      return ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : null
+    }
     case 'join':
       return list.map(displayText).join(args[0] === undefined ? ', ' : displayText(args[0]))
     case 'reverse':

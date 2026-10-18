@@ -379,17 +379,51 @@ async function showBase(path) {
     if (cell.path) openPath(cell.path)
     else if (cell.target) follow({ kind: 'wikilink', ref: cell.target })
   }
-  for (const r of v.rows) {
-    const tr = tbody.insertRow()
+  const assetUrl = (p) => assetBase + p.split('/').map(encodeURIComponent).join('/')
+  const addRow = (into, r) => {
+    const tr = into.insertRow()
     r.cells.forEach((cell, k) => {
       const td = tr.insertCell()
       // The file's own name opens the row's file.
       const own = ['file.name', 'file.basename', 'file.path'].includes(v.columns[k].id)
       const shown = own ? { ...cell, t: 'link', path: r.path } : cell
       td.className = `cell-${shown.t}`
-      td.append(renderCell(shown, { openTarget, assetUrl: (p) => assetBase + p.split('/').map(encodeURIComponent).join('/') }))
+      td.append(renderCell(shown, { openTarget, assetUrl }))
     })
   }
+  // A summary row: each summarised column shows its summary's name and value.
+  const addSummaries = (into, sums, cls) => {
+    if (!sums) return
+    const tr = into.insertRow()
+    tr.className = cls
+    sums.forEach((s) => {
+      const td = tr.insertCell()
+      if (!s) return
+      const label = document.createElement('span')
+      label.className = 'summary-name'
+      label.textContent = `${s.name} `
+      td.className = `cell-${s.cell.t}`
+      td.append(label, renderCell(s.cell, { openTarget, assetUrl }))
+    })
+  }
+  if (v.groups) {
+    for (const g of v.groups) {
+      const head = tbody.insertRow()
+      head.className = 'group-row'
+      const td = head.insertCell()
+      td.colSpan = v.columns.length
+      td.append(g.key.t === 'empty' ? document.createTextNode('(no value)') : renderCell(g.key, { openTarget, assetUrl }))
+      const count = document.createElement('span')
+      count.className = 'muted'
+      count.textContent = ` ${g.rows.length}`
+      td.append(count)
+      for (const r of g.rows) addRow(tbody, r)
+      addSummaries(tbody, g.summaries, 'summary-row group-summary')
+    }
+  } else {
+    for (const r of v.rows) addRow(tbody, r)
+  }
+  if (v.summaries) addSummaries(table.createTFoot(), v.summaries, 'summary-row')
   const notices = [...(out.notices ?? []), ...(v.notices ?? [])]
   for (const n of notices) {
     const p = document.createElement('p')
