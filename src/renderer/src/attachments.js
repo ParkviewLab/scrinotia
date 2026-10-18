@@ -3,9 +3,12 @@
 //
 // Attachments (R2.6): images, PDFs, audio and video are shown from the vault
 // through the gv-asset protocol; text-like files are shown as read-only
-// text; HTML is rendered in a sandboxed frame whose scripts run in an origin
-// of their own, cut off from the app and the rest of the vault; anything
-// else is described, with a button to open it in the system's application.
+// text; STL models are shown in a 3D viewer (modelViewer.js); HTML is
+// rendered in a sandboxed frame whose scripts run in an origin of their own,
+// cut off from the app and the rest of the vault; anything else is
+// described, with a button to open it in the system's application.
+
+import { mountModel } from './modelViewer.js'
 
 const KINDS = [
   ['image', /\.(png|jpe?g|gif|webp|svg|bmp|avif|ico)$/i],
@@ -13,6 +16,7 @@ const KINDS = [
   ['audio', /\.(mp3|m4a|aac|wav|ogg|oga|flac|opus|webm-audio)$/i],
   ['video', /\.(mp4|m4v|mov|webm|ogv|mkv)$/i],
   ['html', /\.html?$/i],
+  ['model', /\.stl$/i],
   ['text', /\.(txt|text|json|jsonc|csv|tsv|log|xml|ya?ml|toml|ini|cfg|conf|css|js|mjs|ts|py|rs|go|sh|bash|zsh|sql|tex|bib|rtf|srt|vtt)$/i],
 ]
 
@@ -41,6 +45,7 @@ export async function renderAttachment(host, { path, url, api, embedded = false 
   const name = path.slice(path.lastIndexOf('/') + 1)
   const kind = attachmentKind(path)
   const box = document.createElement('div')
+  let model = null
   box.className = `attachment attachment-${kind}${embedded ? ' attachment-embedded' : ''}`
   switch (kind) {
     case 'image': {
@@ -78,6 +83,14 @@ export async function renderAttachment(host, { path, url, api, embedded = false 
       box.append(frame)
       break
     }
+    case 'model': {
+      // Started once the box is in the document, so the canvas has a size.
+      model = document.createElement('div')
+      model.className = 'model-view'
+      model.title = `${name}: drag to rotate, scroll to zoom, right-drag to pan`
+      box.append(model)
+      break
+    }
     case 'text': {
       const info = await api.statFile(path).catch(() => null)
       if (info && info.size > TEXT_LIMIT) {
@@ -96,6 +109,7 @@ export async function renderAttachment(host, { path, url, api, embedded = false 
     }
   }
   host.append(box)
+  if (model) mountModel(model, { path, api })
 }
 
 function details(name, info, api, path, note = null) {

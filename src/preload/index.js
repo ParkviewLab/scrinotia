@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('granite', {
   writeNote: (rel, text) => ipcRenderer.invoke('note:write', rel, text),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),
   statFile: (rel) => ipcRenderer.invoke('file:stat', rel),
+  readBytes: (rel) => ipcRenderer.invoke('file:readBytes', rel),
   openAbout: () => ipcRenderer.invoke('app:about'),
   openLicenses: () => ipcRenderer.invoke('app:licenses'),
   openPath: (rel) => ipcRenderer.invoke('open:path', rel),

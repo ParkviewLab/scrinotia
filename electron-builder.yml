@@ -15,8 +15,11 @@ files:
   - '!scripts/**'
   - '!.github/**'
   - '!LICENSES/**'
-  # elkjs (EPL-2.0) comes with Mermaid but is replaced by a stub; it is not shipped.
-  - '!node_modules/elkjs/**'
+  # Every dependency is bundled into out/ by electron-vite, so no module is
+  # loaded from node_modules at run time and none is packaged. (This also
+  # keeps elkjs, EPL-2.0, which comes with Mermaid but is replaced by a stub,
+  # out of the package.)
+  - '!node_modules/**'
   - '!{electron.vite.config.js,eslint.config.mjs,electron-builder.yml,REUSE.toml,LICENSING.md,CHANGELOG.md,README.md,AGENTS.md,CLAUDE.md,.gitignore}'
 mac:
   category: public.app-category.productivity

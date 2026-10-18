@@ -166,6 +166,7 @@ function registerIpc() {
   on('app:about', () => openAboutWindow())
   on('app:licenses', () => openLicensesWindow())
   on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
+  on('file:readBytes', (e, rel) => vault.readBytes(rootOf(e), rel))
   on('open:path', async (e, rel) => {
     // shell.openPath returns an error message, or '' on success.
     return shell.openPath(vault.resolveInside(rootOf(e), rel))
