@@ -4,6 +4,21 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.12.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Connecting lines and a wider indent in the file tree (#70)
+- Brighter connecting lines in the file tree (#71)
+
+### Docs
+
+- Describe version 0.12.0 in the README (#72)
+
 ## [v0.11.0] - 2026-10-18
 
 ### Highlights
