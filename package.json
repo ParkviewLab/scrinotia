@@ -1,6 +1,6 @@
 {
   "name": "scrinotia",
-  "version": "0.13.0",
+  "version": "0.13.1-dev0",
   "description": "An independent, local-first Markdown notes client",
   "author": "Gary Frattarola <garyf@parkviewlab.ai>",
   "license": "AGPL-3.0-or-later",
