@@ -10,6 +10,8 @@ import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
+import 'katex/dist/katex.min.css'
+import DOMPurify from 'dompurify'
 import { splitLink } from '../../shared/markdown.js'
 import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.js'
 
@@ -28,8 +30,11 @@ const view = {
 const themeSelect = $('theme')
 function applyTheme(theme) {
   const t = theme === 'light' ? 'light' : 'dark'
+  const changed = document.documentElement.dataset.theme !== t
   document.documentElement.dataset.theme = t
   themeSelect.value = t
+  // Diagrams are drawn in the theme's colours, so a change redraws them.
+  if (changed && typeof current !== 'undefined' && current) renderPreview()
 }
 themeSelect.addEventListener('change', async () => {
   applyTheme(themeSelect.value)
@@ -480,6 +485,42 @@ async function fillEmbeds() {
   if (current !== note) return
   fillBaseEmbeds()
   fillAttachmentEmbeds()
+  fillMermaid($('preview'))
+}
+
+// Mermaid diagrams (R3.8): loaded only when a note has one; drawn with the
+// strict security level, in the theme's colours; an invalid diagram shows
+// its error in place of the drawing.
+let mermaidLib = null
+let mermaidSeq = 0
+async function fillMermaid(host) {
+  const blocks = [...host.querySelectorAll('pre.mermaid-src')]
+  if (!blocks.length) return
+  if (!mermaidLib) mermaidLib = (await import('mermaid')).default
+  for (const pre of blocks) {
+    const box = document.createElement('div')
+    box.className = 'mermaid-diagram'
+    // A diagram's own front-matter config (such as layout: elk) can persist
+    // in Mermaid's global configuration, so each diagram starts from ours.
+    mermaidLib.mermaidAPI?.reset?.()
+    mermaidLib.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      layout: 'dagre',
+      // Labels as SVG text, not HTML inside the SVG, so the sanitising pass keeps them.
+      htmlLabels: false,
+      flowchart: { htmlLabels: false },
+      theme: document.documentElement.dataset.theme === 'light' ? 'default' : 'dark',
+    })
+    try {
+      const { svg } = await mermaidLib.render(`gv-mermaid-${++mermaidSeq}`, pre.textContent)
+      box.innerHTML = DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true, html: true }, ADD_TAGS: ['foreignObject'] })
+    } catch (err) {
+      box.classList.add('missing')
+      box.textContent = `Mermaid: ${String(err.message ?? err).split('\n')[0]}`
+    }
+    if (pre.isConnected) pre.replaceWith(box)
+  }
 }
 
 // Embedded notes (R3.7): each placeholder becomes a box with the note's name

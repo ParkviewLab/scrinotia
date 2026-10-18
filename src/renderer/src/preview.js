@@ -7,6 +7,7 @@
 
 import { Marked } from 'marked'
 import DOMPurify from 'dompurify'
+import katex from 'katex'
 import { splitLink } from '../../shared/markdown.js'
 
 const escapeHtml = (s) =>
@@ -30,6 +31,31 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
   const marked = new Marked({ gfm: true, breaks: false })
   marked.use({
     extensions: [
+      // Math (R3.8): $$…$$ as a display block, $…$ inline, rendered by KaTeX.
+      // An inline $ must not be followed by a space, nor the closing $ be
+      // preceded by one or followed by a digit, so prices such as $5 stay text.
+      {
+        name: 'mathBlock',
+        level: 'block',
+        start: (src) => src.match(/^\$\$/m)?.index,
+        tokenizer(src) {
+          const m = /^\$\$([\s\S]+?)\$\$[ \t]*(?:\n|$)/.exec(src)
+          if (!m) return undefined
+          return { type: 'mathBlock', raw: m[0], tex: m[1].trim() }
+        },
+        renderer: (token) => `<div class="math-block">${katex.renderToString(token.tex, { displayMode: true, throwOnError: false, output: 'htmlAndMathml' })}</div>`,
+      },
+      {
+        name: 'mathInline',
+        level: 'inline',
+        start: (src) => src.indexOf('$'),
+        tokenizer(src) {
+          const m = /^\$(?![\s$])((?:\\.|[^$\\\n])+?)(?<!\s)\$(?!\d)/.exec(src)
+          if (!m) return undefined
+          return { type: 'mathInline', raw: m[0], tex: m[1] }
+        },
+        renderer: (token) => katex.renderToString(token.tex, { displayMode: false, throwOnError: false, output: 'htmlAndMathml' }),
+      },
       {
         name: 'wikilink',
         level: 'inline',
@@ -99,6 +125,12 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
       },
     ],
     renderer: {
+      // A mermaid code block is left as its source in a marked element; the
+      // app replaces it with the drawn diagram (R3.8).
+      code({ text, lang }) {
+        if ((lang ?? '').trim().toLowerCase() === 'mermaid') return `<pre class="mermaid-src">${escapeHtml(text)}</pre>`
+        return false
+      },
       link({ href, title, tokens }) {
         const text = this.parser.parseInline(tokens)
         const t = title ? ` title="${escapeHtml(title)}"` : ''
