@@ -4,6 +4,29 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Remember tabs per vault, and Open in new tab on right click (#35)
+- Math (KaTeX) and Mermaid diagrams in the preview (#36)
+- Search the displayed text of HTML attachments (#37)
+- STL model viewer for attachments (#38)
+- Side panels as drawers with resizable widths (#40)
+
+### Docs
+
+- Start in-flight ideas with a render-only canvas viewer (#34)
+- Describe version 0.5.0 in the README (#41)
+
+### Maintenance
+
+- Bundle every dependency and package no node_modules (#39)
+
 ## [v0.4.0] - 2026-10-18
 
 ### Highlights
