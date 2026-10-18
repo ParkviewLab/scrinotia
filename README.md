@@ -20,7 +20,7 @@ Not yet present: tabs, a quick switcher, an outline and a tags pane, embedded no
 Download the installer for your system from the repository's [Releases page](https://github.com/garycoding/granite-vaulting/releases).
 
 - **macOS (Apple silicon):** open the `.dmg` and drag granite-vaulting to Applications. The build is not signed, so macOS refuses the first launch; open it once with Control-click, Open, or run `xattr -dr com.apple.quarantine /Applications/granite-vaulting.app`.
-- **Ubuntu:** install the `.deb` with `sudo apt install ./granite-vaulting_<version>_amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
+- **Ubuntu:** install the `.deb` with `sudo apt install ./granite-vaulting-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
 - **Windows:** an unsigned `.exe` installer is built as well; SmartScreen warns on first launch.
 
 ## Use
