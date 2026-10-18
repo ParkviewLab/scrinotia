@@ -8,7 +8,7 @@ An independent, local-first Markdown notes client for macOS and Ubuntu. It opens
 
 Scrinotia joins two Latin words: *scrinium*, the case in which Romans kept scrolls and documents (the root of English "shrine"), and *notitia*, knowledge and also a record of it. The repeated syllable of *scri-no-ti-tia* is dropped, as Latin itself does in *nutrix* from *nutri-trix*, giving "the scroll-case of knowledge": a vault that holds writing worth keeping.
 
-It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in classical Latin, not "sha". [`brand/scrinotia-icon-kit/NAME.md`](brand/scrinotia-icon-kit/NAME.md) gives the full account and how the name was chosen; the project was first called granite-vaulting.
+It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in classical Latin, not "sha". [`brand/scrinotia-icon-kit/NAME.md`](brand/scrinotia-icon-kit/NAME.md) gives the full account; the project was first called granite-vaulting.
 
 ## Status
 

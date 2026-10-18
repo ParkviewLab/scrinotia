@@ -29,27 +29,11 @@ The full join would be *scri-no-ti-tia*. Two neighbouring, near-identical syllab
 
 The ending **-ia** is the standard Latin suffix for abstract and collective nouns (*memoria*, *scientia*, *notitia*) and for places (*Italia*, *Gallia*). So the name also reads as a realm: the place where the knowledge is kept.
 
-*Scrinotia* is a modern coinage, not a classical word. It's built from real Latin parts by a documented process, in the same spirit as the sibling projects **PensaGrex** and **PensaForma**.
+*Scrinotia* is a modern coinage, not a classical word. It's built from real Latin parts by a documented process.
 
 ## Why "tee-a" and not "shee-a"
 
-In classical Latin *t* is always hard, so *notitia* was "no-TI-ti-a". The "sh" sound (as in *nation*) arose much later, through medieval Latin and English. Saying **tee** keeps the name consistent with classical Latin, matches its spelling, and keeps it from drifting toward "notion" (and the app *Notion*).
-
-## How the name was chosen
-
-The working title was *granite-vaulting*. The rest of the shortlist and why each was set aside:
-
-| Candidate | Why not |
-|---|---|
-| NotaScrinium | Too close to the existing note app at scrinium-note.com |
-| Notatheca | A Latin–Greek hybrid (*theca* is Greek) |
-| Arcanota | Sounds almost the same as Arcanotes (arcanotes.com), another notes product |
-| Scrinota | Used by a 2022 CS50 Chrome extension for timers and note-taking |
-| Capsota | An everyday Catalan word for "big, clumsy box" |
-| Scrinotio | A near-rhyme with *Pinocchio*, a poor association for an AI knowledge tool |
-| Notioscrin / Notiascrin | Opens like *Notion*; the "-scrin" ending reads as "screen" |
-
-Scrinotia came out clean: no exact matches on the open web at the time of naming (October 2026). Re-check GitHub, the app stores and the USPTO trademark database (TESS) before any public launch or filing.
+In classical Latin *t* is always hard, so *notitia* was "no-TI-ti-a". The "sh" sound (as in *nation*) arose much later, through medieval Latin and English. Saying **tee** keeps the name consistent with classical Latin and with its spelling.
 
 ## The icon
 
