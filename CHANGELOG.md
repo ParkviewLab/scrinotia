@@ -4,6 +4,25 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.17.0] - 2026-10-19
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Order the file tree by each folder's described order (#92)
+- Back and forward through each tab's history (#93)
+
+### Bug fixes
+
+- Legible syntax colours in the dark theme's editor (#94)
+
+### Docs
+
+- Describe version 0.17.0 in the README (#95)
+
 ## [v0.16.0] - 2026-10-18
 
 ### Highlights
