@@ -99,7 +99,7 @@ export async function mountPreviewModel(container) {
 }
 
 // container: an element already in the document, sized by CSS.
-export async function mountModel(container, { path, api }) {
+export async function mountModel(container, { path, api, onMenu }) {
   let three, geometry
   try {
     const info = await api.statFile(path).catch(() => null)
@@ -116,10 +116,10 @@ export async function mountModel(container, { path, api }) {
     geometry.dispose()
     return
   }
-  show(container, three, geometry)
+  show(container, three, geometry, onMenu ? (controls) => onMenu(path, controls) : null)
 }
 
-function show(container, three, geometry) {
+function show(container, three, geometry, onMenu = null) {
   const { THREE, OrbitControls } = three
   const background = BACKGROUNDS[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark']
 
@@ -129,6 +129,9 @@ function show(container, three, geometry) {
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   renderer.setClearColor(background)
+  // The canvas fills its container wherever it is shown (the pane, a note,
+  // full screen); its pixel size follows in resize().
+  Object.assign(renderer.domElement.style, { display: 'block', width: '100%', height: '100%' })
   container.append(renderer.domElement)
 
   const scene = new THREE.Scene()
@@ -141,14 +144,14 @@ function show(container, three, geometry) {
   scene.add(mesh)
   scene.add(new THREE.AmbientLight(0xffffff, AMBIENT))
 
-  // STL files are usually drawn with Z up; the camera looks from the front
-  // right and above, at a distance that fits the bounding sphere in view.
+  // STL files are usually drawn with Z up; the camera starts from the front
+  // right and above, and is placed by fit() below.
   geometry.computeBoundingSphere()
   const radius = geometry.boundingSphere.radius || 1
+  const positions = geometry.getAttribute('position').array
   const camera = new THREE.PerspectiveCamera(40, 1, radius / 100, radius * 100)
   camera.up.set(0, 0, 1)
-  const distance = (radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.15
-  camera.position.set(1, -1.4, 0.9).normalize().multiplyScalar(distance)
+  camera.position.set(1, -1.4, 0.9)
   // The directional light rides with the camera, so the side in view is lit,
   // but from above and to the right of the line of sight (KEY_LIGHT), the
   // same angle for every model and zoom, so that relief facing the viewer
@@ -168,6 +171,54 @@ function show(container, three, geometry) {
   const controls = new OrbitControls(camera, renderer.domElement)
   controls.target.set(0, 0, 0)
   controls.update()
+
+  // Fit (on opening, and Zoom to fit): from the angle the camera looks
+  // from, the model is centred in the view and brought just inside both its
+  // width and its height, with a small margin.
+  let touched = false
+  const fit = () => {
+    const back = camera.position.clone().sub(controls.target)
+    if (back.lengthSq() === 0) back.set(1, -1.4, 0.9)
+    back.normalize()
+    const forward = back.clone().negate()
+    const right = new THREE.Vector3().crossVectors(forward, camera.up)
+    if (right.lengthSq() < 1e-9) right.set(1, 0, 0)
+    right.normalize()
+    const up = new THREE.Vector3().crossVectors(right, forward).normalize()
+    // The model's own vertices, not its bounding box, whose corners stand
+    // well clear of the model's outline from most angles.
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i] * right.x + positions[i + 1] * right.y + positions[i + 2] * right.z
+      const y = positions[i] * up.x + positions[i + 1] * up.y + positions[i + 2] * up.z
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+      if (y < y0) y0 = y
+      if (y > y1) y1 = y
+    }
+    const cx = (x0 + x1) / 2
+    const cy = (y0 + y1) / 2
+    const tanV = Math.tan((camera.fov * Math.PI) / 360)
+    const tanH = tanV * camera.aspect
+    let d = 0
+    for (let i = 0; i < positions.length; i += 3) {
+      const px = positions[i], py = positions[i + 1], pz = positions[i + 2]
+      const z = px * back.x + py * back.y + pz * back.z
+      const x = px * right.x + py * right.y + pz * right.z - cx
+      const y = px * up.x + py * up.y + pz * up.z - cy
+      d = Math.max(d, z + Math.abs(x) / tanH, z + Math.abs(y) / tanV)
+    }
+    d *= 1.05
+    const centre = right.multiplyScalar(cx).add(up.multiplyScalar(cy))
+    controls.target.copy(centre)
+    camera.position.copy(centre).add(back.multiplyScalar(d))
+    controls.update()
+    touched = false
+    draw()
+  }
+  controls.addEventListener('start', () => {
+    touched = true
+  })
 
   // In the camera's frame the target is d ahead (0, 0, -d); the light sits on
   // the sphere of radius d round it, KEY_LIGHT.angle from the camera.
@@ -192,11 +243,28 @@ function show(container, three, geometry) {
     renderer.setSize(w, h, false)
     camera.aspect = w / h
     camera.updateProjectionMatrix()
-    draw()
+    // Until the reader moves the model, a change of size (a panel resized,
+    // full screen arriving) fits it again.
+    if (!touched) fit()
+    else draw()
   }
   const resizer = new ResizeObserver(resize)
   resizer.observe(container)
   controls.addEventListener('change', draw)
+  // The right-click menu: a right press and release without a drag (a
+  // right-drag pans). OrbitControls already suppresses the browser's own.
+  if (onMenu) {
+    let down = null
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (e.button === 2) down = [e.clientX, e.clientY]
+    })
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      if (e.button !== 2 || !down) return
+      const moved = Math.hypot(e.clientX - down[0], e.clientY - down[1])
+      down = null
+      if (moved < 4) onMenu({ fit })
+    })
+  }
   const view = { material, draw }
   shown.add(view)
   resize()
