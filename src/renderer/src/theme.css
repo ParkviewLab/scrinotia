@@ -22,6 +22,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --fg: #dcddde;
   --muted: #8b8e94;
   --tree-line: #7c818a;
+  /* Editor syntax colours (editor.js), legible on the dark ground. */
+  --syn-meta: #9aa0a8;
+  --syn-link: #8ab4f8;
+  --syn-url: #8ab4f8;
+  --syn-keyword: #c792ea;
+  --syn-literal: #a5d6a7;
+  --syn-string: #f4a3a3;
+  --syn-special: #ffb86c;
+  --syn-definition: #82aaff;
+  --syn-local: #b39ddb;
+  --syn-type: #80cbc4;
+  --syn-class: #80deea;
+  --syn-macro: #81d4fa;
+  --syn-property: #90caf9;
+  --syn-comment: #d7a86e;
+  --syn-invalid: #f28b82;
   --accent: #7f9cf5;
   --select: #2c2f36;
   --border: #2a2c30;
@@ -35,6 +51,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --fg: #1f2328;
   --muted: #656d76;
   --tree-line: #959ba4;
+  /* Editor syntax colours (editor.js): CodeMirror's defaults. */
+  --syn-meta: #404740;
+  --syn-link: inherit;
+  --syn-url: #221199;
+  --syn-keyword: #770088;
+  --syn-literal: #116644;
+  --syn-string: #aa1111;
+  --syn-special: #ee4400;
+  --syn-definition: #0000ff;
+  --syn-local: #3300aa;
+  --syn-type: #008855;
+  --syn-class: #116677;
+  --syn-macro: #225566;
+  --syn-property: #0000cc;
+  --syn-comment: #994400;
+  --syn-invalid: #ff0000;
   --accent: #3b5bdb;
   --select: #e3e7ee;
   --border: #d8dce2;
