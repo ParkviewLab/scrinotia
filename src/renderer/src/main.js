@@ -758,9 +758,13 @@ async function fullScreenMenu(_e, controls) {
 }
 // The right-click menu of an STL model, in the pane or a note (a right-click
 // without a drag; a right-drag pans the model).
-async function modelMenu(path) {
-  const choice = await api.menu([{ id: 'full', label: 'Full screen' }])
-  if (choice === 'full') enterFullScreen((host) => mountModel(host, { path, api, onMenu: () => fullScreenMenu(null, null) }))
+async function modelMenu(path, controls) {
+  const choice = await api.menu([
+    { id: 'fit', label: 'Zoom to fit' },
+    { id: 'full', label: 'Full screen' },
+  ])
+  if (choice === 'fit') controls.fit()
+  if (choice === 'full') enterFullScreen((host) => mountModel(host, { path, api, onMenu: (_p, c) => fullScreenMenu(null, c) }))
 }
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$('diagram-full').hidden) {
@@ -769,6 +773,23 @@ window.addEventListener('keydown', (e) => {
   }
 })
 api.onLeftFullScreen(() => exitDiagramFullScreen({ windowLeft: true }))
+api.onEscape(() => exitDiagramFullScreen())
+
+// An HTML attachment's right-click (R3.8.1), passed on by the main process
+// with the frame's address: Full screen shows a fresh copy of the page, in the
+// same sandbox; inside full screen the menu offers Exit full screen.
+api.onFrameMenu(async (url) => {
+  if (!$('diagram-full').hidden) return fullScreenMenu(null, null)
+  const choice = await api.menu([{ id: 'full', label: 'Full screen' }])
+  if (choice !== 'full') return
+  enterFullScreen((host) => {
+    const frame = document.createElement('iframe')
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-modals')
+    frame.src = url
+    frame.className = 'full-page'
+    host.append(frame)
+  })
+})
 
 // Embedded notes (R3.7): each placeholder becomes a box with the note's name
 // (a link to it) and its content, or the section or block named. Only one

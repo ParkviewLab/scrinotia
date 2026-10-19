@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('scrinotia', {
   // Sets the window's full-screen state; resolves with whether it was full screen before.
   setFullScreen: (on) => ipcRenderer.invoke('window:fullscreen', on),
   onLeftFullScreen: (fn) => ipcRenderer.on('window:left-full-screen', () => fn()),
+  onFrameMenu: (fn) => ipcRenderer.on('ui:frame-menu', (_e, url) => fn(url)),
+  onEscape: (fn) => ipcRenderer.on('ui:escape', () => fn()),
   backlinks: (rel) => ipcRenderer.invoke('links:backlinks', rel),
   unlinkedMentions: (rel) => ipcRenderer.invoke('links:unlinked', rel),
   outgoing: (rel) => ipcRenderer.invoke('links:outgoing', rel),

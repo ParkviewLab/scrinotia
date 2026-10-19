@@ -116,7 +116,7 @@ export async function mountModel(container, { path, api, onMenu }) {
     geometry.dispose()
     return
   }
-  show(container, three, geometry, onMenu ? () => onMenu(path) : null)
+  show(container, three, geometry, onMenu ? (controls) => onMenu(path, controls) : null)
 }
 
 function show(container, three, geometry, onMenu = null) {
@@ -169,6 +169,17 @@ function show(container, three, geometry, onMenu = null) {
   controls.target.set(0, 0, 0)
   controls.update()
 
+  // Zoom to fit: the whole model in view again, centred, from the angle the
+  // reader is looking from.
+  const fit = () => {
+    const from = camera.position.clone().sub(controls.target)
+    if (from.lengthSq() === 0) from.set(1, -1.4, 0.9)
+    controls.target.set(0, 0, 0)
+    camera.position.copy(from.normalize().multiplyScalar(distance))
+    controls.update()
+    draw()
+  }
+
   // In the camera's frame the target is d ahead (0, 0, -d); the light sits on
   // the sphere of radius d round it, KEY_LIGHT.angle from the camera.
   const placeLight = () => {
@@ -208,7 +219,7 @@ function show(container, three, geometry, onMenu = null) {
       if (e.button !== 2 || !down) return
       const moved = Math.hypot(e.clientX - down[0], e.clientY - down[1])
       down = null
-      if (moved < 4) onMenu()
+      if (moved < 4) onMenu({ fit })
     })
   }
   const view = { material, draw }
