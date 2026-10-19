@@ -63,13 +63,22 @@ export function createState(dir, legacyDir) {
       state.layout = layout
       await save(state)
     },
+    // Each tab's history (R2.5.1) is kept alongside it: { back, fwd }, lists
+    // of { path, scroll }.
     async tabsFor(root) {
       const t = (await load()).tabs[root]
-      return t && Array.isArray(t.list) ? { list: t.list.filter((p) => typeof p === 'string'), active: Number.isInteger(t.active) ? t.active : 0 } : { list: [], active: -1 }
+      if (!t || !Array.isArray(t.list)) return { list: [], active: -1, hist: [] }
+      const steps = (a) => (Array.isArray(a) ? a.filter((st) => st && typeof st.path === 'string').map((st) => ({ path: st.path, scroll: Number.isFinite(st.scroll) ? st.scroll : 0 })) : [])
+      const pairs = t.list.map((p, i) => [p, t.hist?.[i]]).filter(([p]) => typeof p === 'string')
+      return {
+        list: pairs.map(([p]) => p),
+        active: Number.isInteger(t.active) ? t.active : 0,
+        hist: pairs.map(([, h]) => ({ back: steps(h?.back), fwd: steps(h?.fwd) })),
+      }
     },
     async setTabsFor(root, tabs) {
       const state = await load()
-      state.tabs[root] = { list: tabs.list, active: tabs.active }
+      state.tabs[root] = { list: tabs.list, active: tabs.active, ...(Array.isArray(tabs.hist) ? { hist: tabs.hist } : {}) }
       await save(state)
     },
     async removeRecentVault(root) {

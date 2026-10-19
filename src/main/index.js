@@ -261,6 +261,8 @@ function createWindow() {
     setTimeout(() => finishClose(ctx), 3000)
   })
   win.on('leave-full-screen', () => win.webContents.send('window:left-full-screen'))
+  // A trackpad swipe between pages (macOS) goes back or forward (R2.5.1).
+  win.on('swipe', (_e, direction) => win.webContents.send('ui:swipe', direction))
   // An HTML attachment runs in a sandboxed frame whose events never reach the
   // app's page, so its right-click and Escape are passed on from here.
   win.webContents.on('context-menu', (_e, params) => {
