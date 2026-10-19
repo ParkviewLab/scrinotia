@@ -4,6 +4,20 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.16.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Pan, zoom and full screen for diagrams, STL models and HTML files (#89)
+
+### Docs
+
+- Describe version 0.16.0 in the README (#90)
+
 ## [v0.15.0] - 2026-10-18
 
 ### Highlights
