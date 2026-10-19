@@ -2,7 +2,7 @@
 
 <img src="build/icon.png" alt="The Scrinotia icon" width="128" align="right">
 
-An independent, local-first Markdown notes client for macOS and Ubuntu. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
+A local-first, utilitarian Markdown notes client for macOS and Ubuntu. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
 
 ## The name
 
