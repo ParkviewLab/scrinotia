@@ -329,12 +329,15 @@ function renderEntry(entry) {
     e.preventDefault()
     const isFolder = entry.type === 'folder'
     const choice = await api.menu([
-      ...(isFolder ? [] : [{ id: 'open', label: 'Open' }, { id: 'tab', label: 'Open in new tab' }, { type: 'separator' }]),
+      ...(isFolder ? [] : [{ id: 'open', label: 'Open' }, { id: 'tab', label: 'Open in new tab' }]),
+      { id: 'reveal', label: REVEAL_LABEL },
+      { type: 'separator' },
       { id: 'rename', label: 'Rename' },
       { id: 'trash', label: 'Move to trash' },
     ])
     if (choice === 'open') select(entry)
     if (choice === 'tab') select(entry, { newTab: true })
+    if (choice === 'reveal') api.showPath(entry.path).catch((err) => showError($('pane-error'), err))
     if (choice === 'rename' || choice === 'trash') {
       view.selected = { path: entry.path, type: entry.type }
       renderTree()
@@ -796,6 +799,9 @@ $('preview').addEventListener('contextmenu', async (e) => {
   ])
   if (choice) previewLink({ target: el, preventDefault() {} }, choice === 'tab')
 })
+
+// Each system's own name for showing a file in its file manager.
+const REVEAL_LABEL = { darwin: 'Reveal in Finder', win32: 'Show in File Explorer' }[api.platform] ?? 'Open containing folder'
 
 function files() {
   return flattenFiles(view.tree)
