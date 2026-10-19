@@ -162,6 +162,12 @@ function registerIpc() {
   on('vault:open', (e, dir) => openVault(ctxOf(e), dir))
   on('vault:tree', (e) => vault.scanVault(rootOf(e)))
   on('window:new', () => void createWindow())
+  on('window:fullscreen', (e, on) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const was = win.isFullScreen()
+    if (Boolean(on) !== was) win.setFullScreen(Boolean(on))
+    return was
+  })
   on('note:read', (e, rel) => vault.readNote(rootOf(e), rel))
   on('app:about', () => openAboutWindow())
   on('app:licenses', () => openLicensesWindow())
@@ -247,6 +253,17 @@ function createWindow() {
     e.preventDefault()
     win.webContents.send('app:flush')
     setTimeout(() => finishClose(ctx), 3000)
+  })
+  win.on('leave-full-screen', () => win.webContents.send('window:left-full-screen'))
+  // An HTML attachment runs in a sandboxed frame whose events never reach the
+  // app's page, so its right-click and Escape are passed on from here.
+  win.webContents.on('context-menu', (_e, params) => {
+    if (params.frameURL?.startsWith('scrinotia-asset:') && /\.html?$/i.test(new URL(params.frameURL).pathname)) {
+      win.webContents.send('ui:frame-menu', params.frameURL)
+    }
+  })
+  win.webContents.on('before-input-event', (_e, input) => {
+    if (input.type !== 'keyUp' && input.key === 'Escape') win.webContents.send('ui:escape')
   })
   win.on('closed', () => {
     ctx.watcher?.close()

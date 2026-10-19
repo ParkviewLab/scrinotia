@@ -40,7 +40,7 @@ function formatSize(bytes) {
 
 // path: vault-relative; url: its scrinotia-asset URL; api: the preload API;
 // embedded: a smaller form inside a note.
-export async function renderAttachment(host, { path, url, api, embedded = false }) {
+export async function renderAttachment(host, { path, url, api, embedded = false, onModelMenu }) {
   host.replaceChildren()
   const name = path.slice(path.lastIndexOf('/') + 1)
   const kind = attachmentKind(path)
@@ -109,7 +109,7 @@ export async function renderAttachment(host, { path, url, api, embedded = false 
     }
   }
   host.append(box)
-  if (model) mountModel(model, { path, api })
+  if (model) mountModel(model, { path, api, onMenu: onModelMenu })
 }
 
 function details(name, info, api, path, note = null) {
