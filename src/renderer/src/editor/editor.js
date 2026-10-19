@@ -9,8 +9,33 @@ import { EditorView, keymap, drawSelection, highlightActiveLine } from '@codemir
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { yaml } from '@codemirror/lang-yaml'
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
+import { tags as t } from '@lezer/highlight'
 import { VaultMarkdown, detectLineSeparator } from '../../../shared/markdown.js'
+
+// The editor's syntax colours: CodeMirror's default style, read from colour
+// tokens in theme.css so that the dark theme has its own legible values.
+const highlightStyle = HighlightStyle.define([
+  { tag: t.meta, color: 'var(--syn-meta)' },
+  { tag: t.link, textDecoration: 'underline', color: 'var(--syn-link)' },
+  { tag: t.heading, textDecoration: 'underline', fontWeight: 'bold' },
+  { tag: t.emphasis, fontStyle: 'italic' },
+  { tag: t.strong, fontWeight: 'bold' },
+  { tag: t.strikethrough, textDecoration: 'line-through' },
+  { tag: t.keyword, color: 'var(--syn-keyword)' },
+  { tag: [t.atom, t.bool, t.url, t.contentSeparator, t.labelName], color: 'var(--syn-url)' },
+  { tag: [t.literal, t.inserted], color: 'var(--syn-literal)' },
+  { tag: [t.string, t.deleted], color: 'var(--syn-string)' },
+  { tag: [t.regexp, t.escape, t.special(t.string)], color: 'var(--syn-special)' },
+  { tag: t.definition(t.variableName), color: 'var(--syn-definition)' },
+  { tag: t.local(t.variableName), color: 'var(--syn-local)' },
+  { tag: [t.typeName, t.namespace], color: 'var(--syn-type)' },
+  { tag: t.className, color: 'var(--syn-class)' },
+  { tag: [t.special(t.variableName), t.macroName], color: 'var(--syn-macro)' },
+  { tag: t.definition(t.propertyName), color: 'var(--syn-property)' },
+  { tag: t.comment, color: 'var(--syn-comment)' },
+  { tag: t.invalid, color: 'var(--syn-invalid)' },
+])
 
 // Marks a transaction that loads disk content rather than a user edit.
 export const External = Annotation.define()
@@ -22,7 +47,7 @@ export function createEditor(parent, { onUserChange, onScroll }) {
     highlightActiveLine(),
     EditorView.lineWrapping,
     language === 'yaml' ? yaml() : markdown({ base: markdownLanguage, extensions: [VaultMarkdown] }),
-    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    syntaxHighlighting(highlightStyle),
     keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
     EditorView.updateListener.of((u) => {
       if (u.docChanged && !u.transactions.some((t) => t.annotation(External))) onUserChange(u.state)
