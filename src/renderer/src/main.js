@@ -85,6 +85,12 @@ function openSettings() {
   if ($('workspace').hidden || !$('settings').hidden) return
   settingsColour = normaliseColour(appearance.modelColour)
   drawSettings()
+  api
+    .getSettings('tree')
+    .then(({ values }) => {
+      $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
+    })
+    .catch(() => {})
   drawFontChoices()
   $('settings').hidden = false
   mountPreviewModel($('settings-preview'))
@@ -192,6 +198,17 @@ for (const role of FONT_ROLES) {
     saveAppearance({ fonts })
   })
 }
+
+// The file tree's order (R2.2.1), a vault setting of its own; the main
+// process sorts the tree by it.
+$('settings-tree-order').addEventListener('change', async (e) => {
+  try {
+    await api.setSettings('tree', { order: e.target.value })
+    await refreshTree()
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+})
 
 api.onSettings(openSettings)
 // The menu's accelerator normally opens it; this covers a focus the menu misses.

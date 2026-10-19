@@ -38,9 +38,55 @@ function compareEntries(a, b) {
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
 }
 
+// The link targets a folder description note lists (R2.2.1), in order: the
+// first wikilink of each numbered or bulleted item under a "## Chapters" or
+// "## Notes" heading, up to the next heading.
+export function describedList(text) {
+  const out = []
+  let inList = false
+  for (const line of text.split(/\r?\n/)) {
+    const heading = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line)
+    if (heading) {
+      inList = heading[1] === '##' && /^(chapters|notes)$/i.test(heading[2])
+      continue
+    }
+    if (!inList) continue
+    const item = /^\s*(?:\d+[.)]|[-*+])\s+(.*)$/.exec(line)
+    const link = item && /\[\[([^\]|#^]+)/.exec(item[1])
+    if (link) out.push(link[1].trim())
+  }
+  return out
+}
+
+// A folder's entries in described order: its description note, the listed
+// entries, then the rest by compareEntries. A target names a note in the
+// folder (with or without .md, by its last path segment), or a subfolder by
+// that subfolder's "00 - " note.
+export function arrangeDescribed(entries, note, targets) {
+  const byNote = new Map()
+  const byFolder = new Map()
+  for (const e of entries) {
+    if (e.type === 'folder') byFolder.set(e.name.toLowerCase(), e)
+    else if (e.type === 'note') byNote.set(e.name.replace(/\.md$/i, '').toLowerCase(), e)
+  }
+  const placed = new Set([note])
+  const listed = []
+  for (const target of targets) {
+    const name = target.split('/').pop().replace(/\.md$/i, '').toLowerCase()
+    let e = byNote.get(name)
+    if (!e && name.startsWith('00 - ')) e = byFolder.get(name.slice(5))
+    if (e && !placed.has(e)) {
+      placed.add(e)
+      listed.push(e)
+    }
+  }
+  return [note, ...listed, ...entries.filter((e) => !placed.has(e)).sort(compareEntries)]
+}
+
 // The tree as nested { name, path, type, children? }; type is folder, note
-// (a .md file), or attachment (anything else).
-export async function scanVault(root) {
+// (a .md file), or attachment (anything else). order is 'described' (R2.2.1)
+// or 'alphabetical'.
+export async function scanVault(root, { order = 'alphabetical' } = {}) {
   async function walk(dir) {
     const entries = await readdir(dir, { withFileTypes: true })
     const out = []
@@ -53,6 +99,18 @@ export async function scanVault(root) {
         const ext = extname(e.name).toLowerCase()
         const type = ext === '.md' ? 'note' : ext === '.base' ? 'base' : 'attachment'
         out.push({ name: e.name, path: toRel(root, full), type })
+      }
+    }
+    if (order === 'described') {
+      const note = out.find((e) => e.type === 'note' && e.name === `00 - ${basename(dir)}.md`)
+      if (note) {
+        let targets = []
+        try {
+          targets = describedList(await readFile(join(dir, note.name), 'utf8'))
+        } catch {
+          // unreadable: alphabetical
+        }
+        if (targets.length) return arrangeDescribed(out, note, targets)
       }
     }
     return out.sort(compareEntries)
