@@ -85,6 +85,12 @@ function openSettings() {
   if ($('workspace').hidden || !$('settings').hidden) return
   settingsColour = normaliseColour(appearance.modelColour)
   drawSettings()
+  api
+    .getSettings('tree')
+    .then(({ values }) => {
+      $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
+    })
+    .catch(() => {})
   drawFontChoices()
   $('settings').hidden = false
   mountPreviewModel($('settings-preview'))
@@ -193,6 +199,17 @@ for (const role of FONT_ROLES) {
   })
 }
 
+// The file tree's order (R2.2.1), a vault setting of its own; the main
+// process sorts the tree by it.
+$('settings-tree-order').addEventListener('change', async (e) => {
+  try {
+    await api.setSettings('tree', { order: e.target.value })
+    await refreshTree()
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+})
+
 api.onSettings(openSettings)
 // The menu's accelerator normally opens it; this covers a focus the menu misses.
 window.addEventListener('keydown', (e) => {
@@ -272,6 +289,7 @@ async function enterVault(opener) {
     view.selected = null
     view.openNote = null
     tabs.list = []
+    tabs.hist = []
     tabs.active = -1
     renderTabs()
     view.expanded = new Set()
@@ -397,17 +415,127 @@ function select(entry, { newTab = false } = {}) {
 // ---- tabs (R2.5): one tab per open file. A click opens a file in the
 // current tab; Cmd/Ctrl+click or a middle click opens it in a new one; a
 // file already open in a tab is brought forward instead of opened twice. ----
-const tabs = { list: [], active: -1 }
+// hist runs alongside list: each tab's history (R2.5.1), { back, fwd }, each
+// a list of { path, scroll } steps, the nearest last in back and first in fwd.
+const tabs = { list: [], active: -1, hist: [] }
+const HISTORY_LIMIT = 50
+const newHistory = () => ({ back: [], fwd: [] })
 
 function showInTab(path, { newTab = false } = {}) {
   const at = tabs.list.indexOf(path)
   if (at >= 0) tabs.active = at
   else if (newTab || tabs.active < 0) {
     tabs.list.splice(tabs.active + 1, 0, path)
+    tabs.hist.splice(tabs.active + 1, 0, newHistory())
     tabs.active += 1
-  } else tabs.list[tabs.active] = path
+  } else {
+    // The tab moves on: what it showed becomes a step back, and the steps
+    // ahead are discarded.
+    const h = tabs.hist[tabs.active]
+    h.back.push({ path: tabs.list[tabs.active], scroll: $('preview').scrollTop })
+    if (h.back.length > HISTORY_LIMIT) h.back.splice(0, h.back.length - HISTORY_LIMIT)
+    h.fwd = []
+    tabs.list[tabs.active] = path
+  }
   view.openNote = path
   renderTabs()
+}
+
+// Moves the active tab `by` steps through its history (negative is back),
+// skipping steps whose file no longer exists, and restores the scroll.
+async function goHistory(by) {
+  const i = tabs.active
+  if (i < 0 || !by) return
+  const h = tabs.hist[i]
+  const steps = [...h.back, { path: tabs.list[i], scroll: $('preview').scrollTop }, ...h.fwd]
+  const here = h.back.length
+  let to = here + by
+  const dir = Math.sign(by)
+  while (to >= 0 && to < steps.length && !findEntry(view.tree, steps[to].path)) to += dir
+  if (to < 0 || to >= steps.length || to === here) return
+  const target = steps[to]
+  tabs.hist[i] = { back: steps.slice(0, to), fwd: steps.slice(to + 1) }
+  tabs.list[i] = target.path
+  view.openNote = target.path
+  view.selected = { path: target.path, type: findEntry(view.tree, target.path)?.type ?? 'note' }
+  renderTabs()
+  renderTree()
+  await renderPane()
+  // Embeds and diagrams can grow the page after it is drawn, so the scroll
+  // is set again once they have had a moment.
+  $('preview').scrollTop = target.scroll
+  setTimeout(() => ($('preview').scrollTop = target.scroll), 250)
+}
+
+function drawHistoryButtons() {
+  const h = tabs.hist[tabs.active]
+  $('nav-back').disabled = !h?.back.length
+  $('nav-fwd').disabled = !h?.fwd.length
+}
+
+// Back and Forward (R2.5.1): the buttons (a click steps; holding one or a
+// right-click lists the steps), the keys, the mouse's side buttons and, on
+// macOS, the trackpad swipe.
+for (const [id, dir] of [
+  ['nav-back', -1],
+  ['nav-fwd', 1],
+]) {
+  const button = $(id)
+  let hold = null
+  let held = false
+  button.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return
+    held = false
+    hold = setTimeout(() => {
+      held = true
+      historyMenu(dir)
+    }, 450)
+  })
+  const cancel = () => clearTimeout(hold)
+  button.addEventListener('pointerup', cancel)
+  button.addEventListener('pointerleave', cancel)
+  button.addEventListener('click', () => {
+    if (!held) goHistory(dir)
+  })
+  button.addEventListener('contextmenu', (e) => {
+    e.preventDefault()
+    historyMenu(dir)
+  })
+}
+window.addEventListener('keydown', (e) => {
+  if ($('workspace').hidden || !$('diagram-full').hidden) return
+  const mac = api.platform === 'darwin'
+  let dir = 0
+  if (mac && e.metaKey && !e.altKey && !e.ctrlKey && !e.shiftKey && (e.key === '[' || e.key === ']')) {
+    // In the editor these keys outdent and indent.
+    if (e.target.closest?.('.cm-editor')) return
+    dir = e.key === '[' ? -1 : 1
+  } else if (!mac && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    dir = e.key === 'ArrowLeft' ? -1 : 1
+  }
+  if (!dir) return
+  e.preventDefault()
+  goHistory(dir)
+})
+window.addEventListener('mouseup', (e) => {
+  if (e.button !== 3 && e.button !== 4) return
+  e.preventDefault()
+  goHistory(e.button === 3 ? -1 : 1)
+})
+api.onSwipe((direction) => {
+  if (direction === 'right') goHistory(-1)
+  if (direction === 'left') goHistory(1)
+})
+
+// The steps one way, nearest first, as a menu to jump to (R2.5.1).
+async function historyMenu(dir) {
+  const h = tabs.hist[tabs.active]
+  if (!h) return
+  const steps = dir < 0 ? [...h.back].reverse() : h.fwd
+  if (!steps.length) return
+  const name = (p) => p.slice(p.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+  const choice = await api.menu(steps.map((st, k) => ({ id: String(k + 1), label: name(st.path), enabled: Boolean(findEntry(view.tree, st.path)) })))
+  if (choice) goHistory(dir * Number(choice))
 }
 
 function activateTab(i) {
@@ -423,6 +551,7 @@ function activateTab(i) {
 function closeTab(i) {
   if (i < 0 || i >= tabs.list.length) return
   tabs.list.splice(i, 1)
+  tabs.hist.splice(i, 1)
   if (tabs.active >= tabs.list.length || i < tabs.active) tabs.active -= 1
   if (tabs.active < 0 && tabs.list.length) tabs.active = 0
   view.openNote = tabs.list[tabs.active] ?? null
@@ -435,8 +564,14 @@ function closeTab(i) {
 // After files move or vanish: remap or drop their tabs.
 function retab(map) {
   const before = tabs.list[tabs.active]
-  tabs.list = tabs.list.map(map).filter(Boolean)
-  tabs.list = tabs.list.filter((p, i) => tabs.list.indexOf(p) === i)
+  // Each tab keeps its history, its steps remapped too (a step whose file is
+  // gone stays, and is skipped when reached).
+  const remapSteps = (steps) => steps.map((st) => ({ ...st, path: map(st.path) ?? st.path }))
+  const pairs = tabs.list
+    .map((p, i) => [map(p), tabs.hist[i] ?? newHistory()])
+    .filter(([p], k, all) => p && all.findIndex(([q]) => q === p) === k)
+  tabs.list = pairs.map(([p]) => p)
+  tabs.hist = pairs.map(([, h]) => ({ back: remapSteps(h.back), fwd: remapSteps(h.fwd) }))
   const now = before ? map(before) : null
   tabs.active = now ? tabs.list.indexOf(now) : Math.min(tabs.active, tabs.list.length - 1)
   if (tabs.active < 0 && tabs.list.length) tabs.active = 0
@@ -451,15 +586,18 @@ let restoringTabs = false
 function saveTabs() {
   if (restoringTabs || $('workspace').hidden) return
   clearTimeout(saveTabsTimer)
-  saveTabsTimer = setTimeout(() => api.setTabs({ list: tabs.list, active: tabs.active }).catch(() => {}), 300)
+  const hist = tabs.hist.map((h) => ({ back: h.back.slice(-HISTORY_LIMIT), fwd: h.fwd.slice(0, HISTORY_LIMIT) }))
+  saveTabsTimer = setTimeout(() => api.setTabs({ list: tabs.list, active: tabs.active, hist }).catch(() => {}), 300)
 }
 async function restoreTabs() {
   restoringTabs = true
   try {
     const saved = await api.getTabs()
-    const list = saved.list.filter((p) => findEntry(view.tree, p))
+    const kept = saved.list.map((p, i) => [p, saved.hist?.[i] ?? newHistory()]).filter(([p]) => findEntry(view.tree, p))
+    const list = kept.map(([p]) => p)
     const activePath = saved.list[saved.active]
     tabs.list = list
+    tabs.hist = kept.map(([, h]) => h)
     tabs.active = list.length ? Math.max(0, list.indexOf(activePath)) : -1
     view.openNote = tabs.list[tabs.active] ?? null
     if (view.openNote) {
@@ -472,6 +610,7 @@ async function restoreTabs() {
     }
   } catch {
     tabs.list = []
+    tabs.hist = []
     tabs.active = -1
   } finally {
     restoringTabs = false
@@ -481,6 +620,7 @@ async function restoreTabs() {
 
 function renderTabs() {
   saveTabs()
+  drawHistoryButtons()
   const nav = $('tabs')
   nav.hidden = tabs.list.length === 0
   nav.replaceChildren(
@@ -520,6 +660,7 @@ function renderTabs() {
         if (choice === 'reveal') api.showPath(tabs.list[i]).catch((err) => showError($('pane-error'), err))
         if (choice === 'others') {
           const keep = tabs.list[i]
+          tabs.hist = [tabs.hist[i]]
           tabs.list = [keep]
           tabs.active = 0
           view.openNote = keep

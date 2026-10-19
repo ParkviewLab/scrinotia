@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('scrinotia', {
   onLeftFullScreen: (fn) => ipcRenderer.on('window:left-full-screen', () => fn()),
   onFrameMenu: (fn) => ipcRenderer.on('ui:frame-menu', (_e, url) => fn(url)),
   onEscape: (fn) => ipcRenderer.on('ui:escape', () => fn()),
+  onSwipe: (fn) => ipcRenderer.on('ui:swipe', (_e, direction) => fn(direction)),
   backlinks: (rel) => ipcRenderer.invoke('links:backlinks', rel),
   unlinkedMentions: (rel) => ipcRenderer.invoke('links:unlinked', rel),
   outgoing: (rel) => ipcRenderer.invoke('links:outgoing', rel),

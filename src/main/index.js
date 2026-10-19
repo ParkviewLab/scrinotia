@@ -81,6 +81,12 @@ function startWatching(ctx) {
   })
 }
 
+// The tree in the vault's chosen order (R2.2.1): described by default.
+async function scanWithOrder(root) {
+  const { values } = await readSettings(root, 'tree')
+  return vault.scanVault(root, { order: values.order === 'alphabetical' ? 'alphabetical' : 'described' })
+}
+
 async function openVault(ctx, dir) {
   const full = resolve(dir)
   for (const other of contexts.values()) {
@@ -102,7 +108,7 @@ async function openVault(ctx, dir) {
   startWatching(ctx)
   await state.addRecentVault(full)
   ctx.win.setTitle(`${basename(full)} – Scrinotia`)
-  return { root: full, name: basename(full), assetBase: `scrinotia-asset://${ctx.token}/`, tree: await vault.scanVault(full) }
+  return { root: full, name: basename(full), assetBase: `scrinotia-asset://${ctx.token}/`, tree: await scanWithOrder(full) }
 }
 
 function filesUnder(ctx, rel) {
@@ -160,7 +166,7 @@ function registerIpc() {
     return openVault(ctx, result.filePaths[0])
   })
   on('vault:open', (e, dir) => openVault(ctxOf(e), dir))
-  on('vault:tree', (e) => vault.scanVault(rootOf(e)))
+  on('vault:tree', (e) => scanWithOrder(rootOf(e)))
   on('window:new', () => void createWindow())
   on('window:fullscreen', (e, on) => {
     const win = BrowserWindow.fromWebContents(e.sender)
@@ -255,6 +261,8 @@ function createWindow() {
     setTimeout(() => finishClose(ctx), 3000)
   })
   win.on('leave-full-screen', () => win.webContents.send('window:left-full-screen'))
+  // A trackpad swipe between pages (macOS) goes back or forward (R2.5.1).
+  win.on('swipe', (_e, direction) => win.webContents.send('ui:swipe', direction))
   // An HTML attachment runs in a sandboxed frame whose events never reach the
   // app's page, so its right-click and Escape are passed on from here.
   win.webContents.on('context-menu', (_e, params) => {
