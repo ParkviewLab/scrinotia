@@ -81,6 +81,12 @@ function startWatching(ctx) {
   })
 }
 
+// The tree in the vault's chosen order (R2.2.1): described by default.
+async function scanWithOrder(root) {
+  const { values } = await readSettings(root, 'tree')
+  return vault.scanVault(root, { order: values.order === 'alphabetical' ? 'alphabetical' : 'described' })
+}
+
 async function openVault(ctx, dir) {
   const full = resolve(dir)
   for (const other of contexts.values()) {
@@ -102,7 +108,7 @@ async function openVault(ctx, dir) {
   startWatching(ctx)
   await state.addRecentVault(full)
   ctx.win.setTitle(`${basename(full)} – Scrinotia`)
-  return { root: full, name: basename(full), assetBase: `scrinotia-asset://${ctx.token}/`, tree: await vault.scanVault(full) }
+  return { root: full, name: basename(full), assetBase: `scrinotia-asset://${ctx.token}/`, tree: await scanWithOrder(full) }
 }
 
 function filesUnder(ctx, rel) {
@@ -160,7 +166,7 @@ function registerIpc() {
     return openVault(ctx, result.filePaths[0])
   })
   on('vault:open', (e, dir) => openVault(ctxOf(e), dir))
-  on('vault:tree', (e) => vault.scanVault(rootOf(e)))
+  on('vault:tree', (e) => scanWithOrder(rootOf(e)))
   on('window:new', () => void createWindow())
   on('window:fullscreen', (e, on) => {
     const win = BrowserWindow.fromWebContents(e.sender)

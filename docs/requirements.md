@@ -34,6 +34,8 @@ R2.1. A vault can be opened from a folder chooser, and recently opened vaults ar
 
 R2.2. A file tree shows folders, notes, and attachments, with expand and collapse. Within each folder, files (notes, `.base` files and attachments, sorted together by name) come before subfolders (sorted by name).
 
+R2.2.1. The file tree's order is a vault setting (R6.4), chosen in the Settings dialog: "Described order" (the default) or "Alphabetical". Under "Described order", a folder's contents follow the list in its folder description note, the note named exactly `00 - <folder name>.md` in that folder: the note first, then the entries in the list's order, then everything not listed, files before folders and each group by name. The list is every numbered or bulleted item under a `## Chapters` or `## Notes` heading (up to the next heading), several such lists counting in the order they appear. Each item names its entry by its first wikilink: a note in the folder, or a subfolder by the subfolder's own `00 - ` note. An item whose link names nothing in the folder is ignored. A folder without such a note or list is in alphabetical order, as under "Alphabetical": files before folders, each group by name.
+
 R2.3. The user can create, rename, move, and delete notes and folders. Deletion goes to the system trash, not permanent removal.
 
 R2.4. Renaming or moving a note or folder updates the links that point to what moved, in the other notes of the vault, changing only each link's target text. A link elsewhere that the new name would otherwise capture (a nearer or shorter match) is rewritten to keep its previous target. A note changed on disk since it was indexed is left alone and reported.
