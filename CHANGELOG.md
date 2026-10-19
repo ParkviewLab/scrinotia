@@ -4,6 +4,17 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.14.1] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Docs
+
+- Describe Scrinotia as a local-first, utilitarian notes client (#82)
+- Describe version 0.14.1 in the README (#83)
+
 ## [v0.14.0] - 2026-10-18
 
 ### Highlights
