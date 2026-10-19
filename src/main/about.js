@@ -87,7 +87,7 @@ export function openAboutWindow() {
   <div class="card"><img src="data:image/png;base64,${pngData(nameCard)}" alt="Scrinotia, pronounced skri-NO-tee-a: the scroll-case of knowledge, from scrinium and notitia"></div>
   <div class="ver">Version ${esc(app.getVersion())}</div>
   <div class="upd" id="upd">Checking for a newer version…</div>
-  <p>An independent, local-first Markdown notes client.</p>
+  <p>A local-first, utilitarian Markdown notes client.</p>
   <details>
     <summary>The .base file format</summary>
     <p>Scrinotia reads vaults and .base files in the formats used by Obsidian, a product of Dynalist Inc. Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc. The .base file format is implemented from two MIT-licensed references: the Obsidian API type definitions (Dynalist Inc.) and the obsidian-bases skill (Steph Ango); see Help, Open Source Licenses.</p>
