@@ -10,6 +10,8 @@ import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
+import { attachPanZoom, keepViewsFor } from './diagramView.js'
+import { mountModel } from './modelViewer.js'
 import { setModelColour, mountPreviewModel, normaliseColour, colourCss, DEFAULT_MODEL_COLOUR } from './modelViewer.js'
 import 'katex/dist/katex.min.css'
 import DOMPurify from 'dompurify'
@@ -18,6 +20,9 @@ import { resolveLink, resolveRelative, flattenFiles } from '../../shared/links.j
 import nameCardUrl from '../../../brand/scrinotia-icon-kit/brand/scrinotia-name-card.png'
 
 const api = window.scrinotia
+// The note a full-screen diagram or model belongs to (R3.8.1), and whether
+// the window was full screen before.
+const fullView = { note: null, wasFull: false }
 document.getElementById('panel-card').src = nameCardUrl
 const $ = (id) => document.getElementById(id)
 
@@ -597,6 +602,7 @@ function renderPreview() {
   // The note's Properties stay as the reader left them while the note is
   // open; the split view redraws the preview on each edit.
   if (propertiesOpen !== current) propertiesOpen = null
+  if (fullView.note !== current) exitDiagramFullScreen()
   if (propertiesOpen) $('preview').querySelector(':scope > details.properties')?.setAttribute('open', '')
   fillEmbeds()
   renderOutline()
@@ -657,10 +663,20 @@ async function fillEmbeds() {
 let mermaidLib = null
 let mermaidSeq = 0
 async function fillMermaid(host) {
+  keepViewsFor(current)
   const blocks = [...host.querySelectorAll('pre.mermaid-src')]
   if (!blocks.length) return
+  // Each diagram's key for its kept view (R3.8.1): the note it belongs to
+  // (this one, or an embedded one) and its order there.
+  const counts = new Map()
+  const keys = blocks.map((pre) => {
+    const owner = pre.closest('.note-embed')?.dataset.path ?? current
+    const n = counts.get(owner) ?? 0
+    counts.set(owner, n + 1)
+    return `${owner}#${n}`
+  })
   if (!mermaidLib) mermaidLib = (await import('mermaid')).default
-  for (const pre of blocks) {
+  for (const [i, pre] of blocks.entries()) {
     const box = document.createElement('div')
     box.className = 'mermaid-diagram'
     // A diagram's own front-matter config (such as layout: elk) can persist
@@ -682,9 +698,77 @@ async function fillMermaid(host) {
       box.classList.add('missing')
       box.textContent = `Mermaid: ${String(err.message ?? err).split('\n')[0]}`
     }
-    if (pre.isConnected) pre.replaceWith(box)
+    if (!pre.isConnected) continue
+    pre.replaceWith(box)
+    const svg = box.querySelector(':scope > svg')
+    if (svg) attachPanZoom(box, svg, { key: keys[i], onMenu: diagramMenu })
   }
 }
+
+// The right-click menu of a diagram in the preview.
+async function diagramMenu(_e, controls) {
+  const choice = await api.menu([
+    { id: 'fit', label: 'Zoom to fit' },
+    { id: 'full', label: 'Full screen' },
+  ])
+  if (choice === 'fit') controls.fit()
+  if (choice === 'full') enterDiagramFullScreen(controls.svg)
+}
+
+// Full screen (R3.8.1): the window in the system's full-screen mode showing
+// only one diagram, fitted, with the same pan and zoom. Escape, the menu,
+// leaving the system's full screen, or another note leaves it, and the
+// window returns to the state it was in.
+// fill(host) draws the content into a fresh element filling the screen;
+// removing that element on exit releases what it holds (an STL view's WebGL
+// context included).
+async function enterFullScreen(fill) {
+  if (!$('diagram-full').hidden) return
+  const host = document.createElement('div')
+  host.className = 'full-host'
+  $('diagram-full-frame').replaceChildren(host)
+  $('diagram-full').hidden = false
+  document.body.classList.add('full-view')
+  fullView.note = current
+  fill(host)
+  fullView.wasFull = await api.setFullScreen(true)
+}
+function enterDiagramFullScreen(svg) {
+  enterFullScreen((host) => {
+    const copy = svg.cloneNode(true)
+    copy.style.transform = ''
+    host.append(copy)
+    attachPanZoom(host, copy, { fillHeight: true, onMenu: fullScreenMenu })
+  })
+}
+function exitDiagramFullScreen({ windowLeft = false } = {}) {
+  if ($('diagram-full').hidden) return
+  $('diagram-full').hidden = true
+  document.body.classList.remove('full-view')
+  $('diagram-full-frame').replaceChildren()
+  if (!windowLeft && !fullView.wasFull) api.setFullScreen(false)
+}
+async function fullScreenMenu(_e, controls) {
+  const choice = await api.menu([
+    ...(controls?.fit ? [{ id: 'fit', label: 'Zoom to fit' }] : []),
+    { id: 'exit', label: 'Exit full screen' },
+  ])
+  if (choice === 'fit') controls.fit()
+  if (choice === 'exit') exitDiagramFullScreen()
+}
+// The right-click menu of an STL model, in the pane or a note (a right-click
+// without a drag; a right-drag pans the model).
+async function modelMenu(path) {
+  const choice = await api.menu([{ id: 'full', label: 'Full screen' }])
+  if (choice === 'full') enterFullScreen((host) => mountModel(host, { path, api, onMenu: () => fullScreenMenu(null, null) }))
+}
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('diagram-full').hidden) {
+    e.preventDefault()
+    exitDiagramFullScreen()
+  }
+})
+api.onLeftFullScreen(() => exitDiagramFullScreen({ windowLeft: true }))
 
 // Embedded notes (R3.7): each placeholder becomes a box with the note's name
 // (a link to it) and its content, or the section or block named. Only one
@@ -752,7 +836,7 @@ const assetUrlOf = (p) => assetBase + p.split('/').map(encodeURIComponent).join(
 // PDFs, audio, video, HTML and text embedded in the note shown.
 function fillAttachmentEmbeds() {
   for (const el of $('preview').querySelectorAll('.attachment-embed')) {
-    renderAttachment(el, { path: el.dataset.path, url: assetUrlOf(el.dataset.path), api, embedded: true })
+    renderAttachment(el, { path: el.dataset.path, url: assetUrlOf(el.dataset.path), api, embedded: true, onModelMenu: modelMenu })
   }
 }
 
@@ -1095,7 +1179,7 @@ async function showNote(path) {
     $('modes').hidden = true
     setNoteMode('preview')
     $('note-area').hidden = false
-    await renderAttachment($('preview'), { path, url: assetUrlOf(path), api })
+    await renderAttachment($('preview'), { path, url: assetUrlOf(path), api, onModelMenu: modelMenu })
     return
   }
   if (!path || (entryInfo?.type !== 'note' && entryInfo?.type !== 'base')) {
@@ -1127,6 +1211,7 @@ async function showNote(path) {
 }
 
 async function renderPane() {
+  if (fullView.note !== current) exitDiagramFullScreen()
   showError($('pane-error'), null)
   $('entry-actions').hidden = !view.selected
   $('note-path').textContent = view.openNote ?? view.selected?.path ?? ''

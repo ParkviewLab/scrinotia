@@ -162,6 +162,12 @@ function registerIpc() {
   on('vault:open', (e, dir) => openVault(ctxOf(e), dir))
   on('vault:tree', (e) => vault.scanVault(rootOf(e)))
   on('window:new', () => void createWindow())
+  on('window:fullscreen', (e, on) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const was = win.isFullScreen()
+    if (Boolean(on) !== was) win.setFullScreen(Boolean(on))
+    return was
+  })
   on('note:read', (e, rel) => vault.readNote(rootOf(e), rel))
   on('app:about', () => openAboutWindow())
   on('app:licenses', () => openLicensesWindow())
@@ -248,6 +254,7 @@ function createWindow() {
     win.webContents.send('app:flush')
     setTimeout(() => finishClose(ctx), 3000)
   })
+  win.on('leave-full-screen', () => win.webContents.send('window:left-full-screen'))
   win.on('closed', () => {
     ctx.watcher?.close()
     contexts.delete(id)

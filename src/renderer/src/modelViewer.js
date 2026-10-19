@@ -99,7 +99,7 @@ export async function mountPreviewModel(container) {
 }
 
 // container: an element already in the document, sized by CSS.
-export async function mountModel(container, { path, api }) {
+export async function mountModel(container, { path, api, onMenu }) {
   let three, geometry
   try {
     const info = await api.statFile(path).catch(() => null)
@@ -116,10 +116,10 @@ export async function mountModel(container, { path, api }) {
     geometry.dispose()
     return
   }
-  show(container, three, geometry)
+  show(container, three, geometry, onMenu ? () => onMenu(path) : null)
 }
 
-function show(container, three, geometry) {
+function show(container, three, geometry, onMenu = null) {
   const { THREE, OrbitControls } = three
   const background = BACKGROUNDS[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark']
 
@@ -197,6 +197,20 @@ function show(container, three, geometry) {
   const resizer = new ResizeObserver(resize)
   resizer.observe(container)
   controls.addEventListener('change', draw)
+  // The right-click menu: a right press and release without a drag (a
+  // right-drag pans). OrbitControls already suppresses the browser's own.
+  if (onMenu) {
+    let down = null
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (e.button === 2) down = [e.clientX, e.clientY]
+    })
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      if (e.button !== 2 || !down) return
+      const moved = Math.hypot(e.clientX - down[0], e.clientY - down[1])
+      down = null
+      if (moved < 4) onMenu()
+    })
+  }
   const view = { material, draw }
   shown.add(view)
   resize()

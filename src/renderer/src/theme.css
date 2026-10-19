@@ -958,7 +958,44 @@ button:hover {
   overflow-x: auto;
   text-align: center;
 }
-.preview .mermaid-diagram svg {
-  max-width: 100%;
-  height: auto;
+/* Pan and zoom (R3.8.1): the SVG at its natural size, moved by a transform
+   inside a frame that clips it. */
+.diagram-frame {
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.diagram-frame.panning {
+  cursor: grabbing;
+}
+.diagram-frame > svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+.diagram-full {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+}
+/* Nothing behind a full-screen view shows a scroll bar through it. */
+body.full-view .preview,
+body.full-view .tree,
+body.full-view .links {
+  overflow: hidden;
+}
+.diagram-full[hidden] {
+  display: none;
+}
+#diagram-full-frame {
+  position: absolute;
+  inset: 0;
+}
+#diagram-full-frame > .full-host {
+  position: absolute;
+  inset: 0;
 }
