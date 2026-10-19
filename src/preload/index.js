@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('scrinotia', {
   openAbout: () => ipcRenderer.invoke('app:about'),
   openLicenses: () => ipcRenderer.invoke('app:licenses'),
   openPath: (rel) => ipcRenderer.invoke('open:path', rel),
+  showPath: (rel) => ipcRenderer.invoke('show:path', rel),
+  platform: process.platform,
   onFlush: (fn) =>
     ipcRenderer.on('app:flush', async () => {
       try {
