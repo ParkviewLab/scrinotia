@@ -178,6 +178,8 @@ function registerIpc() {
     return vault.importFile(root, sourcePath, folder)
   })
   on('file:readBytes', (e, rel) => vault.readBytes(rootOf(e), rel))
+  // Shows the entry in the system's file manager, selected where it can be.
+  on('show:path', (e, rel) => shell.showItemInFolder(vault.resolveInside(rootOf(e), rel)))
   on('open:path', async (e, rel) => {
     // shell.openPath returns an error message, or '' on success.
     return shell.openPath(vault.resolveInside(rootOf(e), rel))
