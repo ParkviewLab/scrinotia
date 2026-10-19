@@ -374,6 +374,16 @@ button:hover {
 .workspace.resizing iframe {
   pointer-events: none;
 }
+.nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+}
+.nav-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 .drawer-toggle {
   display: inline-flex;
   align-items: center;
