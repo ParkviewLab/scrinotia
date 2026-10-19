@@ -4,6 +4,21 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.15.0] - 2026-10-18
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Show a file in the system's file manager from the tree's menu (#85)
+- Reveal a tab's file in the file tree or the system's file manager (#86)
+
+### Docs
+
+- Describe version 0.15.0 in the README (#87)
+
 ## [v0.14.1] - 2026-10-18
 
 ### Highlights
