@@ -506,8 +506,13 @@ function renderTabs() {
         const choice = await api.menu([
           { id: 'close', label: 'Close tab' },
           { id: 'others', label: 'Close other tabs', enabled: tabs.list.length > 1 },
+          { type: 'separator' },
+          { id: 'tree', label: 'Reveal in file tree' },
+          { id: 'reveal', label: REVEAL_LABEL },
         ])
         if (choice === 'close') closeTab(i)
+        if (choice === 'tree') revealInTree(tabs.list[i])
+        if (choice === 'reveal') api.showPath(tabs.list[i]).catch((err) => showError($('pane-error'), err))
         if (choice === 'others') {
           const keep = tabs.list[i]
           tabs.list = [keep]
@@ -1257,6 +1262,23 @@ function forgetNotes(match) {
 
 // ---- modes (R3.1) ----
 for (const mode of ['preview', 'split']) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
+
+// Shows a vault entry in the file tree: the Files list and the left panel
+// opened if need be, its folders expanded, the entry selected and scrolled
+// into view. The note pane is left as it is.
+function revealInTree(path) {
+  if (!path) return
+  view.selected = { path, type: findEntry(view.tree, path)?.type ?? 'note' }
+  let folder = parentOf(path)
+  while (folder) {
+    view.expanded.add(folder)
+    folder = parentOf(folder)
+  }
+  $('show-files').click()
+  if (!layout.leftOpen) toggleDrawer('left')
+  renderTree()
+  document.querySelector(`#tree li[data-path="${CSS.escape(path)}"] > .row`)?.scrollIntoView({ block: 'center' })
+}
 
 // ---- following links ----
 async function openPath(path, { newTab = false } = {}) {
