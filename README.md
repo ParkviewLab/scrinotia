@@ -12,7 +12,7 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.14.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.14.1 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree lists each folder's files before its subfolders, with lines connecting each item to its folder, and hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
