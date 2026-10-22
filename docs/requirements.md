@@ -58,7 +58,7 @@ R3.3. Embeds of images and of other notes (`![[...]]`) render in place. Math (`$
 
 R3.4. Saving is automatic after a short pause in typing. Undo and redo cover the whole editing session of a note.
 
-R3.5. Standard text-editing keyboard behaviour on both platforms (platform-appropriate modifier keys), and list continuation and indentation.
+R3.5. Standard text-editing keyboard behaviour on both platforms (platform-appropriate modifier keys), and list continuation and indentation. On a list item, Tab and Cmd/Ctrl+] nest the item, with its sub-items, under the item above at that item's content column, and Shift+Tab and Cmd/Ctrl+[ move it out to its parent's column; ordered lists are renumbered after either.
 
 R3.6. A `.base` file is implemented from the two MIT-licensed references in `docs/references/` (the Obsidian API type definitions and the obsidian-bases skill), and from nothing else; the client follows those references, not Obsidian's behaviour. A base opens as its views, one tab per view, and in the split mode its YAML source is edited beside the rendered views, with the same saving and conflict handling as a note. The aim is the whole format the references describe: global and per-view filters; formulas and `formula.*` properties; note, file and formula properties with display names; the functions and value types of the formula language; table, cards and list views with order, sort, limit, groupBy and summaries; and bases embedded in notes. A view type the references name but the client does not provide (such as map) and any expression the client cannot evaluate are reported in the pane, never guessed.
 

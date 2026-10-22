@@ -8,17 +8,27 @@ import { EditorState, Annotation, Transaction } from '@codemirror/state'
 import { EditorView, keymap, drawSelection, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { yaml } from '@codemirror/lang-yaml'
+import { yaml, yamlLanguage } from '@codemirror/lang-yaml'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
+import { parseMixed } from '@lezer/common'
 import { tags as t } from '@lezer/highlight'
-import { VaultMarkdown, detectLineSeparator } from '../../../shared/markdown.js'
+import { VaultMarkdown, vaultTags, detectLineSeparator } from '../../../shared/markdown.js'
+import { listKeymap } from './lists.js'
 
 // The editor's syntax colours: CodeMirror's default style, read from colour
-// tokens in theme.css so that the dark theme has its own legible values.
+// tokens in theme.css so that the dark theme has its own legible values. The
+// vault's own syntax is coloured too, Markdown's marks are dimmed, and
+// headings are sized by level, so that the source shows the note's structure.
 const highlightStyle = HighlightStyle.define([
   { tag: t.meta, color: 'var(--syn-meta)' },
   { tag: t.link, textDecoration: 'underline', color: 'var(--syn-link)' },
-  { tag: t.heading, textDecoration: 'underline', fontWeight: 'bold' },
+  { tag: vaultTags.alias, textDecoration: 'none', color: 'var(--syn-alias)' },
+  { tag: vaultTags.highlight, background: 'var(--syn-highlight)', borderRadius: '2px' },
+  { tag: t.processingInstruction, textDecoration: 'none', color: 'var(--syn-mark)' },
+  { tag: t.heading, fontWeight: 'bold' },
+  { tag: t.heading1, fontSize: '1.4em' },
+  { tag: t.heading2, fontSize: '1.25em' },
+  { tag: t.heading3, fontSize: '1.12em' },
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strong, fontWeight: 'bold' },
   { tag: t.strikethrough, textDecoration: 'line-through' },
@@ -36,6 +46,11 @@ const highlightStyle = HighlightStyle.define([
   { tag: t.comment, color: 'var(--syn-comment)' },
   { tag: t.invalid, color: 'var(--syn-invalid)' },
 ])
+
+// The frontmatter's content (a node of the shared parser) is shown as YAML.
+const FrontmatterYaml = {
+  wrap: parseMixed((node) => (node.name === 'FrontmatterContent' ? { parser: yamlLanguage.parser } : null)),
+}
 
 // Marks a transaction that loads disk content rather than a user edit.
 export const External = Annotation.define()
@@ -56,9 +71,10 @@ export function createEditor(parent, { onUserChange, onScroll }) {
     drawSelection(),
     highlightActiveLine(),
     EditorView.lineWrapping,
-    language === 'yaml' ? yaml() : markdown({ base: markdownLanguage, extensions: [VaultMarkdown] }),
+    language === 'yaml' ? yaml() : markdown({ base: markdownLanguage, extensions: [VaultMarkdown, FrontmatterYaml] }),
     syntaxHighlighting(highlightStyle),
-    keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+    // The list keys come first; off a list line they fall through (R3.5).
+    keymap.of([...listKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
     EditorView.updateListener.of((u) => {
       if (u.docChanged && !u.transactions.some((t) => t.annotation(External))) onUserChange(u.state)
     }),
