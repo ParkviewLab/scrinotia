@@ -240,11 +240,20 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
     // preview, not an embedded note), its blocks carry their source lines.
     render(text, into, { lines = false } = {}) {
       const { html, tokens, starts } = toHtml(text, { lines })
-      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub', MARK], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i })
+      // ALLOWED_URI_REGEXP is applied to every attribute not marked URI-safe,
+      // so `type` is marked: without it a task box loses type="checkbox" and
+      // shows as a text field (R3.2).
+      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub', MARK], ADD_URI_SAFE_ATTR: ['type'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i })
       into.innerHTML = clean
       calloutPass(into)
       if (lines) stamp(into, tokens, starts)
-      for (const box of into.querySelectorAll('input[type="checkbox"]')) box.disabled = true
+      // A task box can be ticked (item 5) where its list item has a source
+      // line: in the open note's own lists, not in an embedded note's.
+      for (const box of into.querySelectorAll('input[type="checkbox"]')) {
+        const live = lines && box.closest('li')?.hasAttribute(LINE)
+        box.disabled = !live
+        box.classList.toggle('task-box', !!live)
+      }
     },
   }
 }
