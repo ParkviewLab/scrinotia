@@ -389,6 +389,21 @@ button:hover {
 .preview code { font-family: var(--font-mono); font-size: 0.9em; background: var(--select); border-radius: 3px; padding: 0 3px; }
 .preview pre { background: var(--bg-side); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; overflow: auto; }
 .preview pre code { background: none; padding: 0; }
+/* Fenced code (editor/codeLanguages.js): the editor's colour tokens. */
+.preview code .tok-meta { color: var(--syn-meta); }
+.preview code .tok-keyword { color: var(--syn-keyword); }
+.preview code :is(.tok-atom, .tok-bool, .tok-url, .tok-labelName) { color: var(--syn-url); }
+.preview code :is(.tok-literal, .tok-number, .tok-inserted) { color: var(--syn-literal); }
+.preview code :is(.tok-string, .tok-deleted) { color: var(--syn-string); }
+.preview code .tok-string2 { color: var(--syn-special); }
+.preview code .tok-variableName.tok-definition { color: var(--syn-definition); }
+.preview code .tok-variableName.tok-local { color: var(--syn-local); }
+.preview code :is(.tok-typeName, .tok-namespace) { color: var(--syn-type); }
+.preview code .tok-className { color: var(--syn-class); }
+.preview code :is(.tok-variableName2, .tok-macroName) { color: var(--syn-macro); }
+.preview code .tok-propertyName.tok-definition { color: var(--syn-property); }
+.preview code .tok-comment { color: var(--syn-comment); }
+.preview code .tok-invalid { color: var(--syn-invalid); }
 .preview blockquote { border-left: 3px solid var(--border); margin-left: 0; padding-left: 12px; color: var(--muted); }
 .preview table { border-collapse: collapse; }
 .preview th, .preview td { border: 1px solid var(--border); padding: 4px 8px; }

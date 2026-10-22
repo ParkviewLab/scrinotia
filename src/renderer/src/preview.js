@@ -9,6 +9,7 @@ import { Marked } from 'marked'
 import DOMPurify from 'dompurify'
 import katex from 'katex'
 import { splitLink } from '../../shared/markdown.js'
+import { highlightCodeBlocks } from './editor/codeLanguages.js'
 
 const escapeHtml = (s) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
@@ -193,6 +194,8 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
       into.innerHTML = clean
       calloutPass(into)
       for (const box of into.querySelectorAll('input[type="checkbox"]')) box.disabled = true
+      // Fenced code is coloured as the editor colours it, once its grammar loads.
+      highlightCodeBlocks(into)
     },
   }
 }
