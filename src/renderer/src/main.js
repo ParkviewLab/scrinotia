@@ -714,6 +714,13 @@ const editor = createEditor($('editor'), {
     schedulePreview()
   },
   onScroll: syncScroll,
+  // What link and tag completion reads (R4.1); the open note from the editor.
+  vault: {
+    files: () => files(),
+    current: () => current,
+    readNote: (path) => (path === current ? Promise.resolve(editor.text()) : api.readNote(path)),
+    tags: () => api.tags(),
+  },
 })
 
 // ---- preview (R3.1): read-only rendering, alone or beside the editor ----

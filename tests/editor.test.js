@@ -6,7 +6,9 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { runScopeHandlers } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
+import { CompletionContext } from '@codemirror/autocomplete'
 import { createEditor } from '../src/renderer/src/editor/editor.js'
+import { vaultCompletions } from '../src/renderer/src/editor/completion.js'
 
 // jsdom has no layout; CodeMirror measures text through these.
 beforeAll(() => {
@@ -15,8 +17,15 @@ beforeAll(() => {
   Range.prototype.getBoundingClientRect = () => rect
 })
 
+const vault = {
+  files: () => ['Welcome.md', 'Projects/Plan.md'],
+  current: () => 'Welcome.md',
+  readNote: async () => '',
+  tags: async () => [],
+}
+
 function editorWith(text, cursor) {
-  const editor = createEditor(document.body.appendChild(document.createElement('div')), { onUserChange: () => {} })
+  const editor = createEditor(document.body.appendChild(document.createElement('div')), { onUserChange: () => {}, vault })
   editor.setState(editor.createState(text))
   editor.view.dispatch({ selection: { anchor: cursor } })
   return editor
@@ -56,5 +65,29 @@ describe('frontmatter', () => {
     expect(names).toContain('Frontmatter')
     expect(names).toContain('Pair')
     expect(names).not.toContain('SetextHeading2')
+  })
+})
+
+describe('link completion', () => {
+  // Accepts the first completion offered at the cursor.
+  async function accept(editor) {
+    const { state } = editor.view
+    const result = await vaultCompletions(vault)(new CompletionContext(state, state.selection.main.head, false))
+    const option = result.options[0]
+    option.apply(editor.view, option, result.from, state.selection.main.head)
+  }
+
+  it('inserts the target and closes the link', async () => {
+    const editor = editorWith('See [[pla', 9)
+    await accept(editor)
+    expect(editor.text()).toBe('See [[Plan]]')
+    expect(editor.view.state.selection.main.head).toBe(12)
+  })
+
+  it('steps over a ]] already typed', async () => {
+    const editor = editorWith('[[Wel]] after', 5)
+    await accept(editor)
+    expect(editor.text()).toBe('[[Welcome]] after')
+    expect(editor.view.state.selection.main.head).toBe(11)
   })
 })
