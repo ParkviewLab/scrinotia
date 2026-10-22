@@ -16,6 +16,7 @@ import { tags as t } from '@lezer/highlight'
 import { VaultMarkdown, vaultTags, detectLineSeparator } from '../../../shared/markdown.js'
 import { listKeymap } from './lists.js'
 import { vaultCompletions } from './completion.js'
+import { codeLanguages } from './codeLanguages.js'
 import { formatKeymap } from './format.js'
 import { folding, foldKeymap } from './fold.js'
 
@@ -83,7 +84,7 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
     drawSelection(),
     highlightActiveLine(),
     EditorView.lineWrapping,
-    language === 'yaml' ? yaml() : [markdown({ base: markdownLanguage, extensions: [VaultMarkdown, FrontmatterYaml] }), completion, folding],
+    language === 'yaml' ? yaml() : [markdown({ base: markdownLanguage, codeLanguages, extensions: [VaultMarkdown, FrontmatterYaml] }), completion, folding],
     syntaxHighlighting(highlightStyle),
     // The list keys come first; off a list line they fall through (R3.5).
     // Formatting and folding come before the defaults, whose Mod-Enter
