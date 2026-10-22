@@ -16,6 +16,8 @@ import { tags as t } from '@lezer/highlight'
 import { VaultMarkdown, vaultTags, detectLineSeparator } from '../../../shared/markdown.js'
 import { listKeymap } from './lists.js'
 import { vaultCompletions } from './completion.js'
+import { formatKeymap } from './format.js'
+import { folding, foldKeymap } from './fold.js'
 
 // The editor's syntax colours: CodeMirror's default style, read from colour
 // tokens in theme.css so that the dark theme has its own legible values. The
@@ -54,6 +56,9 @@ const FrontmatterYaml = {
   wrap: parseMixed((node) => (node.name === 'FrontmatterContent' ? { parser: yamlLanguage.parser } : null)),
 }
 
+// The image types a paste writes to the vault (R2.7).
+const IMAGE_TYPES = /^image\/(png|jpeg|gif|webp)$/
+
 // Marks a transaction that loads disk content rather than a user edit.
 export const External = Annotation.define()
 
@@ -67,8 +72,9 @@ export function diskReplacement(state, text) {
   }
 }
 
-// vault: the hooks completion reads the vault through (completion.js).
-export function createEditor(parent, { onUserChange, onScroll, vault }) {
+// vault: the hooks completion reads the vault through (completion.js);
+// onPasteImage(file): called with an image pasted into a note (R2.7).
+export function createEditor(parent, { onUserChange, onScroll, vault, onPasteImage }) {
   // Completion of links and tags in notes (R4.1); it replaces lang-markdown's
   // own source (HTML tags).
   const completion = vault ? [autocompletion({ override: [vaultCompletions(vault)], icons: false })] : []
@@ -77,14 +83,36 @@ export function createEditor(parent, { onUserChange, onScroll, vault }) {
     drawSelection(),
     highlightActiveLine(),
     EditorView.lineWrapping,
-    language === 'yaml' ? yaml() : [markdown({ base: markdownLanguage, extensions: [VaultMarkdown, FrontmatterYaml] }), completion],
+    language === 'yaml' ? yaml() : [markdown({ base: markdownLanguage, extensions: [VaultMarkdown, FrontmatterYaml] }), completion, folding],
     syntaxHighlighting(highlightStyle),
     // The list keys come first; off a list line they fall through (R3.5).
-    keymap.of([...listKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+    // Formatting and folding come before the defaults, whose Mod-Enter
+    // (insert a blank line) and Mod-i (select the parent node) they replace.
+    keymap.of([
+      ...listKeymap,
+      ...(language === 'yaml' ? [] : [...formatKeymap({ readClipboard: () => navigator.clipboard.readText() }), ...foldKeymap]),
+      ...defaultKeymap,
+      ...historyKeymap,
+      indentWithTab,
+    ]),
     EditorView.updateListener.of((u) => {
       if (u.docChanged && !u.transactions.some((t) => t.annotation(External))) onUserChange(u.state)
     }),
-    EditorView.domEventHandlers({ scroll: (_e, view) => onScroll?.(view) }),
+    EditorView.domEventHandlers({
+      scroll: (_e, view) => onScroll?.(view),
+      // An image on the clipboard goes to the vault as a file (R2.7); text
+      // pastes as before, also when an image comes with it (as spreadsheets
+      // and word processors put one beside the text they copy).
+      paste: (e) => {
+        if (language === 'yaml' || !onPasteImage) return false
+        if ([...(e.clipboardData?.types ?? [])].includes('text/plain')) return false
+        const file = [...(e.clipboardData?.files ?? [])].find((f) => IMAGE_TYPES.test(f.type))
+        if (!file) return false
+        e.preventDefault()
+        onPasteImage(file)
+        return true
+      },
+    }),
   ]
 
   const view = new EditorView({ parent, state: EditorState.create({ doc: '' }) })
@@ -110,6 +138,10 @@ export function createEditor(parent, { onUserChange, onScroll, vault }) {
     insert(text, pos = null) {
       const at = pos ?? view.state.doc.length
       view.dispatch({ changes: { from: at, insert: text }, selection: { anchor: at + text.length }, userEvent: 'input.drop' })
+    },
+    // Replaces the selection with text, as a paste of the user's.
+    paste(text) {
+      view.dispatch(view.state.replaceSelection(text), { userEvent: 'input.paste', scrollIntoView: true })
     },
     // Puts the cursor at the start of a 1-based line and scrolls it to the top.
     gotoLine(n) {
