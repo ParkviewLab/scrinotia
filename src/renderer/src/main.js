@@ -11,6 +11,7 @@ import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
 import { diskConflict } from './conflicts.js'
+import { PATH_TYPE, FOLDER_TYPE, dragData, noteAccepts } from './dragTypes.js'
 import { attachPanZoom, keepViewsFor } from './diagramView.js'
 import { mountModel } from './modelViewer.js'
 import { setModelColour, mountPreviewModel, normaliseColour, colourCss, DEFAULT_MODEL_COLOUR } from './modelViewer.js'
@@ -344,7 +345,9 @@ function renderEntry(entry) {
   row.title = entry.path
   if (view.selected?.path === entry.path) row.classList.add('selected')
   row.draggable = true
-  row.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-scrinotia-path', entry.path))
+  row.addEventListener('dragstart', (e) => {
+    for (const [type, value] of Object.entries(dragData(entry.path, entry.type === 'folder'))) e.dataTransfer.setData(type, value)
+  })
   row.addEventListener('click', (e) => select(entry, { newTab: e.metaKey || e.ctrlKey }))
   row.addEventListener('auxclick', (e) => {
     if (e.button === 1 && entry.type !== 'folder') select(entry, { newTab: true })
@@ -377,7 +380,7 @@ function renderEntry(entry) {
     row.addEventListener('drop', (e) => {
       e.preventDefault()
       e.stopPropagation()
-      moveInto(e.dataTransfer.getData('text/x-scrinotia-path'), entry.path)
+      moveInto(e.dataTransfer.getData(PATH_TYPE), entry.path)
     })
     const ul = document.createElement('ul')
     ul.setAttribute('role', 'group')
@@ -391,7 +394,7 @@ function renderEntry(entry) {
 $('tree').addEventListener('dragover', (e) => e.preventDefault())
 $('tree').addEventListener('drop', (e) => {
   e.preventDefault()
-  moveInto(e.dataTransfer.getData('text/x-scrinotia-path'), '')
+  moveInto(e.dataTransfer.getData(PATH_TYPE), '')
 })
 
 async function moveInto(from, folder) {
@@ -1974,7 +1977,7 @@ api
 // split editor it goes where the file is dropped; in the preview, at the end.
 function draggableItem(path, li) {
   li.draggable = true
-  li.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-scrinotia-path', path))
+  li.addEventListener('dragstart', (e) => e.dataTransfer.setData(PATH_TYPE, path))
   return li
 }
 
@@ -1988,14 +1991,22 @@ function linkFor(path) {
   return `${embed ? '!' : ''}[[${target}]]`
 }
 
+// A folder from the tree is refused (R2.7): the drop effect is set to none,
+// even over the editor's editable text, so the pointer shows that nothing can
+// be dropped and no drop event follows.
 function canDrop(e) {
-  const t = e.dataTransfer?.types ?? []
-  return current && notes.get(current)?.kind === 'note' && (t.includes('Files') || t.includes('text/x-scrinotia-path'))
+  return current && notes.get(current)?.kind === 'note' && noteAccepts(e.dataTransfer?.types)
 }
 
 $('note-area').addEventListener(
   'dragover',
   (e) => {
+    if (e.dataTransfer?.types.includes(FOLDER_TYPE)) {
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'none'
+      return
+    }
     if (!canDrop(e)) return
     e.preventDefault()
     e.stopPropagation()
@@ -2014,7 +2025,7 @@ $('note-area').addEventListener(
     const inEditor = noteMode === 'split' && $('editor').contains(e.target)
     const pos = inEditor ? editor.posAt(e.clientX, e.clientY) : null
     const paths = []
-    const vaultPath = e.dataTransfer.getData('text/x-scrinotia-path')
+    const vaultPath = e.dataTransfer.getData(PATH_TYPE)
     if (vaultPath) paths.push(vaultPath)
     for (const file of e.dataTransfer.files) {
       const source = api.pathForFile(file)
