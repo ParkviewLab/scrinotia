@@ -5,6 +5,7 @@
 // EditorState per open note (so undo history survives switching notes, R3.4).
 
 import { EditorState, Annotation, Transaction } from '@codemirror/state'
+import { autocompletion } from '@codemirror/autocomplete'
 import { EditorView, keymap, drawSelection, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -14,6 +15,7 @@ import { parseMixed } from '@lezer/common'
 import { tags as t } from '@lezer/highlight'
 import { VaultMarkdown, vaultTags, detectLineSeparator } from '../../../shared/markdown.js'
 import { listKeymap } from './lists.js'
+import { vaultCompletions } from './completion.js'
 
 // The editor's syntax colours: CodeMirror's default style, read from colour
 // tokens in theme.css so that the dark theme has its own legible values. The
@@ -65,13 +67,17 @@ export function diskReplacement(state, text) {
   }
 }
 
-export function createEditor(parent, { onUserChange, onScroll }) {
+// vault: the hooks completion reads the vault through (completion.js).
+export function createEditor(parent, { onUserChange, onScroll, vault }) {
+  // Completion of links and tags in notes (R4.1); it replaces lang-markdown's
+  // own source (HTML tags).
+  const completion = vault ? [autocompletion({ override: [vaultCompletions(vault)], icons: false })] : []
   const extensions = (language) => [
     history(),
     drawSelection(),
     highlightActiveLine(),
     EditorView.lineWrapping,
-    language === 'yaml' ? yaml() : markdown({ base: markdownLanguage, extensions: [VaultMarkdown, FrontmatterYaml] }),
+    language === 'yaml' ? yaml() : [markdown({ base: markdownLanguage, extensions: [VaultMarkdown, FrontmatterYaml] }), completion],
     syntaxHighlighting(highlightStyle),
     // The list keys come first; off a list line they fall through (R3.5).
     keymap.of([...listKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
