@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { createPreview, splitFrontmatter } from '../src/renderer/src/preview.js'
-import { listItemLines, orderedAnchors, topForLine, lineForTop } from '../src/renderer/src/sourceLines.js'
+import { listItemLines, orderedAnchors, topForLine, lineForTop, keptEnds } from '../src/renderer/src/sourceLines.js'
 
 const VAULT = join(import.meta.dirname, 'fixtures', 'vault')
 const preview = createPreview({ assetUrl: () => null, resolves: () => true })
@@ -145,5 +145,24 @@ describe('matching lines and heights (item 13)', () => {
       { line: 4, top: 80 },
       { line: 9, top: 200 },
     ])
+  })
+})
+
+describe('keeping unchanged blocks (item 14)', () => {
+  it('keeps the blocks before and after an edited one', () => {
+    expect(keptEnds(['a', 'b', 'c', 'd'], ['a', 'B', 'c', 'd'])).toEqual({ head: 1, tail: 2 })
+  })
+  it('keeps everything around an inserted or a removed block', () => {
+    expect(keptEnds(['a', 'b', 'c'], ['a', 'b', 'x', 'c'])).toEqual({ head: 2, tail: 1 })
+    expect(keptEnds(['a', 'b', 'x', 'c'], ['a', 'b', 'c'])).toEqual({ head: 2, tail: 1 })
+  })
+  it('never counts a block twice when the ends overlap', () => {
+    expect(keptEnds(['a', 'a'], ['a', 'a', 'a'])).toEqual({ head: 2, tail: 0 })
+    expect(keptEnds(['a', 'b'], ['a', 'b'])).toEqual({ head: 2, tail: 0 })
+  })
+  it('keeps nothing without keys, or when everything changed', () => {
+    expect(keptEnds([undefined, 'b'], [undefined, 'b'])).toEqual({ head: 0, tail: 1 })
+    expect(keptEnds(['a'], ['b'])).toEqual({ head: 0, tail: 0 })
+    expect(keptEnds([], ['a'])).toEqual({ head: 0, tail: 0 })
   })
 })
