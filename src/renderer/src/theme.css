@@ -334,6 +334,10 @@ button:hover {
   border-radius: 4px;
   font: 13px/1.5 var(--font-ui);
 }
+.editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-ui);
+  max-width: min(640px, 80vw);
+}
 .editor .cm-tooltip-autocomplete > ul > li {
   padding: 2px 8px;
 }
