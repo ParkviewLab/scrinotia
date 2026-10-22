@@ -149,15 +149,18 @@ describe('pasting an image', () => {
       onPasteImage: (file) => pasted.push(file.type),
     })
     editor.setState(editor.createState('x'))
-    const paste = (files) => {
+    const paste = (files, types = ['Files']) => {
       const e = new Event('paste', { bubbles: true, cancelable: true })
-      e.clipboardData = { files, getData: () => '', types: [] }
+      e.clipboardData = { files, getData: () => '', types }
       editor.view.contentDOM.dispatchEvent(e)
       return e.defaultPrevented
     }
     expect(paste([new File([new Uint8Array([1])], 'a.png', { type: 'image/png' })])).toBe(true)
     expect(pasted).toEqual(['image/png'])
     paste([new File(['t'], 'a.txt', { type: 'text/plain' })])
+    expect(pasted).toEqual(['image/png'])
+    // Cells copied from a spreadsheet: text with an image of them beside it.
+    paste([new File([new Uint8Array([1])], 'cells.png', { type: 'image/png' })], ['text/plain', 'Files'])
     expect(pasted).toEqual(['image/png'])
   })
 })

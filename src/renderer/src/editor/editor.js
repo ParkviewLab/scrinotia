@@ -91,9 +91,11 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
     EditorView.domEventHandlers({
       scroll: (_e, view) => onScroll?.(view),
       // An image on the clipboard goes to the vault as a file (R2.7); text
-      // pastes as before.
+      // pastes as before, also when an image comes with it (as spreadsheets
+      // and word processors put one beside the text they copy).
       paste: (e) => {
         if (language === 'yaml' || !onPasteImage) return false
+        if ([...(e.clipboardData?.types ?? [])].includes('text/plain')) return false
         const file = [...(e.clipboardData?.files ?? [])].find((f) => IMAGE_TYPES.test(f.type))
         if (!file) return false
         e.preventDefault()
