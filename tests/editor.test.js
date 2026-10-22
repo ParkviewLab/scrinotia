@@ -5,10 +5,12 @@
 // The editor in a DOM (jsdom): its key bindings and its language set-up.
 import { describe, it, expect, beforeAll } from 'vitest'
 import { runScopeHandlers } from '@codemirror/view'
-import { syntaxTree } from '@codemirror/language'
+import { syntaxTree, foldedRanges } from '@codemirror/language'
 import { CompletionContext } from '@codemirror/autocomplete'
 import { createEditor } from '../src/renderer/src/editor/editor.js'
 import { vaultCompletions } from '../src/renderer/src/editor/completion.js'
+import { makeLink } from '../src/renderer/src/editor/format.js'
+import { toggleFoldAll } from '../src/renderer/src/editor/fold.js'
 
 // jsdom has no layout; CodeMirror measures text through these.
 beforeAll(() => {
@@ -89,5 +91,73 @@ describe('link completion', () => {
     await accept(editor)
     expect(editor.text()).toBe('[[Welcome]] after')
     expect(editor.view.state.selection.main.head).toBe(11)
+  })
+})
+
+describe('formatting keys', () => {
+  const mod = () => (navigator.platform.startsWith('Mac') ? { metaKey: true } : { ctrlKey: true })
+
+  it('Mod-B bolds and Mod-Enter toggles a task box', () => {
+    const editor = editorWith('- [ ] word', 7)
+    press(editor, 'b', mod())
+    expect(editor.text()).toBe('- [ ] **word**')
+    press(editor, 'Enter', mod())
+    expect(editor.text()).toBe('- [x] **word**')
+  })
+
+  it('Mod-K links the word, with url selected or the clipboard URL', async () => {
+    const editor = editorWith('see docs', 6)
+    makeLink(() => 'not a url')(editor.view)
+    await new Promise((r) => setTimeout(r))
+    expect(editor.text()).toBe('see [docs](url)')
+    const { from, to } = editor.view.state.selection.main
+    expect(editor.text().slice(from, to)).toBe('url')
+
+    const other = editorWith('see docs', 6)
+    makeLink(() => 'https://example.com/a')(other.view)
+    await new Promise((r) => setTimeout(r))
+    expect(other.text()).toBe('see [docs](https://example.com/a)')
+  })
+})
+
+describe('folding', () => {
+  const note = '---\ntitle: A\n---\n# One\ntext\n## Two\nmore\n# Three\nend'
+
+  it('folds every section and the frontmatter, then unfolds all', () => {
+    const editor = editorWith(note, 0)
+    expect(toggleFoldAll(editor.view)).toBe(true)
+    const folded = []
+    foldedRanges(editor.view.state).between(0, note.length, (from, to) => void folded.push(note.slice(from, to)))
+    expect(folded.sort()).toEqual(['\ntitle: A\n---', '\ntext\n## Two\nmore', '\nmore', '\nend'].sort())
+    toggleFoldAll(editor.view)
+    expect(foldedRanges(editor.view.state).size).toBe(0)
+  })
+
+  it('shows a marker on a foldable cursor line only', () => {
+    const editor = editorWith(note, note.indexOf('# One'))
+    expect(editor.view.dom.querySelector('.cm-foldMarker')).not.toBe(null)
+    editor.view.dispatch({ selection: { anchor: note.indexOf('text') } })
+    expect(editor.view.dom.querySelector('.cm-foldMarker')).toBe(null)
+  })
+})
+
+describe('pasting an image', () => {
+  it('hands the image to the app and pastes text as before', () => {
+    const pasted = []
+    const editor = createEditor(document.body.appendChild(document.createElement('div')), {
+      onUserChange: () => {},
+      onPasteImage: (file) => pasted.push(file.type),
+    })
+    editor.setState(editor.createState('x'))
+    const paste = (files) => {
+      const e = new Event('paste', { bubbles: true, cancelable: true })
+      e.clipboardData = { files, getData: () => '', types: [] }
+      editor.view.contentDOM.dispatchEvent(e)
+      return e.defaultPrevented
+    }
+    expect(paste([new File([new Uint8Array([1])], 'a.png', { type: 'image/png' })])).toBe(true)
+    expect(pasted).toEqual(['image/png'])
+    paste([new File(['t'], 'a.txt', { type: 'text/plain' })])
+    expect(pasted).toEqual(['image/png'])
   })
 })

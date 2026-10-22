@@ -10,6 +10,7 @@ import {
   readNote,
   writeNote,
   createNote,
+  writeAttachment,
   createFolder,
   move,
   trash,
@@ -89,6 +90,14 @@ describe('note operations', () => {
     await expect(move(root, 'Ideas.md', 'Welcome.md')).rejects.toThrow()
     expect(await move(root, 'Ideas.md', 'Projects/Ideas.md')).toBe('Projects/Ideas.md')
     expect(await readFile(join(root, 'Projects', 'Ideas.md'), 'utf8')).toContain('# Ideas')
+  })
+
+  it('writes pasted bytes under a free name, creating the folder', async () => {
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47])
+    const name = 'Pasted image 2026-10-22 101500'
+    expect(await writeAttachment(root, 'pasted', name, '.png', bytes)).toBe(`pasted/${name}.png`)
+    expect(await writeAttachment(root, 'pasted', name, '.png', bytes)).toBe(`pasted/${name} 1.png`)
+    expect(await readFile(join(root, 'pasted', `${name}.png`))).toEqual(bytes)
   })
 
   it('hands deletion to the trash function', async () => {

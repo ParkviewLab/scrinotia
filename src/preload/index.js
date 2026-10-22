@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('scrinotia', {
   // The path of a file dropped from the desktop (File objects carry no path in the page).
   pathForFile: (file) => webUtils.getPathForFile(file),
   importFile: (sourcePath) => ipcRenderer.invoke('file:import', sourcePath),
+  pasteImage: (ext, bytes) => ipcRenderer.invoke('file:paste', ext, bytes),
   readBytes: (rel) => ipcRenderer.invoke('file:readBytes', rel),
   openAbout: () => ipcRenderer.invoke('app:about'),
   openLicenses: () => ipcRenderer.invoke('app:licenses'),

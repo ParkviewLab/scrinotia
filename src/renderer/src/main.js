@@ -721,6 +721,18 @@ const editor = createEditor($('editor'), {
     readNote: (path) => (path === current ? Promise.resolve(editor.text()) : api.readNote(path)),
     tags: () => api.tags(),
   },
+  // A pasted image is written to the attachment folder and embedded at the
+  // cursor (R2.7), as a dropped file is.
+  onPasteImage: async (file) => {
+    const note = current
+    const ext = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp' }[file.type]
+    if (!ext || notes.get(note)?.kind !== 'note') return
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const rel = await run(() => api.pasteImage(ext, bytes))
+    if (!rel || current !== note) return
+    await refreshTree()
+    editor.paste(linkFor(rel))
+  },
 })
 
 // ---- preview (R3.1): read-only rendering, alone or beside the editor ----
