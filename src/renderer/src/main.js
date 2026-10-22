@@ -880,6 +880,7 @@ async function fillMermaid(host) {
     }
     if (!pre.isConnected) continue
     if (pre.hasAttribute(LINE)) box.setAttribute(LINE, pre.getAttribute(LINE))
+    preview.carryKey(pre, box)
     pre.replaceWith(box)
     const svg = box.querySelector(':scope > svg')
     if (svg) attachPanZoom(box, svg, { key: keys[i], onMenu: diagramMenu })

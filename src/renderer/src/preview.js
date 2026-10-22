@@ -280,6 +280,12 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
 
   return {
     toHtml,
+    // An element that replaces a drawn block (a Mermaid diagram's box in
+    // place of its source) takes over the block's key, so that a redraw
+    // keeps it.
+    carryKey(from, to) {
+      if (blockKeys.has(from)) blockKeys.set(to, blockKeys.get(from))
+    },
     // Redraws the open note's preview after an edit (item 14): the note is
     // drawn afresh off the page, then the elements of the unchanged blocks
     // at the start and the end are kept and only those between are
