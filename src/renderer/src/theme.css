@@ -386,6 +386,15 @@ button:hover {
 .preview h2 { font-size: 1.45em; }
 .preview h3 { font-size: 1.2em; }
 .preview a { color: var(--accent); cursor: pointer; text-decoration: none; }
+/* Task boxes: the browser's own checkbox, not the form fields' style above. */
+.preview input[type='checkbox'] {
+  appearance: auto;
+  padding: 0;
+  margin: 0 0.4em 0 0;
+  vertical-align: -0.1em;
+  accent-color: var(--accent);
+}
+.preview input.task-box { cursor: pointer; }
 .preview a:hover { text-decoration: underline; }
 .preview a.unresolved { opacity: 0.6; text-decoration: underline dotted; }
 .preview a.embed-link::before { content: '↳ '; color: var(--muted); }
