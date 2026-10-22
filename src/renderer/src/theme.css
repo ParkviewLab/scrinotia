@@ -38,6 +38,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --syn-property: #90caf9;
   --syn-comment: #d7a86e;
   --syn-invalid: #f28b82;
+  /* The vault's syntax and Markdown's marks in the editor (editor.js). */
+  --syn-alias: #a8b4c8;
+  --syn-mark: #6e737b;
+  --syn-highlight: color-mix(in srgb, var(--accent) 30%, transparent);
   --accent: #7f9cf5;
   --select: #2c2f36;
   --border: #2a2c30;
@@ -67,6 +71,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --syn-property: #0000cc;
   --syn-comment: #994400;
   --syn-invalid: #ff0000;
+  /* The vault's syntax and Markdown's marks in the editor (editor.js). */
+  --syn-alias: #57606a;
+  --syn-mark: #8c959f;
+  --syn-highlight: color-mix(in srgb, var(--accent) 30%, transparent);
   --accent: #3b5bdb;
   --select: #e3e7ee;
   --border: #d8dce2;
@@ -346,7 +354,7 @@ button:hover {
 .preview a:hover { text-decoration: underline; }
 .preview a.unresolved { opacity: 0.6; text-decoration: underline dotted; }
 .preview a.embed-link::before { content: '↳ '; color: var(--muted); }
-.preview mark { background: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; border-radius: 2px; }
+.preview mark { background: var(--syn-highlight); color: inherit; border-radius: 2px; }
 .preview code { font-family: var(--font-mono); font-size: 0.9em; background: var(--select); border-radius: 3px; padding: 0 3px; }
 .preview pre { background: var(--bg-side); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; overflow: auto; }
 .preview pre code { background: none; padding: 0; }

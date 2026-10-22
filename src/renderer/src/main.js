@@ -13,6 +13,7 @@ import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
+import { diskConflict } from './conflicts.js'
 import { PATH_TYPE, FOLDER_TYPE, dragData, noteAccepts } from './dragTypes.js'
 import { attachPanZoom, keepViewsFor } from './diagramView.js'
 import { mountModel } from './modelViewer.js'
@@ -1557,6 +1558,9 @@ async function showNote(path) {
       return
     }
   }
+  // A note left with unsaved edits may have changed on disk whilst hidden
+  // (item 18): compare before its next save can overwrite the change.
+  const disk = entry.dirty ? await api.readNote(path).catch(() => null) : null
   if (current !== path) return // another note was chosen while this one loaded
   $('note-area').hidden = false
   $('modes').hidden = false
@@ -1567,6 +1571,11 @@ async function showNote(path) {
   if (noteMode === 'split') {
     const head = entry.state.selection.main.head
     editor.view.dispatch({ effects: entry.scroll ?? EditorView.scrollIntoView(head, { y: 'center' }) })
+  }
+  const conflict = diskConflict(entry, disk)
+  if (conflict !== null) {
+    conflictText = conflict
+    $('conflict').hidden = false
   }
   renderPreview()
   updateResolver()
@@ -2250,7 +2259,7 @@ api.onVaultChanged(async (paths) => {
     }
     if (disk === entry.disk) continue // our own save, or no change
     if (path !== current) {
-      if (entry.dirty) continue // resolved when the note is shown and saved
+      if (entry.dirty) continue // checked when the note is next shown (showNote)
       notes.delete(path)
       continue
     }
