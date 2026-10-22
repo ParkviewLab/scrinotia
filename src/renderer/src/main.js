@@ -65,7 +65,20 @@ themeSelect.addEventListener('change', () => {
   saveAppearance({ theme: themeSelect.value })
 })
 
+// The source editor's preferences (R6.4), a vault setting of their own in
+// editor.json: spell checking in notes, on unless turned off.
+let editorPrefs = {}
+async function loadEditorPrefs() {
+  try {
+    editorPrefs = (await api.getSettings('editor')).values
+  } catch {
+    editorPrefs = {}
+  }
+  editor.setSpellcheck(editorPrefs.spellcheck !== false)
+}
+
 async function loadVaultSettings() {
+  loadEditorPrefs()
   try {
     const { values, conflicts } = await api.getSettings('appearance')
     appearance = values
@@ -96,6 +109,7 @@ function openSettings() {
       $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
     })
     .catch(() => {})
+  $('settings-spellcheck').value = editorPrefs.spellcheck === false ? 'off' : 'on'
   drawFontChoices()
   $('settings').hidden = false
   mountPreviewModel($('settings-preview'))
@@ -210,6 +224,16 @@ $('settings-tree-order').addEventListener('change', async (e) => {
   try {
     await api.setSettings('tree', { order: e.target.value })
     await refreshTree()
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+})
+
+$('settings-spellcheck').addEventListener('change', async (e) => {
+  editorPrefs = { ...editorPrefs, spellcheck: e.target.value === 'on' }
+  editor.setSpellcheck(editorPrefs.spellcheck)
+  try {
+    await api.setSettings('editor', editorPrefs)
   } catch (err) {
     showError($('pane-error'), err)
   }
@@ -745,6 +769,38 @@ const editor = createEditor($('editor'), {
     await refreshTree()
     editor.paste(linkFor(rel))
   },
+  // Cmd/Ctrl+click on a link in the source follows it as the preview does.
+  onFollowLink: (link) => follow(link),
+})
+
+// The source editor's right-click menu: spelling suggestions on a misspelt
+// word, Follow link on a link, then Cut, Copy, Paste and Select all. The main
+// process sends the spelling checker's findings with the click's point.
+api.onEditMenu(async ({ x, y, misspelled, suggestions = [] }) => {
+  if (!editor.view.dom.contains(document.elementFromPoint(x, y))) return
+  const here = editor.contextAt(x, y)
+  const items = []
+  if (misspelled) {
+    if (suggestions.length) items.push(...suggestions.slice(0, 6).map((word, k) => ({ id: `spell:${k}`, label: word })))
+    else items.push({ id: 'none', label: 'No suggestions', enabled: false })
+    items.push({ id: 'learn', label: 'Add to dictionary' }, { type: 'separator' })
+  }
+  if (here.link) items.push({ id: 'follow', label: 'Follow link' }, { id: 'follow-tab', label: 'Open link in new tab' }, { type: 'separator' })
+  items.push(
+    { id: 'cut', label: 'Cut', enabled: here.selection },
+    { id: 'copy', label: 'Copy', enabled: here.selection },
+    { id: 'paste', label: 'Paste' },
+    { type: 'separator' },
+    { id: 'select-all', label: 'Select all' },
+  )
+  const choice = await api.menu(items)
+  if (!choice) return
+  editor.focus()
+  if (choice.startsWith('spell:') && here.pos !== null) editor.replaceWord(here.pos, misspelled, suggestions[Number(choice.slice(6))])
+  else if (choice === 'learn') api.addToDictionary(misspelled)
+  else if (choice === 'follow' || choice === 'follow-tab') follow({ kind: here.link.kind, ref: here.link.ref, newTab: choice === 'follow-tab' })
+  else if (choice === 'select-all') editor.selectAll()
+  else if (['cut', 'copy', 'paste'].includes(choice)) api.editCommand(choice)
 })
 
 // ---- preview (R3.1): read-only rendering, alone or beside the editor ----

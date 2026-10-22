@@ -4,10 +4,10 @@
 // The Markdown source editor of the split mode: one CodeMirror view, one
 // EditorState per open note (so undo history survives switching notes, R3.4).
 
-import { EditorState, Annotation, Transaction } from '@codemirror/state'
+import { EditorState, Annotation, Transaction, Compartment } from '@codemirror/state'
 import { autocompletion } from '@codemirror/autocomplete'
 import { EditorView, keymap, drawSelection, highlightActiveLine } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { defaultKeymap, history, historyKeymap, indentWithTab, selectAll } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { yaml, yamlLanguage } from '@codemirror/lang-yaml'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
@@ -18,6 +18,7 @@ import { listKeymap } from './lists.js'
 import { vaultCompletions } from './completion.js'
 import { formatKeymap } from './format.js'
 import { folding, foldKeymap } from './fold.js'
+import { linkAt } from './links.js'
 
 // The editor's syntax colours: CodeMirror's default style, read from colour
 // tokens in theme.css so that the dark theme has its own legible values. The
@@ -72,9 +73,17 @@ export function diskReplacement(state, text) {
   }
 }
 
+// Spell checking in notes, a vault setting (editor.json); .base files, being
+// YAML, are never checked. Autocorrect stays off.
+const spelling = new Compartment()
+const spellAttributes = (on) => EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false', autocorrect: 'off' })
+
 // vault: the hooks completion reads the vault through (completion.js);
-// onPasteImage(file): called with an image pasted into a note (R2.7).
-export function createEditor(parent, { onUserChange, onScroll, vault, onPasteImage }) {
+// onPasteImage(file): called with an image pasted into a note (R2.7);
+// onFollowLink({ kind, ref, newTab }): called on Cmd/Ctrl+click on a link,
+// with Shift for a new tab.
+export function createEditor(parent, { onUserChange, onScroll, vault, onPasteImage, onFollowLink }) {
+  let spellcheck = true
   // Completion of links and tags in notes (R4.1); it replaces lang-markdown's
   // own source (HTML tags).
   const completion = vault ? [autocompletion({ override: [vaultCompletions(vault)], icons: false })] : []
@@ -98,8 +107,20 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
     EditorView.updateListener.of((u) => {
       if (u.docChanged && !u.transactions.some((t) => t.annotation(External))) onUserChange(u.state)
     }),
+    language === 'yaml' ? spellAttributes(false) : spelling.of(spellAttributes(spellcheck)),
     EditorView.domEventHandlers({
       scroll: (_e, view) => onScroll?.(view),
+      // Cmd/Ctrl+click follows the link under the pointer, as a click in the
+      // preview does; elsewhere it keeps CodeMirror's meaning (add a cursor).
+      mousedown: (e, view) => {
+        if (e.button !== 0 || !(navigator.platform.startsWith('Mac') ? e.metaKey : e.ctrlKey) || !onFollowLink) return false
+        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
+        const link = pos === null ? null : linkAt(view.state, pos)
+        if (!link) return false
+        e.preventDefault()
+        onFollowLink({ kind: link.kind, ref: link.ref, newTab: e.shiftKey })
+        return true
+      },
       // An image on the clipboard goes to the vault as a file (R2.7); text
       // pastes as before, also when an image comes with it (as spreadsheets
       // and word processors put one beside the text they copy).
@@ -123,7 +144,31 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
     // language is 'markdown' (notes) or 'yaml' (.base files).
     createState: (text, language = 'markdown') =>
       EditorState.create({ doc: text, extensions: [EditorState.lineSeparator.of(detectLineSeparator(text)), ...extensions(language)] }),
-    setState: (state) => view.setState(state),
+    // A note's stored state takes the spelling setting as it is now.
+    setState(state) {
+      view.setState(state)
+      if (spelling.get(view.state)) view.dispatch({ effects: spelling.reconfigure(spellAttributes(spellcheck)) })
+    },
+    // Turns spell checking in notes on or off (editor.json).
+    setSpellcheck(on) {
+      spellcheck = !!on
+      if (spelling.get(view.state)) view.dispatch({ effects: spelling.reconfigure(spellAttributes(spellcheck)) })
+    },
+    // What is under a point of the window, for the context menu: the
+    // position, the link there (linkAt) and whether text is selected.
+    contextAt(x, y) {
+      const pos = view.posAtCoords({ x, y })
+      return { pos, link: pos === null ? null : linkAt(view.state, pos), selection: !view.state.selection.main.empty }
+    },
+    // Replaces the word at pos, if it is word, with replacement (a spelling
+    // suggestion), as an edit of the user's.
+    replaceWord(pos, word, replacement) {
+      const range = view.state.wordAt(pos)
+      if (!range || view.state.sliceDoc(range.from, range.to) !== word) return false
+      view.dispatch({ changes: { ...range, insert: replacement }, selection: { anchor: range.from + replacement.length }, userEvent: 'input.replace' })
+      return true
+    },
+    selectAll: () => selectAll(view),
     getState: () => view.state,
     // The note's text exactly as it will be written (R1.3, R1.4).
     text: (state = view.state) => state.sliceDoc(),

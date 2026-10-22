@@ -5,7 +5,7 @@
 // and link index (R2.1); a vault already open in one window is focused rather
 // than opened twice. All filesystem access happens here.
 
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell, protocol, net } from 'electron'
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell, protocol, net, session } from 'electron'
 import { randomBytes } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 import { watch } from 'node:fs'
@@ -17,6 +17,7 @@ import { createIndex } from './linkIndex.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
 import { openAboutWindow, openLicensesWindow } from './about.js'
+import { configureSpelling } from './spelling.js'
 import appIcon from '../../build/icon.png?asset'
 
 const state = createState(app.getPath('userData'), join(app.getPath('appData'), 'granite-vaulting'))
@@ -159,6 +160,12 @@ function registerIpc() {
       menu.popup({ window: BrowserWindow.fromWebContents(e.sender), callback: () => setTimeout(() => resolveChoice(chosen), 0) })
     }),
   )
+  // The source editor's context menu acts through the page: Cut, Copy and
+  // Paste as the Edit menu does, and a word added to the spelling dictionary.
+  on('edit:do', (e, command) => {
+    if (['cut', 'copy', 'paste'].includes(command)) e.sender[command]()
+  })
+  on('spell:add', (e, word) => e.sender.session.addWordToSpellCheckerDictionary(String(word)))
   on('vault:choose', async (e) => {
     const ctx = ctxOf(e)
     const result = await dialog.showOpenDialog(ctx.win, { properties: ['openDirectory'] })
@@ -281,6 +288,15 @@ function createWindow() {
   win.webContents.on('context-menu', (_e, params) => {
     if (params.frameURL?.startsWith('scrinotia-asset:') && /\.html?$/i.test(new URL(params.frameURL).pathname)) {
       win.webContents.send('ui:frame-menu', params.frameURL)
+    } else if (params.isEditable) {
+      // A right-click in editable text (the source editor), with the
+      // spelling checker's word and suggestions, for the renderer's menu.
+      win.webContents.send('ui:edit-menu', {
+        x: params.x,
+        y: params.y,
+        misspelled: params.misspelledWord,
+        suggestions: params.dictionarySuggestions,
+      })
     }
   })
   win.webContents.on('before-input-event', (_e, input) => {
@@ -359,6 +375,11 @@ app.whenReady().then(() => {
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(appIcon)
   registerIpc()
   serveAssets()
+  configureSpelling(session.defaultSession, {
+    platform: process.platform,
+    dictionaryDir: app.isPackaged ? join(process.resourcesPath, 'dictionaries') : join(app.getAppPath(), 'build', 'dictionaries'),
+    userDataDir: app.getPath('userData'),
+  })
   buildMenu()
   createWindow()
   app.on('activate', () => {
