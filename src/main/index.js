@@ -318,6 +318,7 @@ function buildMenu() {
       submenu: [
         { label: 'Toggle Left Panel', accelerator: 'CmdOrCtrl+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'left') },
         { label: 'Toggle Right Panel', accelerator: 'CmdOrCtrl+Shift+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'right') },
+        { label: 'Cycle Note Mode', accelerator: 'CmdOrCtrl+E', click: (_item, win) => win?.webContents.send('ui:cycle-mode') },
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },

@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('scrinotia', {
   getLayout: () => ipcRenderer.invoke('layout:get'),
   setLayout: (layout) => ipcRenderer.invoke('layout:set', layout),
   onToggleDrawer: (fn) => ipcRenderer.on('ui:toggle-drawer', (_e, side) => fn(side)),
+  onCycleMode: (fn) => ipcRenderer.on('ui:cycle-mode', () => fn()),
   setTabs: (tabs) => ipcRenderer.invoke('tabs:set', tabs),
   menu: (items) => ipcRenderer.invoke('ui:menu', items),
   chooseVault: () => ipcRenderer.invoke('vault:choose'),

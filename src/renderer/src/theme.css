@@ -271,7 +271,8 @@ button:hover {
   word-break: break-word;
 }
 
-/* ---- note modes: preview alone, or source editor beside preview ---- */
+/* ---- note modes: preview alone, source editor beside preview, or the
+   source alone; in the split, the divider sets the editor's share ---- */
 .pane-head .actions button.active {
   border-color: var(--accent);
   color: var(--accent);
@@ -287,14 +288,15 @@ button:hover {
 .note-area.mode-preview {
   grid-template-columns: 1fr;
 }
-.note-area.mode-preview .editor {
+.note-area.mode-preview :is(.editor, #split-note),
+.note-area.mode-source :is(.preview, #split-note) {
   display: none;
 }
-.note-area.mode-split {
-  grid-template-columns: 1fr 1fr;
+.note-area.mode-source {
+  grid-template-columns: 1fr;
 }
-.note-area.mode-split .editor {
-  border-right: 1px solid var(--border);
+.note-area.mode-split {
+  grid-template-columns: minmax(0, var(--editor-share, 50%)) 4px minmax(0, 1fr);
 }
 .editor {
   min-height: 0;
@@ -315,6 +317,11 @@ button:hover {
 .editor .cm-content {
   padding: 0 20px;
   caret-color: var(--fg);
+  /* The preview's measure (760 px of text) with the editor's padding,
+     centred when the column is wider. */
+  box-sizing: border-box;
+  max-width: 800px;
+  margin: 0 auto;
 }
 .editor .cm-cursor {
   border-left-color: var(--fg);

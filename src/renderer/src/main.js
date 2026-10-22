@@ -469,7 +469,7 @@ async function goHistory(by) {
   // Embeds and diagrams can grow the page after it is drawn, so the scroll
   // is set again once they have had a moment.
   $('preview').scrollTop = target.scroll
-  alignSoon('preview')
+  alignSoon(editorFollowPreview)
   setTimeout(() => {
     $('preview').scrollTop = target.scroll
     if (noteMode === 'split') editorFollowPreview()
@@ -803,7 +803,7 @@ function goToHeading(k, line) {
   const stamped = $('preview').querySelector(`:is(h1, h2, h3, h4, h5, h6)[${LINE}="${line}"]`)
   const els = [...$('preview').querySelectorAll('h1, h2, h3, h4, h5, h6')].filter((el) => !el.closest('.note-embed, .properties, .callout'))
   ;(stamped ?? els[k])?.scrollIntoView({ block: 'start' })
-  if (noteMode === 'split') editor.gotoLine(line)
+  if (editorShown()) editor.gotoLine(line)
 }
 
 async function fillEmbeds() {
@@ -1096,15 +1096,18 @@ function editorFollowPreview() {
   if (!anchors) byProportion(src, v.scrollDOM)
   else if (atTop(src)) v.scrollDOM.scrollTop = 0
   else if (atBottom(src)) v.scrollDOM.scrollTop = v.scrollDOM.scrollHeight
-  else {
-    const at = lineForTop(anchors, src.scrollTop)
-    const n = Math.max(1, Math.min(Math.floor(at), v.state.doc.lines))
-    const line = v.state.doc.line(n)
-    // CodeMirror measures the line before scrolling, so a line far from the
-    // drawn part lands where it should; the margin scrolls past the fraction.
-    const yMargin = -(at - n) * v.lineBlockAt(line.from).height
-    v.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin }) })
-  }
+  else scrollEditorToLine(lineForTop(anchors, src.scrollTop))
+}
+
+// Puts a (fractional) line at the top of the editor.
+function scrollEditorToLine(at) {
+  const v = editor.view
+  const n = Math.max(1, Math.min(Math.floor(at), v.state.doc.lines))
+  const line = v.state.doc.line(n)
+  // CodeMirror measures the line before scrolling, so a line far from the
+  // drawn part lands where it should; the margin scrolls past the fraction.
+  const yMargin = -(at - n) * v.lineBlockAt(line.from).height
+  v.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin }) })
 }
 
 // Scroll events come many to a frame; one follow per frame is enough.
@@ -1123,22 +1126,21 @@ $('preview').addEventListener('scroll', () => {
 // An image that loads late changes the heights below it.
 $('preview').addEventListener('load', () => noteMode === 'split' && scheduleFollow(), true)
 
-// Aligns one pane to the other once the editor has measured itself (after
-// a note is shown, or the split view opened). The last request wins, so
-// Back and Forward, which restore the preview's place, override the
-// editor's own.
+// Aligns the panes (one of the follow functions) once the editor has
+// measured itself, after a note is shown or the mode changed. The last
+// request wins, so Back and Forward, which restore the preview's place,
+// override the editor's own.
 let alignFrom = null
-function alignSoon(from) {
-  alignFrom = from
+function alignSoon(align) {
+  alignFrom = align
   // Dispatching inside CodeMirror's measure is not allowed, hence the microtask.
   editor.view.requestMeasure({
     read: () => null,
     write: () =>
       queueMicrotask(() => {
-        const f = alignFrom
+        const align = alignFrom
         alignFrom = null
-        if (f === 'editor') previewFollowEditor()
-        else if (f === 'preview') editorFollowPreview()
+        align?.()
       }),
   })
 }
@@ -1179,22 +1181,36 @@ $('preview').addEventListener('click', (e) => {
   editor.focus()
 })
 
+// The three modes (R3.1, item 15), in the order Cmd/Ctrl+E cycles them.
+const NOTE_MODES = ['preview', 'split', 'source']
+const editorShown = () => noteMode !== 'preview'
+
+// A change of mode keeps the reader's place: the line at the top of the
+// preview, or of the editor when the source was shown alone. The preview
+// reflows at its new width, so its place is found again by that line.
 function setNoteMode(mode) {
-  // The preview reflows at its new width; it keeps the line at its top.
-  const before = current && !$('note-area').hidden ? previewAnchors() : null
-  const shown = before ? lineForTop(before, $('preview').scrollTop) : null
+  const from = noteMode
+  const visible = current && !$('note-area').hidden
+  const before = visible && from !== 'source' ? previewAnchors() : null
+  const shown = before ? lineForTop(before, $('preview').scrollTop) : visible && from === 'source' ? editorTopLine() : null
   noteMode = mode
   $('note-area').className = `note-area mode-${mode}`
-  for (const m of ['preview', 'split']) $(`mode-${m}`).classList.toggle('active', m === mode)
-  const after = shown !== null && shown > 1 ? previewAnchors() : null
+  for (const m of NOTE_MODES) $(`mode-${m}`).classList.toggle('active', m === mode)
+  const after = shown !== null && mode !== 'source' ? previewAnchors() : null
   if (after) $('preview').scrollTop = Math.round(topForLine(after, shown))
-  if (mode === 'split') {
+  if (mode !== 'preview') {
     editor.view.requestMeasure()
     editor.focus()
-    // The editor opens where the reader was in the preview.
-    alignSoon('preview')
+    if (from === 'preview' && mode === 'split') alignSoon(editorFollowPreview)
+    else if (from === 'preview' && shown !== null) alignSoon(() => scrollEditorToLine(shown))
+    else if (from === 'source' && mode === 'split') alignSoon(previewFollowEditor)
   }
 }
+
+api.onCycleMode(() => {
+  if ($('modes').hidden) return
+  setNoteMode(NOTE_MODES[(NOTE_MODES.indexOf(noteMode) + 1) % NOTE_MODES.length])
+})
 
 // Links follow on click; Cmd/Ctrl+click or a middle click opens a new tab.
 function previewLink(e, newTab) {
@@ -1263,7 +1279,7 @@ function rememberCurrent() {
   if (!current || !notes.has(current)) return
   const entry = notes.get(current)
   entry.state = editor.getState()
-  if (noteMode === 'split') entry.scroll = editor.view.scrollSnapshot()
+  if (editorShown()) entry.scroll = editor.view.scrollSnapshot()
 }
 
 // ---- .base files: table views (rendered in the main process) ----
@@ -1545,13 +1561,13 @@ async function showNote(path) {
   // The editor's kept place leads; a scroll event from the preview's redraw
   // must not move it.
   driver = 'editor'
-  if (noteMode === 'split') {
+  if (editorShown()) {
     const head = entry.state.selection.main.head
     editor.view.dispatch({ effects: entry.scroll ?? EditorView.scrollIntoView(head, { y: 'center' }) })
   }
   renderPreview()
   updateResolver()
-  alignSoon('editor')
+  alignSoon(previewFollowEditor)
 }
 
 async function renderPane() {
@@ -1690,7 +1706,7 @@ function forgetNotes(match) {
 }
 
 // ---- modes (R3.1) ----
-for (const mode of ['preview', 'split']) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
+for (const mode of NOTE_MODES) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
 
 // Shows a vault entry in the file tree: the Files list and the left panel
 // opened if need be, its folders expanded, the entry selected and scrolled
@@ -2055,7 +2071,10 @@ async function renderTags() {
 // its width is set by dragging the splitter beside it (double-click resets).
 // The state is remembered on this machine. ----
 const DEFAULT_WIDTH = 280
-const layout = { leftOpen: true, rightOpen: true, leftWidth: DEFAULT_WIDTH, rightWidth: DEFAULT_WIDTH }
+// The split view's divider (item 15) sets the editor's share of the note
+// area, also remembered on this machine (R6.5).
+const DEFAULT_SHARE = 0.5
+const layout = { leftOpen: true, rightOpen: true, leftWidth: DEFAULT_WIDTH, rightWidth: DEFAULT_WIDTH, editorShare: DEFAULT_SHARE }
 let saveLayoutTimer = null
 
 function applyLayout() {
@@ -2066,6 +2085,7 @@ function applyLayout() {
   ws.classList.toggle('right-closed', !layout.rightOpen)
   $('toggle-left').classList.toggle('closed', !layout.leftOpen)
   $('toggle-right').classList.toggle('closed', !layout.rightOpen)
+  $('note-area').style.setProperty('--editor-share', `${(layout.editorShare * 100).toFixed(2)}%`)
   editor.view.requestMeasure()
 }
 
@@ -2124,11 +2144,54 @@ function dragSplitter(side) {
   })
 }
 
+// Each side of the split keeps at least 240 px; the share is a fraction, so
+// it holds as the window or the drawers change.
+const MIN_PANE = 240
+function clampShare(share, width) {
+  if (!(width > 0)) return DEFAULT_SHARE
+  const lo = Math.min(0.5, MIN_PANE / width)
+  return Math.max(lo, Math.min(1 - lo, share))
+}
+
+function dragNoteSplitter() {
+  const bar = $('split-note')
+  bar.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    bar.setPointerCapture(e.pointerId)
+    bar.classList.add('dragging')
+    $('workspace').classList.add('resizing')
+    const move = (ev) => {
+      if (ev.buttons === 0) return end()
+      const area = $('note-area').getBoundingClientRect()
+      layout.editorShare = Math.round(clampShare((ev.clientX - area.left) / area.width, area.width) * 1000) / 1000
+      applyLayout()
+      scheduleFollow()
+    }
+    const end = () => {
+      bar.classList.remove('dragging')
+      $('workspace').classList.remove('resizing')
+      bar.removeEventListener('pointermove', move)
+      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) bar.removeEventListener(type, end)
+      if (bar.hasPointerCapture(e.pointerId)) bar.releasePointerCapture(e.pointerId)
+      saveLayout()
+    }
+    bar.addEventListener('pointermove', move)
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) bar.addEventListener(type, end)
+  })
+  bar.addEventListener('dblclick', () => {
+    layout.editorShare = DEFAULT_SHARE
+    applyLayout()
+    saveLayout()
+    scheduleFollow()
+  })
+}
+
 $('toggle-left').addEventListener('click', () => toggleDrawer('left'))
 $('toggle-right').addEventListener('click', () => toggleDrawer('right'))
 api.onToggleDrawer(toggleDrawer)
 dragSplitter('left')
 dragSplitter('right')
+dragNoteSplitter()
 api
   .getLayout()
   .then((saved) => {
@@ -2136,6 +2199,7 @@ api
     if (typeof saved.rightOpen === 'boolean') layout.rightOpen = saved.rightOpen
     if (Number.isFinite(saved.leftWidth)) layout.leftWidth = Math.max(160, Math.min(600, saved.leftWidth))
     if (Number.isFinite(saved.rightWidth)) layout.rightWidth = Math.max(160, Math.min(600, saved.rightWidth))
+    if (Number.isFinite(saved.editorShare)) layout.editorShare = Math.max(0.1, Math.min(0.9, saved.editorShare))
   })
   .catch(() => {})
   .finally(applyLayout)
@@ -2192,7 +2256,7 @@ $('note-area').addEventListener(
     e.preventDefault()
     e.stopPropagation()
     const note = current
-    const inEditor = noteMode === 'split' && $('editor').contains(e.target)
+    const inEditor = editorShown() && $('editor').contains(e.target)
     const pos = inEditor ? editor.posAt(e.clientX, e.clientY) : null
     const paths = []
     const vaultPath = e.dataTransfer.getData(PATH_TYPE)
