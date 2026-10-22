@@ -7,6 +7,7 @@
 import { createEditor } from './editor/editor.js'
 import { createPreview, LINE } from './preview.js'
 import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
+import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
 import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
@@ -1181,8 +1182,6 @@ $('preview').addEventListener('click', (e) => {
   editor.focus()
 })
 
-// The three modes (R3.1, item 15), in the order Cmd/Ctrl+E cycles them.
-const NOTE_MODES = ['preview', 'split', 'source']
 const editorShown = () => noteMode !== 'preview'
 
 // A change of mode keeps the reader's place: the line at the top of the
@@ -1209,7 +1208,7 @@ function setNoteMode(mode) {
 
 api.onCycleMode(() => {
   if ($('modes').hidden) return
-  setNoteMode(NOTE_MODES[(NOTE_MODES.indexOf(noteMode) + 1) % NOTE_MODES.length])
+  setNoteMode(nextMode(noteMode))
 })
 
 // Links follow on click; Cmd/Ctrl+click or a middle click opens a new tab.
@@ -2073,7 +2072,6 @@ async function renderTags() {
 const DEFAULT_WIDTH = 280
 // The split view's divider (item 15) sets the editor's share of the note
 // area, also remembered on this machine (R6.5).
-const DEFAULT_SHARE = 0.5
 const layout = { leftOpen: true, rightOpen: true, leftWidth: DEFAULT_WIDTH, rightWidth: DEFAULT_WIDTH, editorShare: DEFAULT_SHARE }
 let saveLayoutTimer = null
 
@@ -2144,15 +2142,7 @@ function dragSplitter(side) {
   })
 }
 
-// Each side of the split keeps at least 240 px; the share is a fraction, so
-// it holds as the window or the drawers change.
-const MIN_PANE = 240
-function clampShare(share, width) {
-  if (!(width > 0)) return DEFAULT_SHARE
-  const lo = Math.min(0.5, MIN_PANE / width)
-  return Math.max(lo, Math.min(1 - lo, share))
-}
-
+// The share is a fraction, so it holds as the window or the drawers change.
 function dragNoteSplitter() {
   const bar = $('split-note')
   bar.addEventListener('pointerdown', (e) => {
