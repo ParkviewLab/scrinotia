@@ -197,6 +197,16 @@ export async function statFile(root, rel) {
   return { size: st.size, ctime: Math.round(born), mtime: Math.round(st.mtimeMs) }
 }
 
+// Writes bytes pasted into a note as a new file in folderRel (created if
+// missing), named base plus ext or, if that is taken, a numbered name (R2.7).
+// Returns the new vault-relative path.
+export async function writeAttachment(root, folderRel, base, ext, bytes) {
+  if (folderRel) await mkdir(resolveInside(root, folderRel), { recursive: true })
+  const rel = await freeName(root, folderRel, base, ext)
+  await writeFile(resolveInside(root, rel), bytes, { flag: 'wx' })
+  return rel
+}
+
 // Copies a file from outside the vault into folderRel (created if missing),
 // under its own name or, if that is taken, a numbered one (R2.7). Returns the
 // new vault-relative path. The source is left as it is.

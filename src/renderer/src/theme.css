@@ -333,6 +333,22 @@ button:hover {
 .editor .cm-focused .cm-selectionBackground {
   background: var(--select) !important;
 }
+/* Folding: the marker on the cursor's line and a fold's placeholder. */
+.editor .cm-foldMarker {
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px;
+  user-select: none;
+}
+.editor .cm-foldMarker:hover {
+  color: var(--fg);
+}
+.editor .cm-foldPlaceholder {
+  background: var(--select);
+  border: none;
+  color: var(--muted);
+  padding: 0 4px;
+}
 /* Link and tag completion (R4.1). */
 .editor .cm-tooltip.cm-tooltip-autocomplete {
   background: var(--bg-panel);
