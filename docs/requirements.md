@@ -50,7 +50,7 @@ R2.7. Dropping files on a note adds links to them. A file from outside the vault
 
 ### R3. Live-preview editor
 
-R3.1. A note is shown in one of two modes: a read-only rendered preview, and a split view with the Markdown source editor on the left and the rendered preview on the right, updated as the user types. The preview is the default. (Amended 2026-10-17; it replaces the earlier in-place live preview.)
+R3.1. A note is shown in one of three modes: a read-only rendered preview; a split view with the Markdown source editor on the left and the rendered preview on the right, updated as the user types, with a divider between them that can be dragged; and the source editor alone. The preview is the default. Cmd/Ctrl+E cycles Preview, Edit (split) and Source, and is listed in the View menu. (Amended 2026-10-17; it replaces the earlier in-place live preview. Amended 2026-10-22: the Source mode, the divider and Cmd/Ctrl+E.)
 
 R3.2. Supported syntax in v1: headings, emphasis, strong, strikethrough, inline code, fenced code blocks, block quotes, ordered, unordered, and task lists (with clickable checkboxes), horizontal rules, tables, links, images, footnotes, inline and block comments (`%%`), highlights (`==`), callouts (`> [!type]`), and frontmatter (shown as a collapsible properties block).
 
@@ -107,7 +107,7 @@ R6.3. All data stays on the machine: no accounts and no telemetry. The client re
 
 R6.4. Settings that belong to a vault and change rarely (theme, link-resolution options, folders excluded from indexing, editor preferences) are stored in `.scrinotia/` at the root of the vault, so that a file-synchronisation tool carries them to every machine that has the vault. The folder is created only when the user first changes such a setting, never merely on opening a vault. Each concern has its own small JSON file, written atomically, and a synchronisation conflict copy of one file is ignored with a notice, not treated as an error. The source editor's preferences are kept in `editor.json`; the first, `spellcheck`, says whether spelling is checked in notes (on unless set to `false`; never in `.base` files), with the system's dictionaries on macOS and an English dictionary bundled with the Linux packages, so that no dictionary is downloaded (R6.3).
 
-R6.5. State specific to one machine (recent vaults, window size and position, open tabs, scroll positions) and all caches, including the search index (R5.3), are stored outside the vault, in the platform's standard location, and are never synchronised through the vault.
+R6.5. State specific to one machine (recent vaults, window size and position, open tabs, scroll positions, the split view's divider position) and all caches, including the search index (R5.3), are stored outside the vault, in the platform's standard location, and are never synchronised through the vault.
 
 R6.6. Installable packages for both platforms are produced from a single build process.
 
