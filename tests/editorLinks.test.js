@@ -29,3 +29,13 @@ describe('the link at a position', () => {
     expect(at('`[[NotALink]]`', 'NotA')).toBe(null)
   })
 })
+
+describe('what spelling leaves alone', () => {
+  it('is link targets, URLs, code and the frontmatter', async () => {
+    const { uncheckedRanges } = await import('../src/renderer/src/editor/spelling.js')
+    const doc = '---\ntitle: Teh\n---\nSee [[Teh note|teh alias]] and `teh` <https://x.y/teh>\n\n```\nteh\n```\n'
+    const state = EditorState.create({ doc, extensions: markdown({ base: markdownLanguage, extensions: [VaultMarkdown] }) })
+    const texts = uncheckedRanges(state).map(([a, b]) => doc.slice(a, b))
+    expect(texts).toEqual(['---\ntitle: Teh\n---', 'Teh note', '`teh`', '<https://x.y/teh>', '```\nteh\n```'])
+  })
+})

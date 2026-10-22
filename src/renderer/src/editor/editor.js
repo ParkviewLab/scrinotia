@@ -19,6 +19,7 @@ import { vaultCompletions } from './completion.js'
 import { formatKeymap } from './format.js'
 import { folding, foldKeymap } from './fold.js'
 import { linkAt } from './links.js'
+import { notProse } from './spelling.js'
 
 // The editor's syntax colours: CodeMirror's default style, read from colour
 // tokens in theme.css so that the dark theme has its own legible values. The
@@ -107,7 +108,7 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
     EditorView.updateListener.of((u) => {
       if (u.docChanged && !u.transactions.some((t) => t.annotation(External))) onUserChange(u.state)
     }),
-    language === 'yaml' ? spellAttributes(false) : spelling.of(spellAttributes(spellcheck)),
+    language === 'yaml' ? spellAttributes(false) : [spelling.of(spellAttributes(spellcheck)), notProse],
     EditorView.domEventHandlers({
       scroll: (_e, view) => onScroll?.(view),
       // Cmd/Ctrl+click follows the link under the pointer, as a click in the
