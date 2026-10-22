@@ -333,6 +333,34 @@ button:hover {
 .editor .cm-focused .cm-selectionBackground {
   background: var(--select) !important;
 }
+/* Link and tag completion (R4.1). */
+.editor .cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--bg-panel);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: 13px/1.5 var(--font-ui);
+}
+.editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-ui);
+  max-width: min(640px, 80vw);
+}
+.editor .cm-tooltip-autocomplete > ul > li {
+  padding: 2px 8px;
+}
+.editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--select);
+  color: var(--fg);
+}
+.editor .cm-completionDetail {
+  color: var(--muted);
+  font-style: normal;
+  margin-left: 1em;
+}
+.editor .cm-completionMatchedText {
+  text-decoration: none;
+  font-weight: 600;
+}
 .preview {
   min-height: 0;
   overflow: auto;
@@ -349,6 +377,15 @@ button:hover {
 .preview h2 { font-size: 1.45em; }
 .preview h3 { font-size: 1.2em; }
 .preview a { color: var(--accent); cursor: pointer; text-decoration: none; }
+/* Task boxes: the browser's own checkbox, not the form fields' style above. */
+.preview input[type='checkbox'] {
+  appearance: auto;
+  padding: 0;
+  margin: 0 0.4em 0 0;
+  vertical-align: -0.1em;
+  accent-color: var(--accent);
+}
+.preview input.task-box { cursor: pointer; }
 .preview a:hover { text-decoration: underline; }
 .preview a.unresolved { opacity: 0.6; text-decoration: underline dotted; }
 .preview a.embed-link::before { content: '↳ '; color: var(--muted); }

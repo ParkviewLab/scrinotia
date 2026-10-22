@@ -8,6 +8,7 @@ import { createEditor } from './editor/editor.js'
 import { createPreview, LINE } from './preview.js'
 import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
 import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
+import { taskToggle } from './tasks.js'
 import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
@@ -726,6 +727,13 @@ const editor = createEditor($('editor'), {
     schedulePreview()
   },
   onScroll: syncScroll,
+  // What link and tag completion reads (R4.1); the open note from the editor.
+  vault: {
+    files: () => files(),
+    current: () => current,
+    readNote: (path) => (path === current ? Promise.resolve(editor.text()) : api.readNote(path)),
+    tags: () => api.tags(),
+  },
 })
 
 // ---- preview (R3.1): read-only rendering, alone or beside the editor ----
@@ -1167,6 +1175,24 @@ function keepCursorInPreview() {
   if (r.bottom > pv.bottom) $('preview').scrollTop += Math.min(r.bottom - pv.bottom, r.top - pv.top)
   else if (r.top < pv.top) $('preview').scrollTop -= pv.top - r.top
 }
+
+// A task box in the preview flips its item's `[ ]` or `[x]` in the source
+// (item 5, R3.2), in either mode, as an edit of the reader's: it saves,
+// undoes in the editor, and the preview is redrawn from the result.
+$('preview').addEventListener('click', (e) => {
+  const box = e.target.closest?.('input.task-box')
+  if (!box || !current || notes.get(current)?.kind !== 'note') return
+  e.preventDefault()
+  const v = editor.view
+  const n = Number(box.closest('li')?.getAttribute(LINE))
+  if (!(n >= 1 && n <= v.state.doc.lines)) return
+  const line = v.state.doc.line(n)
+  const toggle = taskToggle(line.text)
+  if (!toggle) return
+  const at = line.from + toggle.offset
+  v.dispatch({ changes: { from: at, to: at + 1, insert: toggle.insert }, userEvent: 'input.toggle' })
+  renderPreview()
+})
 
 // A click in the preview, in split mode, puts the editor's cursor at the
 // start of the block's source; links, controls, diagrams and selections are
