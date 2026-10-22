@@ -4,7 +4,7 @@
 // The Markdown source editor of the split mode: one CodeMirror view, one
 // EditorState per open note (so undo history survives switching notes, R3.4).
 
-import { EditorState, Annotation } from '@codemirror/state'
+import { EditorState, Annotation, Transaction } from '@codemirror/state'
 import { EditorView, keymap, drawSelection, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -40,6 +40,16 @@ const highlightStyle = HighlightStyle.define([
 // Marks a transaction that loads disk content rather than a user edit.
 export const External = Annotation.define()
 
+// The transaction that replaces a document with its disk text: external, and
+// kept out of the undo history (item 17), so that undo stays within the
+// person's own edits and cannot restore the older text over the newer file.
+export function diskReplacement(state, text) {
+  return {
+    changes: { from: 0, to: state.doc.length, insert: text },
+    annotations: [External.of(true), Transaction.addToHistory.of(false)],
+  }
+}
+
 export function createEditor(parent, { onUserChange, onScroll }) {
   const extensions = (language) => [
     history(),
@@ -69,7 +79,7 @@ export function createEditor(parent, { onUserChange, onScroll }) {
     text: (state = view.state) => state.sliceDoc(),
     // Replace the document with new disk content, as one external change.
     replaceFromDisk(text) {
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, annotations: [External.of(true)] })
+      view.dispatch(diskReplacement(view.state, text))
     },
     focus: () => view.focus(),
     // The document position under a point of the window, or null.
