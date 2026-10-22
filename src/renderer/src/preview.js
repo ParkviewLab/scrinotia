@@ -10,6 +10,7 @@ import DOMPurify from 'dompurify'
 import katex from 'katex'
 import { splitLink } from '../../shared/markdown.js'
 import { tokenLines, listItemLines, keptEnds } from './sourceLines.js'
+import { highlightCodeBlocks } from './editor/codeLanguages.js'
 
 const escapeHtml = (s) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
@@ -306,6 +307,7 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
         drawnLinks = links
         into.replaceChildren(...fresh.childNodes)
         settleTasks(into, true)
+        highlightCodeBlocks(into)
         return null
       }
       const before = was[was.length - tail] ?? null
@@ -313,6 +315,8 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
       const added = now.slice(head, now.length - tail)
       for (const el of added) into.insertBefore(el, before)
       settleTasks(into, true)
+      // Kept blocks are coloured already; only the new ones are coloured.
+      for (const el of added) highlightCodeBlocks(el)
       return added
     },
 
@@ -325,6 +329,8 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
         calloutPass(into)
       }
       settleTasks(into, lines)
+      // Fenced code is coloured as the editor colours it, once its grammar loads.
+      highlightCodeBlocks(into)
     },
   }
 }
