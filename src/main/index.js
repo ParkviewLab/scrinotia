@@ -180,14 +180,27 @@ function registerIpc() {
   on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
   // Files dropped from outside the vault are copied into the vault's
   // attachment folder (a vault setting, default "attachments").
+  async function attachmentFolder(root) {
+    const { values } = await readSettings(root, 'files')
+    return typeof values.attachmentFolder === 'string' ? values.attachmentFolder.replace(/^\/+|\/+$/g, '') : 'attachments'
+  }
   on('file:import', async (e, sourcePath) => {
     const root = rootOf(e)
-    const { values } = await readSettings(root, 'files')
-    const folder = typeof values.attachmentFolder === 'string' ? values.attachmentFolder.replace(/^\/+|\/+$/g, '') : 'attachments'
+    const folder = await attachmentFolder(root)
     // A file already inside the vault is linked where it is, not copied.
     const inside = relative(root, resolve(sourcePath))
     if (inside && !inside.startsWith('..') && !isAbsolute(inside)) return inside.split(sep).join('/')
     return vault.importFile(root, sourcePath, folder)
+  })
+  // An image pasted into a note is written to the attachment folder as
+  // "Pasted image <YYYY-MM-DD HHmmss>" (numbered if taken), R2.7.
+  on('file:paste', async (e, ext, bytes) => {
+    const root = rootOf(e)
+    if (!/^\.[a-z0-9]{1,5}$/i.test(ext)) throw new Error(`not an image extension: ${ext}`)
+    const d = new Date()
+    const p2 = (n) => String(n).padStart(2, '0')
+    const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`
+    return vault.writeAttachment(root, await attachmentFolder(root), `Pasted image ${stamp}`, ext.toLowerCase(), Buffer.from(bytes))
   })
   on('file:readBytes', (e, rel) => vault.readBytes(rootOf(e), rel))
   // Shows the entry in the system's file manager, selected where it can be.
@@ -318,6 +331,7 @@ function buildMenu() {
       submenu: [
         { label: 'Toggle Left Panel', accelerator: 'CmdOrCtrl+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'left') },
         { label: 'Toggle Right Panel', accelerator: 'CmdOrCtrl+Shift+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'right') },
+        { label: 'Cycle Note Mode', accelerator: 'CmdOrCtrl+E', click: (_item, win) => win?.webContents.send('ui:cycle-mode') },
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
