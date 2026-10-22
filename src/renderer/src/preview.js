@@ -9,11 +9,21 @@ import { Marked } from 'marked'
 import DOMPurify from 'dompurify'
 import katex from 'katex'
 import { splitLink } from '../../shared/markdown.js'
+import { tokenLines, listItemLines } from './sourceLines.js'
 
 const escapeHtml = (s) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 
 const IMAGE = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i
+
+// Item 13: the HTML of a note's preview carries an empty marker element
+// before each top-level block, naming the block's first source line; after
+// sanitising, each marker's line moves onto the element that follows it and
+// the marker is removed. Blocks are marked in one parse and one sanitising
+// pass, so raw HTML that spans blocks (a <details> around paragraphs) is
+// rendered as before.
+const MARK = 'data-src-mark'
+export const LINE = 'data-src-line'
 
 export function splitFrontmatter(text) {
   const m = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/.exec(text)
@@ -183,16 +193,60 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
     }
   }
 
+  // The note's HTML before sanitising; with `lines`, the block markers and
+  // the lexer's tokens with their first lines, for stamping.
+  function toHtml(text, { lines = false } = {}) {
+    const { yaml, body: raw } = splitFrontmatter(text)
+    // Block markers (a trailing ^id that an embed can point to) are not shown.
+    const body = raw.replace(/[ \t]\^[A-Za-z0-9-]+[ \t]*$/gm, '')
+    const head = yaml !== null ? propertiesTable(yaml) : ''
+    if (!lines) return { html: head + marked.parse(body) }
+    const tokens = marked.lexer(body)
+    const first = 1 + breaksIn(text.slice(0, text.length - raw.length))
+    const starts = tokenLines(tokens, first)
+    const withMarks = tokens.flatMap((t, i) => [{ type: 'html', block: true, raw: '', pre: false, text: `<span ${MARK}="${i}"></span>` }, t])
+    withMarks.links = tokens.links
+    return { html: head + marked.parser(withMarks), tokens, starts }
+  }
+
+  // Moves each marker's line onto the block element after it; a list's items
+  // (and the lists nested in them) get their own lines.
+  function stamp(into, tokens, starts) {
+    for (const mark of into.querySelectorAll(`[${MARK}]`)) {
+      const i = Number(mark.getAttribute(MARK))
+      let el = mark.nextSibling
+      while (el && el.nodeType === 3 && !el.textContent.trim()) el = el.nextSibling
+      mark.remove()
+      if (!el || el.nodeType !== 1 || el.hasAttribute(MARK) || !tokens[i]) continue
+      el.setAttribute(LINE, String(starts[i]))
+      if (tokens[i].type === 'list' && /^(UL|OL)$/.test(el.tagName)) stampList(el, listItemLines(tokens[i], starts[i]))
+    }
+  }
+
+  function stampList(el, items) {
+    const lis = [...el.children].filter((c) => c.tagName === 'LI')
+    items.forEach((item, k) => {
+      const li = lis[k]
+      if (!li) return
+      li.setAttribute(LINE, String(item.line))
+      const nested = [...li.children].filter((c) => /^(UL|OL)$/.test(c.tagName))
+      item.lists.forEach((sub, j) => nested[j] && stampList(nested[j], sub))
+    })
+  }
+
   return {
-    render(text, into) {
-      const { yaml, body: raw } = splitFrontmatter(text)
-      // Block markers (a trailing ^id that an embed can point to) are not shown.
-      const body = raw.replace(/[ \t]\^[A-Za-z0-9-]+[ \t]*$/gm, '')
-      const html = (yaml !== null ? propertiesTable(yaml) : '') + marked.parse(body)
-      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i })
+    toHtml,
+    // Draws the note into an element. With `lines` (the open note's own
+    // preview, not an embedded note), its blocks carry their source lines.
+    render(text, into, { lines = false } = {}) {
+      const { html, tokens, starts } = toHtml(text, { lines })
+      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub', MARK], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i })
       into.innerHTML = clean
       calloutPass(into)
+      if (lines) stamp(into, tokens, starts)
       for (const box of into.querySelectorAll('input[type="checkbox"]')) box.disabled = true
     },
   }
 }
+
+const breaksIn = (s) => (s.match(/\n/g) ?? []).length

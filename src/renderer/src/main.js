@@ -5,7 +5,9 @@
 // file tree and the note editor.
 
 import { createEditor } from './editor/editor.js'
-import { createPreview } from './preview.js'
+import { createPreview, LINE } from './preview.js'
+import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
+import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
@@ -468,7 +470,11 @@ async function goHistory(by) {
   // Embeds and diagrams can grow the page after it is drawn, so the scroll
   // is set again once they have had a moment.
   $('preview').scrollTop = target.scroll
-  setTimeout(() => ($('preview').scrollTop = target.scroll), 250)
+  alignSoon('preview')
+  setTimeout(() => {
+    $('preview').scrollTop = target.scroll
+    if (noteMode === 'split') editorFollowPreview()
+  }, 250)
 }
 
 function drawHistoryButtons() {
@@ -715,6 +721,7 @@ const editor = createEditor($('editor'), {
     clearTimeout(entry.timer)
     const path = current
     entry.timer = setTimeout(() => save(path), SAVE_DELAY)
+    typedSinceRender = true
     schedulePreview()
   },
   onScroll: syncScroll,
@@ -740,10 +747,11 @@ function renderPreview() {
   clearTimeout(previewTimer)
   if (!current) return
   if (notes.get(current)?.kind === 'base') {
+    typedSinceRender = false
     showBase(current)
     return
   }
-  preview.render(editor.text(), $('preview'))
+  preview.render(editor.text(), $('preview'), { lines: true })
   // The note's Properties stay as the reader left them while the note is
   // open; the split view redraws the preview on each edit.
   if (propertiesOpen !== current) propertiesOpen = null
@@ -751,6 +759,10 @@ function renderPreview() {
   if (propertiesOpen) $('preview').querySelector(':scope > details.properties')?.setAttribute('open', '')
   fillEmbeds()
   renderOutline()
+  // The redraw keeps the preview's scroll offset, not its place in the note.
+  if (noteMode === 'split' && driver === 'editor') previewFollowEditor()
+  if (typedSinceRender && noteMode === 'split') keepCursorInPreview()
+  typedSinceRender = false
 }
 // The note whose Properties drawer the reader has opened, while that note
 // stays open; opening any note, that one included, starts it closed.
@@ -787,9 +799,11 @@ function renderOutline() {
 }
 
 function goToHeading(k, line) {
-  // The preview's own headings, in order, leaving out embedded notes and the properties block.
+  // The heading by its source line (item 13); failing that, the preview's own
+  // headings in order, leaving out embedded notes and the properties block.
+  const stamped = $('preview').querySelector(`:is(h1, h2, h3, h4, h5, h6)[${LINE}="${line}"]`)
   const els = [...$('preview').querySelectorAll('h1, h2, h3, h4, h5, h6')].filter((el) => !el.closest('.note-embed, .properties, .callout'))
-  els[k]?.scrollIntoView({ block: 'start' })
+  ;(stamped ?? els[k])?.scrollIntoView({ block: 'start' })
   if (noteMode === 'split') editor.gotoLine(line)
 }
 
@@ -799,7 +813,9 @@ async function fillEmbeds() {
   if (current !== note) return
   fillBaseEmbeds()
   fillAttachmentEmbeds()
-  fillMermaid($('preview'))
+  await fillMermaid($('preview'))
+  // Embeds and diagrams change the preview's heights after it is drawn.
+  if (current === note) scheduleFollow()
 }
 
 // Mermaid diagrams (R3.8): loaded only when a note has one; drawn with the
@@ -844,6 +860,7 @@ async function fillMermaid(host) {
       box.textContent = `Mermaid: ${String(err.message ?? err).split('\n')[0]}`
     }
     if (!pre.isConnected) continue
+    if (pre.hasAttribute(LINE)) box.setAttribute(LINE, pre.getAttribute(LINE))
     pre.replaceWith(box)
     const svg = box.querySelector(':scope > svg')
     if (svg) attachPanZoom(box, svg, { key: keys[i], onMenu: diagramMenu })
@@ -1012,22 +1029,171 @@ function schedulePreview() {
   previewTimer = setTimeout(renderPreview, 120)
 }
 
-// In split mode the preview follows the editor's scroll position by proportion.
-function syncScroll(cmView) {
-  if (noteMode !== 'split') return
-  const src = cmView.scrollDOM
+// ---- scroll sync (item 13): in split mode the editor and the preview show
+// the same place in the note, matched by source line. The preview's blocks
+// carry their first lines; the editor's top line finds its place between
+// two of them, and the reverse when the preview is scrolled. The pane the
+// reader last used (wheel, pointer, key or touch) leads, so that a scroll
+// set by the other is not followed back. Whilst typing, the block holding
+// the cursor is kept in view in the preview.
+let driver = 'editor'
+let typedSinceRender = false
+for (const pane of ['editor', 'preview']) {
+  for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) {
+    $(pane).addEventListener(type, () => (driver = pane), { capture: true, passive: true })
+  }
+}
+
+// The preview's stamped blocks as anchors: a source line and the block's
+// height in the preview's scrolled content. Blocks inside a closed
+// <details> have no place of their own and are left out. A base's preview
+// has no stamps: there, and in an empty note, the anchors are null and the
+// panes follow each other by proportion.
+function previewAnchors() {
+  const pv = $('preview')
+  const base = pv.getBoundingClientRect().top - pv.scrollTop
+  const anchors = []
+  for (const el of pv.querySelectorAll(`[${LINE}]`)) {
+    if (el.parentElement?.closest('details:not([open])')) continue
+    anchors.push({ line: Number(el.getAttribute(LINE)), top: el.getBoundingClientRect().top - base })
+  }
+  if (!anchors.length) return null
+  if (anchors[0].line > 1) anchors.unshift({ line: 1, top: 0 })
+  return orderedAnchors(anchors)
+}
+
+// The editor's top line, with the fraction of it scrolled past.
+function editorTopLine() {
+  const v = editor.view
+  const h = Math.max(0, v.scrollDOM.getBoundingClientRect().top - v.documentTop)
+  const block = v.lineBlockAtHeight(h)
+  const fraction = block.height > 0 ? Math.min(1, Math.max(0, (h - block.top) / block.height)) : 0
+  return v.state.doc.lineAt(block.from).number + fraction
+}
+
+const atTop = (el) => el.scrollTop <= 0
+const atBottom = (el) => el.scrollTop >= el.scrollHeight - el.clientHeight - 1
+const byProportion = (src, dst) => {
   const max = src.scrollHeight - src.clientHeight
-  const dst = $('preview')
   dst.scrollTop = max > 0 ? (src.scrollTop / max) * (dst.scrollHeight - dst.clientHeight) : 0
 }
 
+function previewFollowEditor() {
+  if (noteMode !== 'split' || !current) return
+  const src = editor.view.scrollDOM
+  const dst = $('preview')
+  const anchors = previewAnchors()
+  if (!anchors) byProportion(src, dst)
+  else if (atTop(src)) dst.scrollTop = 0
+  else if (atBottom(src)) dst.scrollTop = dst.scrollHeight
+  else dst.scrollTop = Math.round(topForLine(anchors, editorTopLine()))
+}
+
+function editorFollowPreview() {
+  if (noteMode !== 'split' || !current) return
+  const src = $('preview')
+  const v = editor.view
+  const anchors = previewAnchors()
+  if (!anchors) byProportion(src, v.scrollDOM)
+  else if (atTop(src)) v.scrollDOM.scrollTop = 0
+  else if (atBottom(src)) v.scrollDOM.scrollTop = v.scrollDOM.scrollHeight
+  else {
+    const at = lineForTop(anchors, src.scrollTop)
+    const n = Math.max(1, Math.min(Math.floor(at), v.state.doc.lines))
+    const line = v.state.doc.line(n)
+    // CodeMirror measures the line before scrolling, so a line far from the
+    // drawn part lands where it should; the margin scrolls past the fraction.
+    const yMargin = -(at - n) * v.lineBlockAt(line.from).height
+    v.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin }) })
+  }
+}
+
+// Scroll events come many to a frame; one follow per frame is enough.
+let followFrame = 0
+function scheduleFollow(from = driver) {
+  cancelAnimationFrame(followFrame)
+  followFrame = requestAnimationFrame(() => (from === 'editor' ? previewFollowEditor() : editorFollowPreview()))
+}
+
+function syncScroll() {
+  if (noteMode === 'split' && driver === 'editor') scheduleFollow('editor')
+}
+$('preview').addEventListener('scroll', () => {
+  if (noteMode === 'split' && driver === 'preview') scheduleFollow('preview')
+})
+// An image that loads late changes the heights below it.
+$('preview').addEventListener('load', () => noteMode === 'split' && scheduleFollow(), true)
+
+// Aligns one pane to the other once the editor has measured itself (after
+// a note is shown, or the split view opened). The last request wins, so
+// Back and Forward, which restore the preview's place, override the
+// editor's own.
+let alignFrom = null
+function alignSoon(from) {
+  alignFrom = from
+  // Dispatching inside CodeMirror's measure is not allowed, hence the microtask.
+  editor.view.requestMeasure({
+    read: () => null,
+    write: () =>
+      queueMicrotask(() => {
+        const f = alignFrom
+        alignFrom = null
+        if (f === 'editor') previewFollowEditor()
+        else if (f === 'preview') editorFollowPreview()
+      }),
+  })
+}
+
+// The preview block that holds the cursor's line: the last stamped block
+// (a list item before its list) starting at or above it.
+function cursorBlock() {
+  const v = editor.view
+  const line = v.state.doc.lineAt(v.state.selection.main.head).number
+  let best = null
+  for (const el of $('preview').querySelectorAll(`[${LINE}]`)) {
+    if (Number(el.getAttribute(LINE)) <= line) best = el
+  }
+  return best
+}
+
+function keepCursorInPreview() {
+  const el = cursorBlock()
+  if (!el || el.parentElement?.closest('details:not([open])')) return
+  const pv = $('preview').getBoundingClientRect()
+  const r = el.getBoundingClientRect()
+  if (r.bottom > pv.bottom) $('preview').scrollTop += Math.min(r.bottom - pv.bottom, r.top - pv.top)
+  else if (r.top < pv.top) $('preview').scrollTop -= pv.top - r.top
+}
+
+// A click in the preview, in split mode, puts the editor's cursor at the
+// start of the block's source; links, controls, diagrams and selections are
+// left to their own handling.
+$('preview').addEventListener('click', (e) => {
+  if (noteMode !== 'split' || e.button !== 0 || !current) return
+  if (!document.getSelection()?.isCollapsed) return
+  if (e.target.closest('a, button, input, select, textarea, summary, video, audio, iframe, .mermaid-diagram, .base-embed, .attachment-embed')) return
+  const el = e.target.closest(`[${LINE}]`)
+  if (!el) return
+  const v = editor.view
+  const line = v.state.doc.line(Math.max(1, Math.min(Number(el.getAttribute(LINE)), v.state.doc.lines)))
+  v.dispatch({ selection: { anchor: line.from }, effects: EditorView.scrollIntoView(line.from, { y: 'nearest' }) })
+  editor.focus()
+})
+
 function setNoteMode(mode) {
+  // The preview reflows at its new width; it keeps the line at its top.
+  const before = current && !$('note-area').hidden ? previewAnchors() : null
+  const shown = before ? lineForTop(before, $('preview').scrollTop) : null
   noteMode = mode
   $('note-area').className = `note-area mode-${mode}`
   for (const m of ['preview', 'split']) $(`mode-${m}`).classList.toggle('active', m === mode)
+  const after = shown !== null && shown > 1 ? previewAnchors() : null
+  if (after) $('preview').scrollTop = Math.round(topForLine(after, shown))
   if (mode === 'split') {
     editor.view.requestMeasure()
     editor.focus()
+    // The editor opens where the reader was in the preview.
+    alignSoon('preview')
   }
 }
 
@@ -1092,8 +1258,13 @@ async function flushAll() {
   await Promise.all([...notes.keys()].filter((p) => notes.get(p).dirty).map(save))
 }
 
+// The editor's scroll is kept with the note (item 16) only whilst the
+// editor is shown: a hidden editor has no scroll position of its own.
 function rememberCurrent() {
-  if (current && notes.has(current)) notes.get(current).state = editor.getState()
+  if (!current || !notes.has(current)) return
+  const entry = notes.get(current)
+  entry.state = editor.getState()
+  if (noteMode === 'split') entry.scroll = editor.view.scrollSnapshot()
 }
 
 // ---- .base files: table views (rendered in the main process) ----
@@ -1375,6 +1546,13 @@ async function showNote(path) {
   $('note-area').hidden = false
   $('modes').hidden = false
   editor.setState(entry.state)
+  // The editor's kept place leads; a scroll event from the preview's redraw
+  // must not move it.
+  driver = 'editor'
+  if (noteMode === 'split') {
+    const head = entry.state.selection.main.head
+    editor.view.dispatch({ effects: entry.scroll ?? EditorView.scrollIntoView(head, { y: 'center' }) })
+  }
   const conflict = diskConflict(entry, disk)
   if (conflict !== null) {
     conflictText = conflict
@@ -1382,6 +1560,7 @@ async function showNote(path) {
   }
   renderPreview()
   updateResolver()
+  alignSoon('editor')
 }
 
 async function renderPane() {
