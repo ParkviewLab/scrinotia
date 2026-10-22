@@ -9,7 +9,7 @@ import { Marked } from 'marked'
 import DOMPurify from 'dompurify'
 import katex from 'katex'
 import { splitLink } from '../../shared/markdown.js'
-import { tokenLines, listItemLines } from './sourceLines.js'
+import { tokenLines, listItemLines, keptEnds } from './sourceLines.js'
 import { highlightCodeBlocks } from './editor/codeLanguages.js'
 
 const escapeHtml = (s) =>
@@ -25,6 +25,27 @@ const IMAGE = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i
 // rendered as before.
 const MARK = 'data-src-mark'
 export const LINE = 'data-src-line'
+
+// Item 14: each top-level element of a drawn preview is keyed by its block's
+// source text (or, for the properties table, its HTML), so that a redraw
+// whilst typing keeps the elements whose block did not change, with their
+// drawn diagrams, filled embeds and loaded images.
+const blockKeys = new WeakMap()
+
+// ALLOWED_URI_REGEXP is applied to every attribute not marked URI-safe, so
+// `type` is marked: without it a task box loses type="checkbox" and shows
+// as a text field (R3.2).
+const SANITIZE = { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub', MARK], ADD_URI_SAFE_ATTR: ['type'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i }
+
+// A task box can be ticked (item 5) where its list item has a source line:
+// in the open note's own lists, not in an embedded note's.
+function settleTasks(into, lines) {
+  for (const box of into.querySelectorAll('input[type="checkbox"]')) {
+    const live = lines && box.closest('li')?.hasAttribute(LINE)
+    box.disabled = !live
+    box.classList.toggle('task-box', !!live)
+  }
+}
 
 export function splitFrontmatter(text) {
   const m = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/.exec(text)
@@ -207,7 +228,7 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
     const starts = tokenLines(tokens, first)
     const withMarks = tokens.flatMap((t, i) => [{ type: 'html', block: true, raw: '', pre: false, text: `<span ${MARK}="${i}"></span>` }, t])
     withMarks.links = tokens.links
-    return { html: head + marked.parser(withMarks), tokens, starts }
+    return { html: head + marked.parser(withMarks), tokens, starts, links: JSON.stringify(tokens.links ?? {}) }
   }
 
   // Moves each marker's line onto the block element after it; a list's items
@@ -220,6 +241,7 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
       mark.remove()
       if (!el || el.nodeType !== 1 || el.hasAttribute(MARK) || !tokens[i]) continue
       el.setAttribute(LINE, String(starts[i]))
+      if (el.parentNode === into && !blockKeys.has(el)) blockKeys.set(el, `md:${tokens[i].raw}`)
       if (tokens[i].type === 'list' && /^(UL|OL)$/.test(el.tagName)) stampList(el, listItemLines(tokens[i], starts[i]))
     }
   }
@@ -235,26 +257,78 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
     })
   }
 
+  // Draws a note into an element, its blocks keyed (see blockKeys).
+  function draw(text, into) {
+    const out = toHtml(text, { lines: true })
+    into.innerHTML = DOMPurify.sanitize(out.html, SANITIZE)
+    calloutPass(into)
+    stamp(into, out.tokens, out.starts)
+    for (const el of into.children) if (!blockKeys.has(el)) blockKeys.set(el, `html:${el.outerHTML}`)
+    return out
+  }
+
+  // The lines of a kept element's blocks, and its list items', follow the
+  // fresh drawing of the same block: the text is the same, the place may not be.
+  function copyLines(kept, fresh) {
+    const a = [kept, ...kept.querySelectorAll(`[${LINE}]`)].filter((el) => el.hasAttribute(LINE))
+    const b = [fresh, ...fresh.querySelectorAll(`[${LINE}]`)].filter((el) => el.hasAttribute(LINE))
+    if (a.length !== b.length) return false
+    a.forEach((el, i) => el.setAttribute(LINE, b[i].getAttribute(LINE)))
+    return true
+  }
+
+  let drawnLinks = null
+
   return {
     toHtml,
+    // An element that replaces a drawn block (a Mermaid diagram's box in
+    // place of its source) takes over the block's key, so that a redraw
+    // keeps it.
+    carryKey(from, to) {
+      if (blockKeys.has(from)) blockKeys.set(to, blockKeys.get(from))
+    },
+    // Redraws the open note's preview after an edit (item 14): the note is
+    // drawn afresh off the page, then the elements of the unchanged blocks
+    // at the start and the end are kept and only those between are
+    // replaced. Typing changes one block, so the rest of the page, its
+    // diagrams and embeds included, stays as it was. A change to a
+    // reference-link definition, which other blocks render from, or a
+    // top-level text node, which has no key, redraws the whole preview.
+    // Returns the elements put in, or null when everything was replaced.
+    update(text, into) {
+      const fresh = document.createElement('div')
+      const { links } = draw(text, fresh)
+      const was = [...into.children]
+      const now = [...fresh.children]
+      const { head, tail } = keptEnds(was.map((el) => blockKeys.get(el)), now.map((el) => blockKeys.get(el)))
+      const kept = [...was.slice(0, head).map((el, i) => [el, now[i]]), ...was.slice(was.length - tail).map((el, i) => [el, now[now.length - tail + i]])]
+      const loose = [...fresh.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+      if (loose || links !== drawnLinks || !was.length || !kept.every(([x, y]) => copyLines(x, y))) {
+        drawnLinks = links
+        into.replaceChildren(...fresh.childNodes)
+        settleTasks(into, true)
+        highlightCodeBlocks(into)
+        return null
+      }
+      const before = was[was.length - tail] ?? null
+      for (const el of was.slice(head, was.length - tail)) el.remove()
+      const added = now.slice(head, now.length - tail)
+      for (const el of added) into.insertBefore(el, before)
+      settleTasks(into, true)
+      // Kept blocks are coloured already; only the new ones are coloured.
+      for (const el of added) highlightCodeBlocks(el)
+      return added
+    },
+
     // Draws the note into an element. With `lines` (the open note's own
     // preview, not an embedded note), its blocks carry their source lines.
     render(text, into, { lines = false } = {}) {
-      const { html, tokens, starts } = toHtml(text, { lines })
-      // ALLOWED_URI_REGEXP is applied to every attribute not marked URI-safe,
-      // so `type` is marked: without it a task box loses type="checkbox" and
-      // shows as a text field (R3.2).
-      const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub', MARK], ADD_URI_SAFE_ATTR: ['type'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i })
-      into.innerHTML = clean
-      calloutPass(into)
-      if (lines) stamp(into, tokens, starts)
-      // A task box can be ticked (item 5) where its list item has a source
-      // line: in the open note's own lists, not in an embedded note's.
-      for (const box of into.querySelectorAll('input[type="checkbox"]')) {
-        const live = lines && box.closest('li')?.hasAttribute(LINE)
-        box.disabled = !live
-        box.classList.toggle('task-box', !!live)
+      if (lines) drawnLinks = draw(text, into).links
+      else {
+        into.innerHTML = DOMPurify.sanitize(toHtml(text).html, SANITIZE)
+        calloutPass(into)
       }
+      settleTasks(into, lines)
       // Fenced code is coloured as the editor colours it, once its grammar loads.
       highlightCodeBlocks(into)
     },
