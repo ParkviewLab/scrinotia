@@ -31,11 +31,19 @@ export const LINE = 'data-src-line'
 // drawn diagrams, filled embeds and loaded images.
 const blockKeys = new WeakMap()
 
-const SANITIZE = { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub', MARK], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i }
+// ALLOWED_URI_REGEXP is applied to every attribute not marked URI-safe, so
+// `type` is marked: without it a task box loses type="checkbox" and shows
+// as a text field (R3.2).
+const SANITIZE = { ADD_ATTR: ['data-wikilink', 'data-href', 'data-base', 'data-view', 'data-path', 'data-sub', MARK], ADD_URI_SAFE_ATTR: ['type'], ALLOWED_URI_REGEXP: /^(?:https?|mailto|scrinotia-asset):|^#/i }
 
-// The preview is read-only: its task boxes are disabled.
-function settleTasks(into) {
-  for (const box of into.querySelectorAll('input[type="checkbox"]')) box.disabled = true
+// A task box can be ticked (item 5) where its list item has a source line:
+// in the open note's own lists, not in an embedded note's.
+function settleTasks(into, lines) {
+  for (const box of into.querySelectorAll('input[type="checkbox"]')) {
+    const live = lines && box.closest('li')?.hasAttribute(LINE)
+    box.disabled = !live
+    box.classList.toggle('task-box', !!live)
+  }
 }
 
 export function splitFrontmatter(text) {
@@ -291,14 +299,14 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
       if (loose || links !== drawnLinks || !was.length || !kept.every(([x, y]) => copyLines(x, y))) {
         drawnLinks = links
         into.replaceChildren(...fresh.childNodes)
-        settleTasks(into)
+        settleTasks(into, true)
         return null
       }
       const before = was[was.length - tail] ?? null
       for (const el of was.slice(head, was.length - tail)) el.remove()
       const added = now.slice(head, now.length - tail)
       for (const el of added) into.insertBefore(el, before)
-      settleTasks(into)
+      settleTasks(into, true)
       return added
     },
 
@@ -310,7 +318,7 @@ export function createPreview({ assetUrl, resolves, resolvePath = () => null, at
         into.innerHTML = DOMPurify.sanitize(toHtml(text).html, SANITIZE)
         calloutPass(into)
       }
-      settleTasks(into)
+      settleTasks(into, lines)
     },
   }
 }
