@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('scrinotia', {
   menu: (items) => ipcRenderer.invoke('ui:menu', items),
   editCommand: (command) => ipcRenderer.invoke('edit:do', command),
   addToDictionary: (word) => ipcRenderer.invoke('spell:add', word),
+  replaceMisspelling: (word) => ipcRenderer.invoke('spell:replace', word),
   chooseVault: () => ipcRenderer.invoke('vault:choose'),
   openVault: (dir) => ipcRenderer.invoke('vault:open', dir),
   tree: () => ipcRenderer.invoke('vault:tree'),

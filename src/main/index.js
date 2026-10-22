@@ -166,6 +166,9 @@ function registerIpc() {
     if (['cut', 'copy', 'paste'].includes(command)) e.sender[command]()
   })
   on('spell:add', (e, word) => e.sender.session.addWordToSpellCheckerDictionary(String(word)))
+  // The checker's own replacement, for a misspelling the editor cannot find
+  // by its word boundaries (one with an apostrophe, say).
+  on('spell:replace', (e, word) => e.sender.replaceMisspelling(String(word)))
   on('vault:choose', async (e) => {
     const ctx = ctxOf(e)
     const result = await dialog.showOpenDialog(ctx.win, { properties: ['openDirectory'] })

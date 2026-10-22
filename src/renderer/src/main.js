@@ -796,7 +796,10 @@ api.onEditMenu(async ({ x, y, misspelled, suggestions = [] }) => {
   const choice = await api.menu(items)
   if (!choice) return
   editor.focus()
-  if (choice.startsWith('spell:') && here.pos !== null) editor.replaceWord(here.pos, misspelled, suggestions[Number(choice.slice(6))])
+  if (choice.startsWith('spell:')) {
+    const word = suggestions[Number(choice.slice(6))]
+    if (here.pos === null || !editor.replaceWord(here.pos, misspelled, word)) api.replaceMisspelling(word)
+  }
   else if (choice === 'learn') api.addToDictionary(misspelled)
   else if (choice === 'follow' || choice === 'follow-tab') follow({ kind: here.link.kind, ref: here.link.ref, newTab: choice === 'follow-tab' })
   else if (choice === 'select-all') editor.selectAll()
