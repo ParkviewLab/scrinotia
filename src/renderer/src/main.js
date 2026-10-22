@@ -746,6 +746,7 @@ function renderPreview() {
   clearTimeout(previewTimer)
   if (!current) return
   if (notes.get(current)?.kind === 'base') {
+    typedSinceRender = false
     showBase(current)
     return
   }
@@ -1044,7 +1045,9 @@ for (const pane of ['editor', 'preview']) {
 
 // The preview's stamped blocks as anchors: a source line and the block's
 // height in the preview's scrolled content. Blocks inside a closed
-// <details> have no place of their own and are left out.
+// <details> have no place of their own and are left out. A base's preview
+// has no stamps: there, and in an empty note, the anchors are null and the
+// panes follow each other by proportion.
 function previewAnchors() {
   const pv = $('preview')
   const base = pv.getBoundingClientRect().top - pv.scrollTop
@@ -1053,7 +1056,8 @@ function previewAnchors() {
     if (el.parentElement?.closest('details:not([open])')) continue
     anchors.push({ line: Number(el.getAttribute(LINE)), top: el.getBoundingClientRect().top - base })
   }
-  if (!anchors.length || anchors[0].line > 1) anchors.unshift({ line: 1, top: 0 })
+  if (!anchors.length) return null
+  if (anchors[0].line > 1) anchors.unshift({ line: 1, top: 0 })
   return orderedAnchors(anchors)
 }
 
@@ -1068,24 +1072,32 @@ function editorTopLine() {
 
 const atTop = (el) => el.scrollTop <= 0
 const atBottom = (el) => el.scrollTop >= el.scrollHeight - el.clientHeight - 1
+const byProportion = (src, dst) => {
+  const max = src.scrollHeight - src.clientHeight
+  dst.scrollTop = max > 0 ? (src.scrollTop / max) * (dst.scrollHeight - dst.clientHeight) : 0
+}
 
 function previewFollowEditor() {
   if (noteMode !== 'split' || !current) return
   const src = editor.view.scrollDOM
   const dst = $('preview')
-  if (atTop(src)) dst.scrollTop = 0
+  const anchors = previewAnchors()
+  if (!anchors) byProportion(src, dst)
+  else if (atTop(src)) dst.scrollTop = 0
   else if (atBottom(src)) dst.scrollTop = dst.scrollHeight
-  else dst.scrollTop = Math.round(topForLine(previewAnchors(), editorTopLine()))
+  else dst.scrollTop = Math.round(topForLine(anchors, editorTopLine()))
 }
 
 function editorFollowPreview() {
   if (noteMode !== 'split' || !current) return
   const src = $('preview')
   const v = editor.view
-  if (atTop(src)) v.scrollDOM.scrollTop = 0
+  const anchors = previewAnchors()
+  if (!anchors) byProportion(src, v.scrollDOM)
+  else if (atTop(src)) v.scrollDOM.scrollTop = 0
   else if (atBottom(src)) v.scrollDOM.scrollTop = v.scrollDOM.scrollHeight
   else {
-    const at = lineForTop(previewAnchors(), src.scrollTop)
+    const at = lineForTop(anchors, src.scrollTop)
     const n = Math.max(1, Math.min(Math.floor(at), v.state.doc.lines))
     const line = v.state.doc.line(n)
     // CodeMirror measures the line before scrolling, so a line far from the
@@ -1156,7 +1168,7 @@ function keepCursorInPreview() {
 // start of the block's source; links, controls, diagrams and selections are
 // left to their own handling.
 $('preview').addEventListener('click', (e) => {
-  if (noteMode !== 'split' || e.defaultPrevented || e.button !== 0 || !current) return
+  if (noteMode !== 'split' || e.button !== 0 || !current) return
   if (!document.getSelection()?.isCollapsed) return
   if (e.target.closest('a, button, input, select, textarea, summary, video, audio, iframe, .mermaid-diagram, .base-embed, .attachment-embed')) return
   const el = e.target.closest(`[${LINE}]`)
@@ -1169,11 +1181,13 @@ $('preview').addEventListener('click', (e) => {
 
 function setNoteMode(mode) {
   // The preview reflows at its new width; it keeps the line at its top.
-  const shown = current && !$('note-area').hidden ? lineForTop(previewAnchors(), $('preview').scrollTop) : null
+  const before = current && !$('note-area').hidden ? previewAnchors() : null
+  const shown = before ? lineForTop(before, $('preview').scrollTop) : null
   noteMode = mode
   $('note-area').className = `note-area mode-${mode}`
   for (const m of ['preview', 'split']) $(`mode-${m}`).classList.toggle('active', m === mode)
-  if (shown !== null && shown > 1) $('preview').scrollTop = Math.round(topForLine(previewAnchors(), shown))
+  const after = shown !== null && shown > 1 ? previewAnchors() : null
+  if (after) $('preview').scrollTop = Math.round(topForLine(after, shown))
   if (mode === 'split') {
     editor.view.requestMeasure()
     editor.focus()
