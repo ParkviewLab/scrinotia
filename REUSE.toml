@@ -6,7 +6,7 @@ SPDX-PackageName = "Scrinotia"
 SPDX-PackageSupplier = "Gary Frattarola <garyf@parkviewlab.ai>"
 
 [[annotations]]
-path = ["docs/**", "README.md", "LICENSING.md", "CHANGELOG.md", "REUSE.toml", ".gitignore", "AGENTS.md", "CLAUDE.md"]
+path = ["docs/**", "README.md", "LICENSING.md", "SECURITY.md", "CHANGELOG.md", "REUSE.toml", ".gitignore", "AGENTS.md", "CLAUDE.md"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "CC-BY-4.0"

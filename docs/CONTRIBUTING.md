@@ -1,5 +1,11 @@
 # Contributing
 
+## Contributions from outside the project
+
+Issues are welcome: problems and ideas, through the forms on the Issues tab, and security problems privately, as [`SECURITY.md`](../SECURITY.md) describes. Pull requests from outside the project are not accepted for now. Scrinotia is offered under the AGPL and also under a commercial licence ([`LICENSING.md`](../LICENSING.md)), and code from another author could be offered commercially only with an agreement that is not yet in place; until then, pull requests can be opened by the project's collaborators only.
+
+## How the project works
+
 This repo follows the ParkviewLab conventions; the authoritative, org-wide version of all of this is the [ParkviewLab handbook](https://github.com/ParkviewLab/handbook/tree/main). The essentials:
 
 ## Branch & PR flow
