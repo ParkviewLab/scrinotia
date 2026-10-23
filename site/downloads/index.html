@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<!--
+SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+SPDX-License-Identifier: CC-BY-4.0
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scrinotia — download</title>
+<meta name="description" content="Scrinotia: a local-first, utilitarian Markdown notes client. Download for macOS, Windows and Linux.">
+<link rel="icon" href="../assets/icon.svg">
+<style>
+/* Palette: the app icon's own colours. The ground is the icon's navy, and the
+   four download tiles take one accent each from its marks. System fonts only:
+   the page loads nothing from the network but GitHub's release list. */
+:root{
+  --ground:#0b1226; --panel:#121b36; --raised:#18234a; --line:#2a3766;
+  --ink:#e9edf7; --muted:#9aa6c4;
+  --blue:#3558b8; --blue-ink:#8fa9f0; --sky:#6bb3e0; --orange:#ec8a4e; --gold:#e0b23a;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{font-family:var(--font-ui); color:var(--ink); background:var(--ground); line-height:1.55; min-height:100vh;}
+a{color:var(--blue-ink);}
+code{font-family:var(--font-mono); font-size:.9em; background:var(--raised); padding:1px 6px; border-radius:4px;}
+.wrap{max-width:1040px; margin:0 auto; padding:0 20px;}
+
+.topbar{border-bottom:1px solid var(--line);}
+.topbar .wrap{display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:12px; padding-bottom:12px;}
+.brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.04em; color:var(--ink); text-decoration:none;}
+.brand img{width:26px; height:26px;}
+.toplinks{display:flex; gap:18px; font-size:14px;}
+.toplinks a{color:var(--muted); text-decoration:none;}
+.toplinks a:hover{color:var(--ink);}
+
+.hero{display:grid; grid-template-columns:1.2fr .8fr; gap:40px; align-items:center; padding:56px 0 36px;}
+.hero-mark{justify-self:center;}
+.hero-mark img{width:min(280px,64vw); height:auto; display:block; filter:drop-shadow(0 16px 40px rgba(0,0,0,.45));}
+.wordmark{font-size:clamp(44px,7vw,76px); line-height:1; letter-spacing:-.01em; margin:0 0 8px; font-weight:750;}
+.say{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:0 0 18px;}
+.tagline{font-size:clamp(19px,2.6vw,24px); color:var(--orange); margin:0 0 14px; font-weight:600;}
+.lede{font-size:16px; max-width:48ch; margin:0 0 26px;}
+.lede .muted{color:var(--muted);}
+
+.dl-head{display:flex; align-items:baseline; gap:12px; margin:0 0 14px;}
+.dl-head h2{font-size:22px; margin:0; font-weight:650;}
+.verbadge{font-size:15px; font-weight:700; letter-spacing:.06em; color:var(--ground); background:var(--gold); padding:2px 10px; border-radius:5px;}
+.verbadge:empty{display:none;}
+.tiles{display:grid; grid-template-columns:repeat(2,1fr); gap:12px;}
+.tile{display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--ink);
+  background:var(--panel); border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:12px;
+  padding:12px 15px; transition:transform .09s ease, background .09s ease;}
+.tile:hover{transform:translateY(-2px); background:var(--raised);}
+.tile[aria-disabled="true"]{opacity:.5; pointer-events:none;}
+.tile .t-os{font-size:17px; font-weight:650; line-height:1.15;}
+.tile .t-kind{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:2px;}
+.tile.mac{--accent:var(--blue-ink);} .tile.win{--accent:var(--sky);}
+.tile.deb{--accent:var(--orange);} .tile.appimage{--accent:var(--gold);}
+.dl-note{font-size:13px; color:var(--muted); margin:12px 0 0;}
+.dl-note a{color:var(--muted);}
+
+.shotband{padding:20px 0 48px;}
+.shot{border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.shot img{display:block; width:100%; height:auto;}
+.shot-cap{font-size:13px; color:var(--muted); text-align:center; margin:12px 0 0;}
+
+.trio{display:grid; grid-template-columns:repeat(3,1fr); gap:24px; padding:0 0 40px;}
+.pt h3{font-size:18px; margin:0 0 6px; font-weight:650;}
+.pt h3 .k{color:var(--sky);}
+.pt p{font-size:14px; color:var(--muted); margin:0;}
+
+.install{padding:0 0 48px;}
+.install h2{font-size:22px; margin:0 0 14px; font-weight:650;}
+.steps{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+.step{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;}
+.step h3{font-size:16px; margin:0 0 6px;}
+.step p{font-size:14px; color:var(--muted); margin:0 0 6px;}
+
+footer{border-top:1px solid var(--line);}
+footer .wrap{display:flex; flex-wrap:wrap; gap:8px 22px; justify-content:space-between; padding-top:18px; padding-bottom:26px; font-size:13px; color:var(--muted);}
+footer a{color:var(--muted);}
+
+@media (max-width:760px){
+  .hero{grid-template-columns:1fr; gap:24px; padding-top:36px;}
+  .hero-mark{order:-1;}
+  .tiles,.trio,.steps{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../assets/icon.svg" alt="">SCRINOTIA</a>
+    <nav class="toplinks">
+      <a href="../">Documentation</a>
+      <a href="https://github.com/ParkviewLab/scrinotia">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <h1 class="wordmark">Scrinotia</h1>
+      <p class="say">skri · NO · tee · a</p>
+      <p class="tagline">The scroll-case of knowledge.</p>
+      <p class="lede">A local-first, utilitarian Markdown notes client. It opens a vault, a folder of Markdown notes such as an existing Obsidian vault, without altering it. <span class="muted">No account, no cloud: your notes stay plain files on your own disk.</span></p>
+
+      <div class="dl-head">
+        <h2>Download</h2>
+        <!-- The version is stamped into the page at deploy time, so it is right
+             with no script at all; the script below only refreshes it. -->
+        <span class="verbadge ver">__LATEST_TAG__</span>
+      </div>
+      <div class="tiles">
+        <a class="tile mac" id="dl-mac" href="https://github.com/ParkviewLab/scrinotia/releases/latest">
+          <div><div class="t-os">macOS</div><div class="t-kind">Apple silicon · .dmg</div></div>
+        </a>
+        <a class="tile win" id="dl-win" href="https://github.com/ParkviewLab/scrinotia/releases/latest">
+          <div><div class="t-os">Windows</div><div class="t-kind">Installer · .exe</div></div>
+        </a>
+        <a class="tile deb" id="dl-deb" href="https://github.com/ParkviewLab/scrinotia/releases/latest">
+          <div><div class="t-os">Ubuntu</div><div class="t-kind">Package · .deb</div></div>
+        </a>
+        <a class="tile appimage" id="dl-appimage" href="https://github.com/ParkviewLab/scrinotia/releases/latest">
+          <div><div class="t-os">Linux</div><div class="t-kind">AppImage</div></div>
+        </a>
+      </div>
+      <p class="dl-note">Free and open source under AGPL-3.0-or-later; a commercial licence is available. See <a href="https://github.com/ParkviewLab/scrinotia/releases">all releases</a>.</p>
+    </div>
+    <div class="hero-mark"><img src="../assets/icon.svg" alt="The Scrinotia icon"></div>
+  </section>
+
+  <section class="shotband">
+    <div class="shot"><img src="../assets/screenshot.webp" width="1600" height="989" alt="Scrinotia's split view: a note's Markdown source on the left, its rendered preview with a table and task list on the right, the file tree and the note's outline and links at the sides."></div>
+    <p class="shot-cap">The split view: the source beside its preview, scrolled together, with the outline and links at the side.</p>
+  </section>
+
+  <section class="trio">
+    <div class="pt"><h3><span class="k">Your files,</span> untouched.</h3><p>Opening a vault changes nothing in it. Notes are saved only when you edit them, with their line endings kept and their frontmatter left exactly as it was.</p></div>
+    <div class="pt"><h3><span class="k">Links</span> that work.</h3><p>Wikilinks with completion, backlinks and unlinked mentions, embedded notes, and links rewritten when a note is renamed or moved.</p></div>
+    <div class="pt"><h3><span class="k">More</span> than text.</h3><p>Math, Mermaid diagrams, coloured code, PDFs, audio, video, 3D models and table views of <code>.base</code> files, in the preview and printed.</p></div>
+  </section>
+
+  <section class="install">
+    <h2>Installing</h2>
+    <div class="steps">
+      <div class="step"><h3>macOS</h3><p>Open the <code>.dmg</code> and drag Scrinotia to Applications.</p></div>
+      <div class="step"><h3>Windows</h3><p>Run the installer. It is not signed, so SmartScreen warns the first time: choose More info, then Run anyway.</p></div>
+      <div class="step"><h3>Ubuntu and Linux</h3><p>Install the package with <code>sudo apt install ./scrinotia-*.deb</code>, or make the AppImage executable and run it.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Gary Frattarola · Scrinotia is an independent project, not affiliated with or endorsed by Dynalist Inc., the makers of Obsidian.</span>
+    <span><a href="https://github.com/ParkviewLab/scrinotia">Source on GitHub</a></span>
+  </div>
+</footer>
+
+<script>
+// Points each tile straight at its installer in the newest GitHub Release,
+// matched by file extension. GitHub's unauthenticated API allows 60 calls an
+// hour per address, so the request may fail; the stamped version and the
+// tiles' /releases/latest links then stand, and still reach the same files.
+(function(){
+  var map={ dmg:'dl-mac', exe:'dl-win', deb:'dl-deb', appimage:'dl-appimage' };
+  // A page served without the deploy step (a local preview) shows no version
+  // rather than the raw placeholder.
+  document.querySelectorAll('.ver').forEach(function(e){ if(e.textContent.indexOf('__LATEST')===0) e.textContent=''; });
+  fetch('https://api.github.com/repos/ParkviewLab/scrinotia/releases/latest', {headers:{Accept:'application/vnd.github+json'}})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(rel){
+      if(rel.tag_name) document.querySelectorAll('.ver').forEach(function(e){ e.textContent=rel.tag_name; });
+      var seen={};
+      (rel.assets||[]).forEach(function(a){
+        var m=(a.name||'').match(/\.(dmg|exe|AppImage|deb)$/i);
+        if(!m) return;
+        var ext=m[1].toLowerCase(), id=map[ext];
+        if(id && !seen[ext]){ seen[ext]=1; document.getElementById(id).href=a.browser_download_url; }
+      });
+    })
+    .catch(function(){});
+})();
+</script>
+</body>
+</html>

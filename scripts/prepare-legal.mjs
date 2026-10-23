@@ -31,7 +31,7 @@ await copyFile(join(root, 'LICENSING.md'), join(legal, 'LICENSING.md'))
 
 // The licences of the two MIT-licensed .base format references (docs/references/).
 await mkdir(join(legal, 'references'), { recursive: true })
-await copyFile(join(root, 'docs/references/obsidian-api/LICENSE.md'), join(legal, 'references', 'obsidian-api-LICENSE.md'))
+await copyFile(join(root, 'docs/references/obsidian-api/LICENSE'), join(legal, 'references', 'obsidian-api-LICENSE.md'))
 await copyFile(join(root, 'docs/references/obsidian-bases-skill/LICENSE'), join(legal, 'references', 'obsidian-bases-skill-LICENSE'))
 await cp(join(root, 'LICENSES'), join(legal, 'LICENSES'), { recursive: true })
 
