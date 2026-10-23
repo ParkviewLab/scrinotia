@@ -6,7 +6,7 @@ SPDX-PackageName = "Scrinotia"
 SPDX-PackageSupplier = "Gary Frattarola <garyf@parkviewlab.ai>"
 
 [[annotations]]
-path = ["docs/**", "README.md", "LICENSING.md", "CHANGELOG.md", "REUSE.toml", ".gitignore", "AGENTS.md", "CLAUDE.md"]
+path = ["docs/**", "README.md", "LICENSING.md", "SECURITY.md", "CHANGELOG.md", "REUSE.toml", ".gitignore", "AGENTS.md", "CLAUDE.md"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "CC-BY-4.0"
@@ -38,7 +38,7 @@ SPDX-License-Identifier = "MIT"
 # The app icon and the brand kit it comes from are a mark: all rights
 # reserved, not relicensed by the repository.
 [[annotations]]
-path = ["build/icon.png", "build/icon.svg", "build/icon.icns", "brand/**"]
+path = ["build/icon.png", "build/icon.svg", "build/icon.icns", "brand/**", "site/assets/icon.svg"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "LicenseRef-AllRightsReserved"
@@ -54,3 +54,9 @@ path = ["build/dictionaries/**"]
 precedence = "override"
 SPDX-FileCopyrightText = ["2000-2018 Kevin Atkinson", "The Chromium Authors"]
 SPDX-License-Identifier = "LicenseRef-SCOWL AND Apache-2.0"
+
+# The documentation site's screenshot: the app showing an invented demo vault.
+[[annotations]]
+path = ["site/assets/screenshot.webp"]
+SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
+SPDX-License-Identifier = "CC-BY-4.0"

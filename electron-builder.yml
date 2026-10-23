@@ -64,5 +64,5 @@ extraResources:
     filter: ['**/*']
 publish:
   provider: github
-  owner: garycoding
+  owner: ParkviewLab
   repo: scrinotia

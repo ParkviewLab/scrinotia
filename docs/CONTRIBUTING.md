@@ -1,8 +1,12 @@
 # Contributing
 
-> Template: copy to a new repo as `docs/CONTRIBUTING.md`. The authoritative, org-wide version of all of this is the [ParkviewLab handbook](https://github.com/ParkviewLab/handbook/tree/main).
+## Contributions from outside the project
 
-This repo follows the ParkviewLab conventions. The essentials:
+Issues are welcome: problems and ideas, through the forms on the Issues tab, and security problems privately, as [`SECURITY.md`](../SECURITY.md) describes. Pull requests from outside the project are not accepted for now. Scrinotia is offered under the AGPL and also under a commercial licence ([`LICENSING.md`](../LICENSING.md)), and code from another author could be offered commercially only with an agreement that is not yet in place; until then, pull requests can be opened by the project's collaborators only.
+
+## How the project works
+
+This repo follows the ParkviewLab conventions; the authoritative, org-wide version of all of this is the [ParkviewLab handbook](https://github.com/ParkviewLab/handbook/tree/main). The essentials:
 
 ## Branch & PR flow
 
@@ -35,19 +39,19 @@ A `BREAKING CHANGE:` footer belongs in the PR's description, which becomes the m
 Run the same checks CI requires, so the PR is green on arrival:
 
 ```bash
-uv sync
-uv run ruff check src tests
-uv run ruff format --check src tests
-uv run ty check
-uv run pytest -m "not network and not integration" -q
+npm ci
+node node_modules/electron/install.js
+npm run lint
+npm test
+npm run build
 uvx --from "reuse[charset-normalizer]" reuse lint
 ```
 
-A PR can't be merged until the required checks pass on a branch up to date with `develop` (lint, format, types, tests, REUSE, the version guard; see the handbook's `ci.md`); administrators are bound too. Push the branch when it is created, then after each commit. See also `python-tooling.md` and `testing.md`.
+`npm run dev` runs the app from the working copy, and `npm run build:dist` packages installers locally. A PR can't be merged until the required checks pass on a branch up to date with `develop` (`checks`: lint, tests and build; `reuse`; and `no-version-change`, the version guard; see the handbook's `ci.md`); administrators are bound too. Push the branch when it is created, then after each commit. See also the handbook's `electron-tooling.md`, `node-tooling.md` and `testing.md`.
 
 ## Versioning
 
-The version lives in `pyproject.toml` only; never hard-code it elsewhere, and never type it on a `git tag` line: use `git bump` / `git release` from [`dev-tools`](https://github.com/ParkviewLab/dev-tools). See `releases.md`.
+The version lives in `package.json` (`version`) only; the app reads it from there at runtime; never hard-code it elsewhere, and never type it on a `git tag` line: use `git bump` / `git release` from [`dev-tools`](https://github.com/ParkviewLab/dev-tools). See `releases.md`.
 
 ## AI contributors
 

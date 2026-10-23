@@ -13,7 +13,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url'
 import nameCard from '../../brand/scrinotia-icon-kit/brand/scrinotia-name-card.png?asset'
 import { checkForUpdate } from './update.js'
 
-const SOURCE_URL = 'https://github.com/garycoding/scrinotia'
+const SOURCE_URL = 'https://github.com/ParkviewLab/scrinotia'
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
