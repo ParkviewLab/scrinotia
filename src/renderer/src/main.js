@@ -5,11 +5,18 @@
 // file tree and the note editor.
 
 import { createEditor } from './editor/editor.js'
-import { createPreview } from './preview.js'
+import { createPreview, LINE } from './preview.js'
+import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
+import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
+import { taskToggle } from './tasks.js'
+import { printTitle, printable } from './printing.js'
+import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
+import { diskConflict } from './conflicts.js'
+import { PATH_TYPE, FOLDER_TYPE, dragData, noteAccepts } from './dragTypes.js'
 import { attachPanZoom, keepViewsFor } from './diagramView.js'
 import { mountModel } from './modelViewer.js'
 import { setModelColour, mountPreviewModel, normaliseColour, colourCss, DEFAULT_MODEL_COLOUR } from './modelViewer.js'
@@ -47,6 +54,29 @@ async function saveAppearance(changes) {
     showError($('pane-error'), err)
   }
 }
+// ---- printing (R3.9): the open note as rendered, through the system's
+// print dialog, in any mode. The page's print styles leave out everything
+// but the note and its name; the light theme's colours are used whatever
+// the screen's, so a dark screen is switched to light, its diagrams drawn
+// again, for the time the dialog is open. A base or an attachment in the
+// pane is not printed. ----
+let printing = false
+async function printNote() {
+  if (printing || !current || !printable(notes.get(current)?.kind) || $('note-area').hidden) return
+  printing = true
+  const theme = document.documentElement.dataset.theme
+  try {
+    if (theme !== 'light') applyTheme('light')
+    await previewSettled
+    await Promise.all([...$('preview').querySelectorAll('img')].map((img) => img.decode().catch(() => {})))
+    await api.print()
+  } finally {
+    if (theme !== 'light') applyTheme(theme)
+    printing = false
+  }
+}
+api.onPrint(printNote)
+
 function applyTheme(theme) {
   const t = theme === 'light' ? 'light' : 'dark'
   const changed = document.documentElement.dataset.theme !== t
@@ -60,7 +90,20 @@ themeSelect.addEventListener('change', () => {
   saveAppearance({ theme: themeSelect.value })
 })
 
+// The source editor's preferences (R6.4), a vault setting of their own in
+// editor.json: spell checking in notes, on unless turned off.
+let editorPrefs = {}
+async function loadEditorPrefs() {
+  try {
+    editorPrefs = (await api.getSettings('editor')).values
+  } catch {
+    editorPrefs = {}
+  }
+  editor.setSpellcheck(editorPrefs.spellcheck !== false)
+}
+
 async function loadVaultSettings() {
+  loadEditorPrefs()
   try {
     const { values, conflicts } = await api.getSettings('appearance')
     appearance = values
@@ -91,6 +134,7 @@ function openSettings() {
       $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
     })
     .catch(() => {})
+  $('settings-spellcheck').value = editorPrefs.spellcheck === false ? 'off' : 'on'
   drawFontChoices()
   $('settings').hidden = false
   mountPreviewModel($('settings-preview'))
@@ -205,6 +249,16 @@ $('settings-tree-order').addEventListener('change', async (e) => {
   try {
     await api.setSettings('tree', { order: e.target.value })
     await refreshTree()
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+})
+
+$('settings-spellcheck').addEventListener('change', async (e) => {
+  editorPrefs = { ...editorPrefs, spellcheck: e.target.value === 'on' }
+  editor.setSpellcheck(editorPrefs.spellcheck)
+  try {
+    await api.setSettings('editor', editorPrefs)
   } catch (err) {
     showError($('pane-error'), err)
   }
@@ -343,7 +397,9 @@ function renderEntry(entry) {
   row.title = entry.path
   if (view.selected?.path === entry.path) row.classList.add('selected')
   row.draggable = true
-  row.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-scrinotia-path', entry.path))
+  row.addEventListener('dragstart', (e) => {
+    for (const [type, value] of Object.entries(dragData(entry.path, entry.type === 'folder'))) e.dataTransfer.setData(type, value)
+  })
   row.addEventListener('click', (e) => select(entry, { newTab: e.metaKey || e.ctrlKey }))
   row.addEventListener('auxclick', (e) => {
     if (e.button === 1 && entry.type !== 'folder') select(entry, { newTab: true })
@@ -376,7 +432,7 @@ function renderEntry(entry) {
     row.addEventListener('drop', (e) => {
       e.preventDefault()
       e.stopPropagation()
-      moveInto(e.dataTransfer.getData('text/x-scrinotia-path'), entry.path)
+      moveInto(e.dataTransfer.getData(PATH_TYPE), entry.path)
     })
     const ul = document.createElement('ul')
     ul.setAttribute('role', 'group')
@@ -390,7 +446,7 @@ function renderEntry(entry) {
 $('tree').addEventListener('dragover', (e) => e.preventDefault())
 $('tree').addEventListener('drop', (e) => {
   e.preventDefault()
-  moveInto(e.dataTransfer.getData('text/x-scrinotia-path'), '')
+  moveInto(e.dataTransfer.getData(PATH_TYPE), '')
 })
 
 async function moveInto(from, folder) {
@@ -464,7 +520,11 @@ async function goHistory(by) {
   // Embeds and diagrams can grow the page after it is drawn, so the scroll
   // is set again once they have had a moment.
   $('preview').scrollTop = target.scroll
-  setTimeout(() => ($('preview').scrollTop = target.scroll), 250)
+  alignSoon(editorFollowPreview)
+  setTimeout(() => {
+    $('preview').scrollTop = target.scroll
+    if (noteMode === 'split') editorFollowPreview()
+  }, 250)
 }
 
 function drawHistoryButtons() {
@@ -711,9 +771,64 @@ const editor = createEditor($('editor'), {
     clearTimeout(entry.timer)
     const path = current
     entry.timer = setTimeout(() => save(path), SAVE_DELAY)
-    schedulePreview()
+    typedSinceRender = true
+    schedulePreview({ incremental: true })
   },
   onScroll: syncScroll,
+  // What link and tag completion reads (R4.1); the open note from the editor.
+  vault: {
+    files: () => files(),
+    current: () => current,
+    readNote: (path) => (path === current ? Promise.resolve(editor.text()) : api.readNote(path)),
+    tags: () => api.tags(),
+  },
+  // A pasted image is written to the attachment folder and embedded at the
+  // cursor (R2.7), as a dropped file is.
+  onPasteImage: async (file) => {
+    const note = current
+    const ext = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp' }[file.type]
+    if (!ext || notes.get(note)?.kind !== 'note') return
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const rel = await run(() => api.pasteImage(ext, bytes))
+    if (!rel || current !== note) return
+    await refreshTree()
+    editor.paste(linkFor(rel))
+  },
+  // Cmd/Ctrl+click on a link in the source follows it as the preview does.
+  onFollowLink: (link) => follow(link),
+})
+
+// The source editor's right-click menu: spelling suggestions on a misspelt
+// word, Follow link on a link, then Cut, Copy, Paste and Select all. The main
+// process sends the spelling checker's findings with the click's point.
+api.onEditMenu(async ({ x, y, misspelled, suggestions = [] }) => {
+  if (!editor.view.dom.contains(document.elementFromPoint(x, y))) return
+  const here = editor.contextAt(x, y)
+  const items = []
+  if (misspelled) {
+    if (suggestions.length) items.push(...suggestions.slice(0, 6).map((word, k) => ({ id: `spell:${k}`, label: word })))
+    else items.push({ id: 'none', label: 'No suggestions', enabled: false })
+    items.push({ id: 'learn', label: 'Add to dictionary' }, { type: 'separator' })
+  }
+  if (here.link) items.push({ id: 'follow', label: 'Follow link' }, { id: 'follow-tab', label: 'Open link in new tab' }, { type: 'separator' })
+  items.push(
+    { id: 'cut', label: 'Cut', enabled: here.selection },
+    { id: 'copy', label: 'Copy', enabled: here.selection },
+    { id: 'paste', label: 'Paste' },
+    { type: 'separator' },
+    { id: 'select-all', label: 'Select all' },
+  )
+  const choice = await api.menu(items)
+  if (!choice) return
+  editor.focus()
+  if (choice.startsWith('spell:')) {
+    const word = suggestions[Number(choice.slice(6))]
+    if (here.pos === null || !editor.replaceWord(here.pos, misspelled, word)) api.replaceMisspelling(word)
+  }
+  else if (choice === 'learn') api.addToDictionary(misspelled)
+  else if (choice === 'follow' || choice === 'follow-tab') follow({ kind: here.link.kind, ref: here.link.ref, newTab: choice === 'follow-tab' })
+  else if (choice === 'select-all') editor.selectAll()
+  else if (['cut', 'copy', 'paste'].includes(choice)) api.editCommand(choice)
 })
 
 // ---- preview (R3.1): read-only rendering, alone or beside the editor ----
@@ -732,21 +847,36 @@ const preview = createPreview({
 
 // A base's preview is its views, computed from the saved file, so it is
 // redrawn after each save rather than on each keystroke.
-function renderPreview() {
+// A redraw after typing keeps the preview's unchanged blocks (item 14);
+// any other (another note, a change in the vault's files that may resolve
+// links differently, the theme, a reload from disk) draws it whole.
+let drawnNote = null
+function renderPreview({ incremental = false } = {}) {
   clearTimeout(previewTimer)
+  previewIncremental = null
   if (!current) return
   if (notes.get(current)?.kind === 'base') {
+    typedSinceRender = false
+    drawnNote = null
     showBase(current)
     return
   }
-  preview.render(editor.text(), $('preview'))
+  if (incremental && drawnNote === current) preview.update(editor.text(), $('preview'))
+  else preview.render(editor.text(), $('preview'), { lines: true })
+  drawnNote = current
+  // The note's name heads it on paper (R3.9).
+  $('print-title').textContent = printTitle(current)
   // The note's Properties stay as the reader left them while the note is
   // open; the split view redraws the preview on each edit.
   if (propertiesOpen !== current) propertiesOpen = null
   if (fullView.note !== current) exitDiagramFullScreen()
   if (propertiesOpen) $('preview').querySelector(':scope > details.properties')?.setAttribute('open', '')
-  fillEmbeds()
+  previewSettled = fillEmbeds()
   renderOutline()
+  // The redraw keeps the preview's scroll offset, not its place in the note.
+  if (noteMode === 'split' && driver === 'editor') previewFollowEditor()
+  if (typedSinceRender && noteMode === 'split') keepCursorInPreview()
+  typedSinceRender = false
 }
 // The note whose Properties drawer the reader has opened, while that note
 // stays open; opening any note, that one included, starts it closed.
@@ -783,19 +913,26 @@ function renderOutline() {
 }
 
 function goToHeading(k, line) {
-  // The preview's own headings, in order, leaving out embedded notes and the properties block.
+  // The heading by its source line (item 13); failing that, the preview's own
+  // headings in order, leaving out embedded notes and the properties block.
+  const stamped = $('preview').querySelector(`:is(h1, h2, h3, h4, h5, h6)[${LINE}="${line}"]`)
   const els = [...$('preview').querySelectorAll('h1, h2, h3, h4, h5, h6')].filter((el) => !el.closest('.note-embed, .properties, .callout'))
-  els[k]?.scrollIntoView({ block: 'start' })
-  if (noteMode === 'split') editor.gotoLine(line)
+  ;(stamped ?? els[k])?.scrollIntoView({ block: 'start' })
+  if (editorShown()) editor.gotoLine(line)
 }
 
+// Resolves when the preview's embeds and diagrams are drawn.
+let previewSettled = Promise.resolve()
 async function fillEmbeds() {
   const note = current
   await fillNoteEmbeds($('preview'), 1, new Set([note]))
   if (current !== note) return
-  fillBaseEmbeds()
+  const bases = fillBaseEmbeds()
   fillAttachmentEmbeds()
-  fillMermaid($('preview'))
+  await fillMermaid($('preview'))
+  await bases
+  // Embeds and diagrams change the preview's heights after it is drawn.
+  if (current === note) scheduleFollow()
 }
 
 // Mermaid diagrams (R3.8): loaded only when a note has one; drawn with the
@@ -808,14 +945,17 @@ async function fillMermaid(host) {
   const blocks = [...host.querySelectorAll('pre.mermaid-src')]
   if (!blocks.length) return
   // Each diagram's key for its kept view (R3.8.1): the note it belongs to
-  // (this one, or an embedded one) and its order there.
+  // (this one, or an embedded one) and its order there, counting the
+  // diagrams a redraw kept (item 14) as well as those to draw.
   const counts = new Map()
-  const keys = blocks.map((pre) => {
-    const owner = pre.closest('.note-embed')?.dataset.path ?? current
+  const keyOf = new Map()
+  for (const el of host.querySelectorAll('pre.mermaid-src, .mermaid-diagram')) {
+    const owner = el.closest('.note-embed')?.dataset.path ?? current
     const n = counts.get(owner) ?? 0
     counts.set(owner, n + 1)
-    return `${owner}#${n}`
-  })
+    keyOf.set(el, `${owner}#${n}`)
+  }
+  const keys = blocks.map((pre) => keyOf.get(pre))
   if (!mermaidLib) mermaidLib = (await import('mermaid')).default
   for (const [i, pre] of blocks.entries()) {
     const box = document.createElement('div')
@@ -840,6 +980,8 @@ async function fillMermaid(host) {
       box.textContent = `Mermaid: ${String(err.message ?? err).split('\n')[0]}`
     }
     if (!pre.isConnected) continue
+    if (pre.hasAttribute(LINE)) box.setAttribute(LINE, pre.getAttribute(LINE))
+    preview.carryKey(pre, box)
     pre.replaceWith(box)
     const svg = box.querySelector(':scope > svg')
     if (svg) attachPanZoom(box, svg, { key: keys[i], onMenu: diagramMenu })
@@ -997,35 +1139,221 @@ const assetUrlOf = (p) => assetBase + p.split('/').map(encodeURIComponent).join(
 
 // PDFs, audio, video, HTML and text embedded in the note shown.
 function fillAttachmentEmbeds() {
-  for (const el of $('preview').querySelectorAll('.attachment-embed')) {
+  for (const el of $('preview').querySelectorAll('.attachment-embed:not([data-filled])')) {
+    el.dataset.filled = '1'
     renderAttachment(el, { path: el.dataset.path, url: assetUrlOf(el.dataset.path), api, embedded: true, onModelMenu: modelMenu })
   }
 }
 
-function schedulePreview() {
+// Whether the pending redraw may keep unchanged blocks: only if every
+// request since the last redraw came from typing.
+let previewIncremental = null
+function schedulePreview({ incremental = false } = {}) {
   clearTimeout(previewTimer)
   if (notes.get(current)?.kind === 'base') return
-  previewTimer = setTimeout(renderPreview, 120)
+  previewIncremental = (previewIncremental ?? true) && incremental
+  previewTimer = setTimeout(() => renderPreview({ incremental: previewIncremental }), 120)
 }
 
-// In split mode the preview follows the editor's scroll position by proportion.
-function syncScroll(cmView) {
-  if (noteMode !== 'split') return
-  const src = cmView.scrollDOM
+// ---- scroll sync (item 13): in split mode the editor and the preview show
+// the same place in the note, matched by source line. The preview's blocks
+// carry their first lines; the editor's top line finds its place between
+// two of them, and the reverse when the preview is scrolled. The pane the
+// reader last used (wheel, pointer, key or touch) leads, so that a scroll
+// set by the other is not followed back. Whilst typing, the block holding
+// the cursor is kept in view in the preview.
+let driver = 'editor'
+let typedSinceRender = false
+for (const pane of ['editor', 'preview']) {
+  for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) {
+    $(pane).addEventListener(type, () => (driver = pane), { capture: true, passive: true })
+  }
+}
+
+// The preview's stamped blocks as anchors: a source line and the block's
+// height in the preview's scrolled content. Blocks inside a closed
+// <details> have no place of their own and are left out. A base's preview
+// has no stamps: there, and in an empty note, the anchors are null and the
+// panes follow each other by proportion.
+function previewAnchors() {
+  const pv = $('preview')
+  const base = pv.getBoundingClientRect().top - pv.scrollTop
+  const anchors = []
+  for (const el of pv.querySelectorAll(`[${LINE}]`)) {
+    if (el.parentElement?.closest('details:not([open])')) continue
+    anchors.push({ line: Number(el.getAttribute(LINE)), top: el.getBoundingClientRect().top - base })
+  }
+  if (!anchors.length) return null
+  if (anchors[0].line > 1) anchors.unshift({ line: 1, top: 0 })
+  return orderedAnchors(anchors)
+}
+
+// The editor's top line, with the fraction of it scrolled past.
+function editorTopLine() {
+  const v = editor.view
+  const h = Math.max(0, v.scrollDOM.getBoundingClientRect().top - v.documentTop)
+  const block = v.lineBlockAtHeight(h)
+  const fraction = block.height > 0 ? Math.min(1, Math.max(0, (h - block.top) / block.height)) : 0
+  return v.state.doc.lineAt(block.from).number + fraction
+}
+
+const atTop = (el) => el.scrollTop <= 0
+const atBottom = (el) => el.scrollTop >= el.scrollHeight - el.clientHeight - 1
+const byProportion = (src, dst) => {
   const max = src.scrollHeight - src.clientHeight
-  const dst = $('preview')
   dst.scrollTop = max > 0 ? (src.scrollTop / max) * (dst.scrollHeight - dst.clientHeight) : 0
 }
 
+function previewFollowEditor() {
+  if (noteMode !== 'split' || !current) return
+  const src = editor.view.scrollDOM
+  const dst = $('preview')
+  const anchors = previewAnchors()
+  if (!anchors) byProportion(src, dst)
+  else if (atTop(src)) dst.scrollTop = 0
+  else if (atBottom(src)) dst.scrollTop = dst.scrollHeight
+  else dst.scrollTop = Math.round(topForLine(anchors, editorTopLine()))
+}
+
+function editorFollowPreview() {
+  if (noteMode !== 'split' || !current) return
+  const src = $('preview')
+  const v = editor.view
+  const anchors = previewAnchors()
+  if (!anchors) byProportion(src, v.scrollDOM)
+  else if (atTop(src)) v.scrollDOM.scrollTop = 0
+  else if (atBottom(src)) v.scrollDOM.scrollTop = v.scrollDOM.scrollHeight
+  else scrollEditorToLine(lineForTop(anchors, src.scrollTop))
+}
+
+// Puts a (fractional) line at the top of the editor.
+function scrollEditorToLine(at) {
+  const v = editor.view
+  const n = Math.max(1, Math.min(Math.floor(at), v.state.doc.lines))
+  const line = v.state.doc.line(n)
+  // CodeMirror measures the line before scrolling, so a line far from the
+  // drawn part lands where it should; the margin scrolls past the fraction.
+  const yMargin = -(at - n) * v.lineBlockAt(line.from).height
+  v.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin }) })
+}
+
+// Scroll events come many to a frame; one follow per frame is enough.
+let followFrame = 0
+function scheduleFollow(from = driver) {
+  cancelAnimationFrame(followFrame)
+  followFrame = requestAnimationFrame(() => (from === 'editor' ? previewFollowEditor() : editorFollowPreview()))
+}
+
+function syncScroll() {
+  if (noteMode === 'split' && driver === 'editor') scheduleFollow('editor')
+}
+$('preview').addEventListener('scroll', () => {
+  if (noteMode === 'split' && driver === 'preview') scheduleFollow('preview')
+})
+// An image that loads late changes the heights below it.
+$('preview').addEventListener('load', () => noteMode === 'split' && scheduleFollow(), true)
+
+// Aligns the panes (one of the follow functions) once the editor has
+// measured itself, after a note is shown or the mode changed. The last
+// request wins, so Back and Forward, which restore the preview's place,
+// override the editor's own.
+let alignFrom = null
+function alignSoon(align) {
+  alignFrom = align
+  // Dispatching inside CodeMirror's measure is not allowed, hence the microtask.
+  editor.view.requestMeasure({
+    read: () => null,
+    write: () =>
+      queueMicrotask(() => {
+        const align = alignFrom
+        alignFrom = null
+        align?.()
+      }),
+  })
+}
+
+// The preview block that holds the cursor's line: the last stamped block
+// (a list item before its list) starting at or above it.
+function cursorBlock() {
+  const v = editor.view
+  const line = v.state.doc.lineAt(v.state.selection.main.head).number
+  let best = null
+  for (const el of $('preview').querySelectorAll(`[${LINE}]`)) {
+    if (Number(el.getAttribute(LINE)) <= line) best = el
+  }
+  return best
+}
+
+function keepCursorInPreview() {
+  const el = cursorBlock()
+  if (!el || el.parentElement?.closest('details:not([open])')) return
+  const pv = $('preview').getBoundingClientRect()
+  const r = el.getBoundingClientRect()
+  if (r.bottom > pv.bottom) $('preview').scrollTop += Math.min(r.bottom - pv.bottom, r.top - pv.top)
+  else if (r.top < pv.top) $('preview').scrollTop -= pv.top - r.top
+}
+
+// A task box in the preview flips its item's `[ ]` or `[x]` in the source
+// (item 5, R3.2), in either mode, as an edit of the reader's: it saves,
+// undoes in the editor, and the preview is redrawn from the result.
+$('preview').addEventListener('click', (e) => {
+  const box = e.target.closest?.('input.task-box')
+  if (!box || !current || notes.get(current)?.kind !== 'note') return
+  e.preventDefault()
+  const v = editor.view
+  const n = Number(box.closest('li')?.getAttribute(LINE))
+  if (!(n >= 1 && n <= v.state.doc.lines)) return
+  const line = v.state.doc.line(n)
+  const toggle = taskToggle(line.text)
+  if (!toggle) return
+  const at = line.from + toggle.offset
+  v.dispatch({ changes: { from: at, to: at + 1, insert: toggle.insert }, userEvent: 'input.toggle' })
+  renderPreview({ incremental: true })
+})
+
+// A click in the preview, in split mode, puts the editor's cursor at the
+// start of the block's source; links, controls, diagrams and selections are
+// left to their own handling.
+$('preview').addEventListener('click', (e) => {
+  if (noteMode !== 'split' || e.button !== 0 || !current) return
+  if (!document.getSelection()?.isCollapsed) return
+  if (e.target.closest('a, button, input, select, textarea, summary, video, audio, iframe, .mermaid-diagram, .base-embed, .attachment-embed')) return
+  const el = e.target.closest(`[${LINE}]`)
+  if (!el) return
+  const v = editor.view
+  const line = v.state.doc.line(Math.max(1, Math.min(Number(el.getAttribute(LINE)), v.state.doc.lines)))
+  v.dispatch({ selection: { anchor: line.from }, effects: EditorView.scrollIntoView(line.from, { y: 'nearest' }) })
+  editor.focus()
+})
+
+const editorShown = () => noteMode !== 'preview'
+
+// A change of mode keeps the reader's place: the line at the top of the
+// preview, or of the editor when the source was shown alone. The preview
+// reflows at its new width, so its place is found again by that line.
 function setNoteMode(mode) {
+  const from = noteMode
+  const visible = current && !$('note-area').hidden
+  const before = visible && from !== 'source' ? previewAnchors() : null
+  const shown = before ? lineForTop(before, $('preview').scrollTop) : visible && from === 'source' ? editorTopLine() : null
   noteMode = mode
   $('note-area').className = `note-area mode-${mode}`
-  for (const m of ['preview', 'split']) $(`mode-${m}`).classList.toggle('active', m === mode)
-  if (mode === 'split') {
+  for (const m of NOTE_MODES) $(`mode-${m}`).classList.toggle('active', m === mode)
+  const after = shown !== null && mode !== 'source' ? previewAnchors() : null
+  if (after) $('preview').scrollTop = Math.round(topForLine(after, shown))
+  if (mode !== 'preview') {
     editor.view.requestMeasure()
     editor.focus()
+    if (from === 'preview' && mode === 'split') alignSoon(editorFollowPreview)
+    else if (from === 'preview' && shown !== null) alignSoon(() => scrollEditorToLine(shown))
+    else if (from === 'source' && mode === 'split') alignSoon(previewFollowEditor)
   }
 }
+
+api.onCycleMode(() => {
+  if ($('modes').hidden) return
+  setNoteMode(nextMode(noteMode))
+})
 
 // Links follow on click; Cmd/Ctrl+click or a middle click opens a new tab.
 function previewLink(e, newTab) {
@@ -1088,8 +1416,13 @@ async function flushAll() {
   await Promise.all([...notes.keys()].filter((p) => notes.get(p).dirty).map(save))
 }
 
+// The editor's scroll is kept with the note (item 16) only whilst the
+// editor is shown: a hidden editor has no scroll position of its own.
 function rememberCurrent() {
-  if (current && notes.has(current)) notes.get(current).state = editor.getState()
+  if (!current || !notes.has(current)) return
+  const entry = notes.get(current)
+  entry.state = editor.getState()
+  if (editorShown()) entry.scroll = editor.view.scrollSnapshot()
 }
 
 // ---- .base files: table views (rendered in the main process) ----
@@ -1114,7 +1447,8 @@ async function showBase(path) {
 // referring to the note.
 async function fillBaseEmbeds() {
   const note = current
-  for (const el of $('preview').querySelectorAll('.base-embed')) {
+  for (const el of $('preview').querySelectorAll('.base-embed:not([data-filled])')) {
+    el.dataset.filled = '1'
     const out = await api.renderBase(el.dataset.base, note).catch((err) => ({ error: String(err.message ?? err), views: [] }))
     if (current !== note) return
     const want = el.dataset.view
@@ -1364,12 +1698,28 @@ async function showNote(path) {
       return
     }
   }
+  // A note left with unsaved edits may have changed on disk whilst hidden
+  // (item 18): compare before its next save can overwrite the change.
+  const disk = entry.dirty ? await api.readNote(path).catch(() => null) : null
   if (current !== path) return // another note was chosen while this one loaded
   $('note-area').hidden = false
   $('modes').hidden = false
   editor.setState(entry.state)
+  // The editor's kept place leads; a scroll event from the preview's redraw
+  // must not move it.
+  driver = 'editor'
+  if (editorShown()) {
+    const head = entry.state.selection.main.head
+    editor.view.dispatch({ effects: entry.scroll ?? EditorView.scrollIntoView(head, { y: 'center' }) })
+  }
+  const conflict = diskConflict(entry, disk)
+  if (conflict !== null) {
+    conflictText = conflict
+    $('conflict').hidden = false
+  }
   renderPreview()
   updateResolver()
+  alignSoon(previewFollowEditor)
 }
 
 async function renderPane() {
@@ -1508,7 +1858,7 @@ function forgetNotes(match) {
 }
 
 // ---- modes (R3.1) ----
-for (const mode of ['preview', 'split']) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
+for (const mode of NOTE_MODES) $(`mode-${mode}`).addEventListener('click', () => setNoteMode(mode))
 
 // Shows a vault entry in the file tree: the Files list and the left panel
 // opened if need be, its folders expanded, the entry selected and scrolled
@@ -1873,7 +2223,9 @@ async function renderTags() {
 // its width is set by dragging the splitter beside it (double-click resets).
 // The state is remembered on this machine. ----
 const DEFAULT_WIDTH = 280
-const layout = { leftOpen: true, rightOpen: true, leftWidth: DEFAULT_WIDTH, rightWidth: DEFAULT_WIDTH }
+// The split view's divider (item 15) sets the editor's share of the note
+// area, also remembered on this machine (R6.5).
+const layout = { leftOpen: true, rightOpen: true, leftWidth: DEFAULT_WIDTH, rightWidth: DEFAULT_WIDTH, editorShare: DEFAULT_SHARE }
 let saveLayoutTimer = null
 
 function applyLayout() {
@@ -1884,6 +2236,7 @@ function applyLayout() {
   ws.classList.toggle('right-closed', !layout.rightOpen)
   $('toggle-left').classList.toggle('closed', !layout.leftOpen)
   $('toggle-right').classList.toggle('closed', !layout.rightOpen)
+  $('note-area').style.setProperty('--editor-share', `${(layout.editorShare * 100).toFixed(2)}%`)
   editor.view.requestMeasure()
 }
 
@@ -1942,11 +2295,46 @@ function dragSplitter(side) {
   })
 }
 
+// The share is a fraction, so it holds as the window or the drawers change.
+function dragNoteSplitter() {
+  const bar = $('split-note')
+  bar.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    bar.setPointerCapture(e.pointerId)
+    bar.classList.add('dragging')
+    $('workspace').classList.add('resizing')
+    const move = (ev) => {
+      if (ev.buttons === 0) return end()
+      const area = $('note-area').getBoundingClientRect()
+      layout.editorShare = Math.round(clampShare((ev.clientX - area.left) / area.width, area.width) * 1000) / 1000
+      applyLayout()
+      scheduleFollow()
+    }
+    const end = () => {
+      bar.classList.remove('dragging')
+      $('workspace').classList.remove('resizing')
+      bar.removeEventListener('pointermove', move)
+      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) bar.removeEventListener(type, end)
+      if (bar.hasPointerCapture(e.pointerId)) bar.releasePointerCapture(e.pointerId)
+      saveLayout()
+    }
+    bar.addEventListener('pointermove', move)
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) bar.addEventListener(type, end)
+  })
+  bar.addEventListener('dblclick', () => {
+    layout.editorShare = DEFAULT_SHARE
+    applyLayout()
+    saveLayout()
+    scheduleFollow()
+  })
+}
+
 $('toggle-left').addEventListener('click', () => toggleDrawer('left'))
 $('toggle-right').addEventListener('click', () => toggleDrawer('right'))
 api.onToggleDrawer(toggleDrawer)
 dragSplitter('left')
 dragSplitter('right')
+dragNoteSplitter()
 api
   .getLayout()
   .then((saved) => {
@@ -1954,6 +2342,7 @@ api
     if (typeof saved.rightOpen === 'boolean') layout.rightOpen = saved.rightOpen
     if (Number.isFinite(saved.leftWidth)) layout.leftWidth = Math.max(160, Math.min(600, saved.leftWidth))
     if (Number.isFinite(saved.rightWidth)) layout.rightWidth = Math.max(160, Math.min(600, saved.rightWidth))
+    if (Number.isFinite(saved.editorShare)) layout.editorShare = Math.max(0.1, Math.min(0.9, saved.editorShare))
   })
   .catch(() => {})
   .finally(applyLayout)
@@ -1965,7 +2354,7 @@ api
 // split editor it goes where the file is dropped; in the preview, at the end.
 function draggableItem(path, li) {
   li.draggable = true
-  li.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/x-scrinotia-path', path))
+  li.addEventListener('dragstart', (e) => e.dataTransfer.setData(PATH_TYPE, path))
   return li
 }
 
@@ -1979,14 +2368,22 @@ function linkFor(path) {
   return `${embed ? '!' : ''}[[${target}]]`
 }
 
+// A folder from the tree is refused (R2.7): the drop effect is set to none,
+// even over the editor's editable text, so the pointer shows that nothing can
+// be dropped and no drop event follows.
 function canDrop(e) {
-  const t = e.dataTransfer?.types ?? []
-  return current && notes.get(current)?.kind === 'note' && (t.includes('Files') || t.includes('text/x-scrinotia-path'))
+  return current && notes.get(current)?.kind === 'note' && noteAccepts(e.dataTransfer?.types)
 }
 
 $('note-area').addEventListener(
   'dragover',
   (e) => {
+    if (e.dataTransfer?.types.includes(FOLDER_TYPE)) {
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'none'
+      return
+    }
     if (!canDrop(e)) return
     e.preventDefault()
     e.stopPropagation()
@@ -2002,10 +2399,10 @@ $('note-area').addEventListener(
     e.preventDefault()
     e.stopPropagation()
     const note = current
-    const inEditor = noteMode === 'split' && $('editor').contains(e.target)
+    const inEditor = editorShown() && $('editor').contains(e.target)
     const pos = inEditor ? editor.posAt(e.clientX, e.clientY) : null
     const paths = []
-    const vaultPath = e.dataTransfer.getData('text/x-scrinotia-path')
+    const vaultPath = e.dataTransfer.getData(PATH_TYPE)
     if (vaultPath) paths.push(vaultPath)
     for (const file of e.dataTransfer.files) {
       const source = api.pathForFile(file)
@@ -2028,20 +2425,26 @@ $('note-area').addEventListener(
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return
   await refreshTree()
-  updateResolver()
+  // The echo of our own save changes nothing that the preview shows, so
+  // only another change redraws it (item 14: the echo had doubled the
+  // redraws whilst typing).
+  let changed = false
   for (const path of paths) {
     const entry = notes.get(path)
+    changed ||= !entry
     if (!entry) continue
     let disk
     try {
       disk = await api.readNote(path)
     } catch {
+      changed = true
       forgetNotes((p) => p === path) // deleted or moved away
       continue
     }
     if (disk === entry.disk) continue // our own save, or no change
+    changed = true
     if (path !== current) {
-      if (entry.dirty) continue // resolved when the note is shown and saved
+      if (entry.dirty) continue // checked when the note is next shown (showNote)
       notes.delete(path)
       continue
     }
@@ -2052,6 +2455,7 @@ api.onVaultChanged(async (paths) => {
       loadDiskText(entry, disk)
     }
   }
+  if (changed) updateResolver()
   if (currentBase) showBase(currentBase)
   else if (!current) renderPane()
   else renderLinks()

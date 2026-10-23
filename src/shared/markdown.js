@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// The vault's Markdown dialect as @lezer/markdown extensions: wikilinks and
-// embeds ([[target#sub|alias]], ![[...]]), highlights (==text==), and inline
-// comments (%%text%%). The editor and the link index use this one parser, so
-// a [[link]] inside code is a link to neither.
+// The vault's Markdown dialect as @lezer/markdown extensions: frontmatter (a
+// ---/--- block at the start of a note), wikilinks and embeds
+// ([[target#sub|alias]], ![[...]]), highlights (==text==), and inline comments
+// (%%text%%). The editor and the link index use this one parser, so a [[link]]
+// inside code is a link to neither.
 
 import { parser as baseParser, GFM } from '@lezer/markdown'
+import { Tag, tags as t } from '@lezer/highlight'
 
 const OPEN = 91 // [
 const CLOSE = 93 // ]
@@ -17,18 +19,66 @@ const NEWLINE = 10
 
 const HighlightDelim = { resolve: 'Highlight', mark: 'HighlightMark' }
 
+// Highlight tags for the dialect's own nodes that the standard set lacks; the
+// editor's style gives them colours from theme.css.
+export const vaultTags = {
+  alias: Tag.define(), // a wikilink's |alias
+  highlight: Tag.define(), // ==text==
+}
+
+// Frontmatter, matched as the link index (frontmatterOf), the sections module
+// (stripFrontmatter) and the preview match it: a first line of exactly ---, an
+// optional BOM before it, and a closing --- or ... line; unclosed, the first
+// line stays a horizontal rule. Groups: the opening line, the content and the
+// closing line.
+const FRONTMATTER = /^(\uFEFF?---)\r?\n([\s\S]*?)\r?\n((?:---|\.\.\.)[^\S\r\n]*)\r?(?:\n|$)/
+
+const Frontmatter = {
+  name: 'Frontmatter',
+  parse(cx, line) {
+    if (cx.lineStart !== 0 || !/^\uFEFF?---$/.test(line.text.replace(/\r$/, ''))) return false
+    // Whether the block is closed needs the text beyond the current line,
+    // which BlockContext offers only through its untyped input field (present
+    // in @lezer/markdown 1.8); the parser tests pin it.
+    const m = FRONTMATTER.exec(cx.input.read(0, cx.input.length))
+    if (!m) return false
+    const open = m[1].length
+    const contentFrom = m[0].indexOf('\n') + 1
+    const contentTo = contentFrom + m[2].length
+    const close = m.index + m[0].lastIndexOf(m[3])
+    const end = close + m[3].length
+    // The content is inline-parsed as before this node existed, so wikilinks
+    // in properties stay in the link index; the editor shows it as YAML.
+    const children = [cx.elt('FrontmatterMark', 0, open)]
+    if (contentTo > contentFrom)
+      children.push(cx.elt('FrontmatterContent', contentFrom, contentTo, cx.parser.parseInline(m[2], contentFrom)))
+    children.push(cx.elt('FrontmatterMark', close, close + 3))
+    while (cx.lineStart < close && cx.nextLine()) {
+      // consume the block's lines up to the closing one
+    }
+    cx.nextLine()
+    cx.addElement(cx.elt('Frontmatter', 0, end, children))
+    return true
+  },
+  before: 'HorizontalRule',
+}
+
 export const VaultMarkdown = {
   defineNodes: [
-    'Wikilink',
-    'Embed',
-    'WikilinkMark',
+    { name: 'Frontmatter', block: true },
+    { name: 'FrontmatterMark', style: t.processingInstruction },
+    'FrontmatterContent',
+    { name: 'Wikilink', style: { 'Wikilink/...': t.link } },
+    { name: 'Embed', style: { 'Embed/...': t.link } },
+    { name: 'WikilinkMark', style: t.processingInstruction },
     'WikilinkTarget',
-    'WikilinkAlias',
-    { name: 'Highlight' },
-    'HighlightMark',
-    'Comment',
-    'CommentMark',
+    { name: 'WikilinkAlias', style: vaultTags.alias },
+    { name: 'Highlight', style: { 'Highlight/...': vaultTags.highlight } },
+    { name: 'HighlightMark', style: t.processingInstruction },
+    { name: 'Comment', style: { 'Comment/...': t.comment } },
+    { name: 'CommentMark', style: t.comment },
   ],
+  parseBlock: [Frontmatter],
   parseInline: [
     {
       name: 'Wikilink',

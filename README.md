@@ -2,7 +2,7 @@
 
 <img src="build/icon.png" alt="The Scrinotia icon" width="128" align="right">
 
-A local-first, utilitarian Markdown notes client for macOS and Ubuntu. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
+A local-first, utilitarian Markdown notes client for macOS, Ubuntu and Windows. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
 
 ## The name
 
@@ -12,12 +12,13 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.17.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.18.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree follows each folder's described order (the list in its `00 - <folder>` note; Alphabetical is a setting), lists unlisted files before subfolders, draws lines connecting each item to its folder, and hides dot-folders such as `.obsidian/`, which are never read or written.
-- **Notes:** a read-only rendered preview, and a split view with the Markdown source on the left and the preview on the right; saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened.
+- **Notes:** three modes, cycled with Cmd/Ctrl+E: a read-only rendered preview; a split view, the Markdown source on the left and the preview on the right, with a divider that can be dragged and the two panes scrolled together by source line; and the source alone. Saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened. In the preview, task boxes can be ticked, and fenced code is coloured by its language. Print (File, Print…, or Cmd/Ctrl+P) prints the open note as rendered, under its name and in the light theme's colours, without the Properties block.
+- **Source editor:** frontmatter shown as YAML; wikilinks, highlights and comments coloured, Markdown's marks dimmed and headings sized by level; completion of notes, headings and block ids after `[[`, and of tags after `#`; Tab and Shift+Tab (or Cmd/Ctrl+] and [) nest and un-nest list items and renumber ordered lists; Cmd/Ctrl+B, I, K, Shift+C and Shift+H for bold, italic, a link, code and a highlight, and Cmd/Ctrl+Enter for a task box; folding of sections, lists and the frontmatter (Cmd/Ctrl+Alt+[ and ], or the marker on the cursor's line); a right-click menu with Cut, Copy, Paste, Follow link and spelling suggestions; Cmd/Ctrl+click follows a link; and an image pasted from the clipboard is saved to `attachments/` and embedded. Spelling is checked in notes (a setting), with the system's dictionaries on macOS and Windows and an English dictionary bundled for Ubuntu, so nothing is downloaded.
 - **Links:** wikilinks (`[[note]]`, `[[note#heading|alias]]`, `![[image.png]]`) and local Markdown links are followed on click; backlinks, unlinked mentions and outgoing links are listed beside the note; renaming or moving a note updates the links that point to it, and nothing else in those notes.
-- **Dropping files:** drag files onto a note to copy them into `attachments/` and link them; drag a file from the tree or search results to link it.
+- **Dropping files:** drag files onto a note to copy them into `attachments/` and link them; drag a file from the tree or search results to link it; a folder is refused, since a note links to files only.
 - **Attachments:** images, PDFs, audio, video, text, HTML (scripts sandboxed) and STL models (a 3D viewer with orbit, zoom and pan, lit from above and to the right of the view with cast shadows, so that relief shows) are shown in the pane and embedded in notes; other files show their details and open in the system's application.
 - **Math and diagrams:** `$…$` and `$$…$$` math (KaTeX) and `mermaid` code blocks (Mermaid, without its ELK layout) are rendered in the preview; a diagram pans by dragging and zooms by scrolling, pinching or double-clicking, and its right-click menu offers Zoom to fit and Full screen, as do STL models (Full screen also for HTML files).
 - **Embedded notes:** `![[Note]]`, `![[Note#Heading]]` and `![[Note#^id]]` show the note, section or block in a box, one level deep, with Show all for long notes.
@@ -32,13 +33,13 @@ Download the installer for your system from the repository's [Releases page](htt
 
 - **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is not signed, so macOS refuses the first launch; open it once with Control-click, Open, or run `xattr -dr com.apple.quarantine /Applications/Scrinotia.app`.
 - **Ubuntu:** install the `.deb` with `sudo apt install ./scrinotia-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
-- **Windows:** an unsigned `.exe` installer is built as well; SmartScreen warns on first launch.
+- **Windows:** run `scrinotia-<version>-setup.exe`. The installer is not signed, so SmartScreen warns on first launch; choose More info, then Run anyway.
 
 ## Use
 
 The side panels are drawers: open and close them with the buttons at either end of the note's header or Cmd/Ctrl+\ and Cmd/Ctrl+Shift+\, and drag the bar beside a panel to resize it. About Scrinotia and the open-source licences are in the Help menu (and, on macOS, the application menu); Escape closes either window. Opening About is the only time the app checks GitHub for a newer version, and it says whether one is available.
 
-Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Cmd/Ctrl+O opens the quick switcher: type part of a name and press Enter. Select a note to see its preview. Each tab has Back and Forward, like a browser tab: the arrows in the note's header (hold one for the list), Cmd+[ and Cmd+] (Alt+Left and Alt+Right on Ubuntu and Windows), the mouse's side buttons, or a trackpad swipe. To open a note or link in a new tab, right-click it and choose Open in new tab (or Cmd/Ctrl+click it); right-clicking a file in the tree or an open tab also offers Reveal in Finder (Show in File Explorer on Windows, Open containing folder on Linux), and an open tab offers Reveal in file tree; Cmd/Ctrl+W closes a tab, and each vault's tabs are restored the next time it opens; choose Edit (split) to change it. The panel on the right shows the note's outline (click a heading to go to it) and lists its backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it. The Tags button above it lists the vault's tags; clicking one searches for it.
+Open a vault from the start screen, or a second vault in a new window (File, New Window, or Cmd/Ctrl+Shift+N). Cmd/Ctrl+O opens the quick switcher: type part of a name and press Enter. Select a note to see its preview. Each tab has Back and Forward, like a browser tab: the arrows in the note's header (hold one for the list), Cmd+[ and Cmd+] (Alt+Left and Alt+Right on Ubuntu and Windows), the mouse's side buttons, or a trackpad swipe. To open a note or link in a new tab, right-click it and choose Open in new tab (or Cmd/Ctrl+click it); right-clicking a file in the tree or an open tab also offers Reveal in Finder (Show in File Explorer on Windows, Open containing folder on Linux), and an open tab offers Reveal in file tree; Cmd/Ctrl+W closes a tab, and each vault's tabs are restored the next time it opens; choose Edit (split) or Source to change it, or press Cmd/Ctrl+E. The panel on the right shows the note's outline (click a heading to go to it) and lists its backlinks, unlinked mentions and outgoing links. Type in the search box above the file tree to search the vault; Escape clears it. The Tags button above it lists the vault's tags; clicking one searches for it.
 
 ## Develop
 

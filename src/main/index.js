@@ -5,7 +5,7 @@
 // and link index (R2.1); a vault already open in one window is focused rather
 // than opened twice. All filesystem access happens here.
 
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell, protocol, net } from 'electron'
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell, protocol, net, session } from 'electron'
 import { randomBytes } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 import { watch } from 'node:fs'
@@ -17,6 +17,7 @@ import { createIndex } from './linkIndex.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
 import { openAboutWindow, openLicensesWindow } from './about.js'
+import { configureSpelling } from './spelling.js'
 import appIcon from '../../build/icon.png?asset'
 
 const state = createState(app.getPath('userData'), join(app.getPath('appData'), 'granite-vaulting'))
@@ -159,6 +160,15 @@ function registerIpc() {
       menu.popup({ window: BrowserWindow.fromWebContents(e.sender), callback: () => setTimeout(() => resolveChoice(chosen), 0) })
     }),
   )
+  // The source editor's context menu acts through the page: Cut, Copy and
+  // Paste as the Edit menu does, and a word added to the spelling dictionary.
+  on('edit:do', (e, command) => {
+    if (['cut', 'copy', 'paste'].includes(command)) e.sender[command]()
+  })
+  on('spell:add', (e, word) => e.sender.session.addWordToSpellCheckerDictionary(String(word)))
+  // The checker's own replacement, for a misspelling the editor cannot find
+  // by its word boundaries (one with an apostrophe, say).
+  on('spell:replace', (e, word) => e.sender.replaceMisspelling(String(word)))
   on('vault:choose', async (e) => {
     const ctx = ctxOf(e)
     const result = await dialog.showOpenDialog(ctx.win, { properties: ['openDirectory'] })
@@ -175,19 +185,46 @@ function registerIpc() {
     return was
   })
   on('note:read', (e, rel) => vault.readNote(rootOf(e), rel))
+  // The system's print dialog for the window's open note (R3.9); on macOS it
+  // also offers Save as PDF. The page's margins take the window's background,
+  // so it is white for the time the dialog is open. Resolves when it closes.
+  on('note:print', (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const background = win?.getBackgroundColor()
+    win?.setBackgroundColor('#ffffff')
+    return new Promise((resolve) =>
+      e.sender.print({ printBackground: true }, (printed) => {
+        if (win && !win.isDestroyed() && background) win.setBackgroundColor(background)
+        resolve(printed)
+      }),
+    )
+  })
   on('app:about', () => openAboutWindow())
   on('app:licenses', () => openLicensesWindow())
   on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
   // Files dropped from outside the vault are copied into the vault's
   // attachment folder (a vault setting, default "attachments").
+  async function attachmentFolder(root) {
+    const { values } = await readSettings(root, 'files')
+    return typeof values.attachmentFolder === 'string' ? values.attachmentFolder.replace(/^\/+|\/+$/g, '') : 'attachments'
+  }
   on('file:import', async (e, sourcePath) => {
     const root = rootOf(e)
-    const { values } = await readSettings(root, 'files')
-    const folder = typeof values.attachmentFolder === 'string' ? values.attachmentFolder.replace(/^\/+|\/+$/g, '') : 'attachments'
+    const folder = await attachmentFolder(root)
     // A file already inside the vault is linked where it is, not copied.
     const inside = relative(root, resolve(sourcePath))
     if (inside && !inside.startsWith('..') && !isAbsolute(inside)) return inside.split(sep).join('/')
     return vault.importFile(root, sourcePath, folder)
+  })
+  // An image pasted into a note is written to the attachment folder as
+  // "Pasted image <YYYY-MM-DD HHmmss>" (numbered if taken), R2.7.
+  on('file:paste', async (e, ext, bytes) => {
+    const root = rootOf(e)
+    if (!/^\.[a-z0-9]{1,5}$/i.test(ext)) throw new Error(`not an image extension: ${ext}`)
+    const d = new Date()
+    const p2 = (n) => String(n).padStart(2, '0')
+    const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`
+    return vault.writeAttachment(root, await attachmentFolder(root), `Pasted image ${stamp}`, ext.toLowerCase(), Buffer.from(bytes))
   })
   on('file:readBytes', (e, rel) => vault.readBytes(rootOf(e), rel))
   // Shows the entry in the system's file manager, selected where it can be.
@@ -268,6 +305,15 @@ function createWindow() {
   win.webContents.on('context-menu', (_e, params) => {
     if (params.frameURL?.startsWith('scrinotia-asset:') && /\.html?$/i.test(new URL(params.frameURL).pathname)) {
       win.webContents.send('ui:frame-menu', params.frameURL)
+    } else if (params.isEditable) {
+      // A right-click in editable text (the source editor), with the
+      // spelling checker's word and suggestions, for the renderer's menu.
+      win.webContents.send('ui:edit-menu', {
+        x: params.x,
+        y: params.y,
+        misspelled: params.misspelledWord,
+        suggestions: params.dictionarySuggestions,
+      })
     }
   })
   win.webContents.on('before-input-event', (_e, input) => {
@@ -307,6 +353,8 @@ function buildMenu() {
           click: (_item, win) => win?.webContents.send('ui:quick-switcher'),
         },
         { type: 'separator' },
+        { label: 'Print…', accelerator: 'CmdOrCtrl+P', click: (_item, win) => win?.webContents.send('ui:print') },
+        { type: 'separator' },
         { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: (_item, win) => win?.webContents.send('ui:close-tab') },
         { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' },
         ...(isMac ? [] : [{ type: 'separator' }, settings, { type: 'separator' }, { role: 'quit' }]),
@@ -318,6 +366,7 @@ function buildMenu() {
       submenu: [
         { label: 'Toggle Left Panel', accelerator: 'CmdOrCtrl+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'left') },
         { label: 'Toggle Right Panel', accelerator: 'CmdOrCtrl+Shift+\\', click: (_item, win) => win?.webContents.send('ui:toggle-drawer', 'right') },
+        { label: 'Cycle Note Mode', accelerator: 'CmdOrCtrl+E', click: (_item, win) => win?.webContents.send('ui:cycle-mode') },
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
@@ -346,6 +395,11 @@ app.whenReady().then(() => {
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(appIcon)
   registerIpc()
   serveAssets()
+  configureSpelling(session.defaultSession, {
+    platform: process.platform,
+    dictionaryDir: app.isPackaged ? join(process.resourcesPath, 'dictionaries') : join(app.getAppPath(), 'build', 'dictionaries'),
+    userDataDir: app.getPath('userData'),
+  })
   buildMenu()
   createWindow()
   app.on('activate', () => {

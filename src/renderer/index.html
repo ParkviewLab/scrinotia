@@ -60,6 +60,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
           <span class="actions" id="modes" hidden>
             <button id="mode-preview" type="button" class="active">Preview</button>
             <button id="mode-split" type="button">Edit (split)</button>
+            <button id="mode-source" type="button">Source</button>
           </span>
           <span class="actions" id="entry-actions" hidden>
             <button id="rename" type="button">Rename</button>
@@ -73,8 +74,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
           <button id="keep-mine" type="button">Keep my version</button>
           <button id="load-disk" type="button">Load the disk version</button>
         </div>
+        <h1 id="print-title" class="print-title"></h1>
         <div id="note-area" class="note-area mode-preview" hidden>
           <div id="editor" class="editor"></div>
+          <div class="splitter" id="split-note" role="separator" aria-orientation="vertical" title="Drag to resize; double-click to reset"></div>
           <article id="preview" class="preview"></article>
         </div>
         <p id="note-body" class="note-body muted"></p>
@@ -112,6 +115,15 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <option value="alphabetical">Alphabetical</option>
           </select>
           <span class="settings-sample">Described order follows the list in each folder's "00 - " note.</span>
+        </div>
+        <h3>Source editor</h3>
+        <div class="settings-fonts">
+          <label for="settings-spellcheck">Spelling</label>
+          <select id="settings-spellcheck">
+            <option value="on">Checked</option>
+            <option value="off">Not checked</option>
+          </select>
+          <span class="settings-sample">Misspelt words in notes are underlined; a right-click offers corrections.</span>
         </div>
         <h3>STL models</h3>
         <div class="settings-colour">

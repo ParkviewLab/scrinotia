@@ -38,6 +38,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --syn-property: #90caf9;
   --syn-comment: #d7a86e;
   --syn-invalid: #f28b82;
+  /* The vault's syntax and Markdown's marks in the editor (editor.js). */
+  --syn-alias: #a8b4c8;
+  --syn-mark: #6e737b;
+  --syn-highlight: color-mix(in srgb, var(--accent) 30%, transparent);
   --accent: #7f9cf5;
   --select: #2c2f36;
   --border: #2a2c30;
@@ -67,6 +71,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
   --syn-property: #0000cc;
   --syn-comment: #994400;
   --syn-invalid: #ff0000;
+  /* The vault's syntax and Markdown's marks in the editor (editor.js). */
+  --syn-alias: #57606a;
+  --syn-mark: #8c959f;
+  --syn-highlight: color-mix(in srgb, var(--accent) 30%, transparent);
   --accent: #3b5bdb;
   --select: #e3e7ee;
   --border: #d8dce2;
@@ -263,7 +271,8 @@ button:hover {
   word-break: break-word;
 }
 
-/* ---- note modes: preview alone, or source editor beside preview ---- */
+/* ---- note modes: preview alone, source editor beside preview, or the
+   source alone; in the split, the divider sets the editor's share ---- */
 .pane-head .actions button.active {
   border-color: var(--accent);
   color: var(--accent);
@@ -279,14 +288,15 @@ button:hover {
 .note-area.mode-preview {
   grid-template-columns: 1fr;
 }
-.note-area.mode-preview .editor {
+.note-area.mode-preview :is(.editor, #split-note),
+.note-area.mode-source :is(.preview, #split-note) {
   display: none;
 }
-.note-area.mode-split {
-  grid-template-columns: 1fr 1fr;
+.note-area.mode-source {
+  grid-template-columns: 1fr;
 }
-.note-area.mode-split .editor {
-  border-right: 1px solid var(--border);
+.note-area.mode-split {
+  grid-template-columns: minmax(0, var(--editor-share, 50%)) 4px minmax(0, 1fr);
 }
 .editor {
   min-height: 0;
@@ -307,6 +317,11 @@ button:hover {
 .editor .cm-content {
   padding: 0 20px;
   caret-color: var(--fg);
+  /* The preview's measure (760 px of text) with the editor's padding,
+     centred when the column is wider. */
+  box-sizing: border-box;
+  max-width: 800px;
+  margin: 0 auto;
 }
 .editor .cm-cursor {
   border-left-color: var(--fg);
@@ -317,6 +332,50 @@ button:hover {
 .editor .cm-selectionBackground,
 .editor .cm-focused .cm-selectionBackground {
   background: var(--select) !important;
+}
+/* Folding: the marker on the cursor's line and a fold's placeholder. */
+.editor .cm-foldMarker {
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px;
+  user-select: none;
+}
+.editor .cm-foldMarker:hover {
+  color: var(--fg);
+}
+.editor .cm-foldPlaceholder {
+  background: var(--select);
+  border: none;
+  color: var(--muted);
+  padding: 0 4px;
+}
+/* Link and tag completion (R4.1). */
+.editor .cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--bg-panel);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: 13px/1.5 var(--font-ui);
+}
+.editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-ui);
+  max-width: min(640px, 80vw);
+}
+.editor .cm-tooltip-autocomplete > ul > li {
+  padding: 2px 8px;
+}
+.editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--select);
+  color: var(--fg);
+}
+.editor .cm-completionDetail {
+  color: var(--muted);
+  font-style: normal;
+  margin-left: 1em;
+}
+.editor .cm-completionMatchedText {
+  text-decoration: none;
+  font-weight: 600;
 }
 .preview {
   min-height: 0;
@@ -334,13 +393,37 @@ button:hover {
 .preview h2 { font-size: 1.45em; }
 .preview h3 { font-size: 1.2em; }
 .preview a { color: var(--accent); cursor: pointer; text-decoration: none; }
+/* Task boxes: the browser's own checkbox, not the form fields' style above. */
+.preview input[type='checkbox'] {
+  appearance: auto;
+  padding: 0;
+  margin: 0 0.4em 0 0;
+  vertical-align: -0.1em;
+  accent-color: var(--accent);
+}
+.preview input.task-box { cursor: pointer; }
 .preview a:hover { text-decoration: underline; }
 .preview a.unresolved { opacity: 0.6; text-decoration: underline dotted; }
 .preview a.embed-link::before { content: '↳ '; color: var(--muted); }
-.preview mark { background: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; border-radius: 2px; }
+.preview mark { background: var(--syn-highlight); color: inherit; border-radius: 2px; }
 .preview code { font-family: var(--font-mono); font-size: 0.9em; background: var(--select); border-radius: 3px; padding: 0 3px; }
 .preview pre { background: var(--bg-side); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; overflow: auto; }
 .preview pre code { background: none; padding: 0; }
+/* Fenced code (editor/codeLanguages.js): the editor's colour tokens. */
+.preview code .tok-meta { color: var(--syn-meta); }
+.preview code .tok-keyword { color: var(--syn-keyword); }
+.preview code :is(.tok-atom, .tok-bool, .tok-url, .tok-labelName) { color: var(--syn-url); }
+.preview code :is(.tok-literal, .tok-number, .tok-inserted) { color: var(--syn-literal); }
+.preview code :is(.tok-string, .tok-deleted) { color: var(--syn-string); }
+.preview code .tok-string2 { color: var(--syn-special); }
+.preview code .tok-variableName.tok-definition { color: var(--syn-definition); }
+.preview code .tok-variableName.tok-local { color: var(--syn-local); }
+.preview code :is(.tok-typeName, .tok-namespace) { color: var(--syn-type); }
+.preview code .tok-className { color: var(--syn-class); }
+.preview code :is(.tok-variableName2, .tok-macroName) { color: var(--syn-macro); }
+.preview code .tok-propertyName.tok-definition { color: var(--syn-property); }
+.preview code .tok-comment { color: var(--syn-comment); }
+.preview code .tok-invalid { color: var(--syn-invalid); }
 .preview blockquote { border-left: 3px solid var(--border); margin-left: 0; padding-left: 12px; color: var(--muted); }
 .preview table { border-collapse: collapse; }
 .preview th, .preview td { border: 1px solid var(--border); padding: 4px 8px; }
@@ -1046,4 +1129,90 @@ body.full-view .links {
   height: 100%;
   border: 0;
   background: #fff;
+}
+
+/* ---- printing (R3.9): only the note as rendered, its name as a title, in
+   the light theme's colours (main.js switches a dark screen to light for
+   the time the print dialog is open); no panels, tabs or buttons; diagrams
+   and images fitted to the page; no page break inside a code block, a
+   table, a diagram or an image; the Properties block left out. ---- */
+.print-title {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+  html,
+  body,
+  .workspace,
+  .pane,
+  .note-area {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: var(--bg);
+  }
+  .start,
+  .sidebar,
+  .links,
+  .splitter,
+  .tabs,
+  .pane-head,
+  #pane-error,
+  .conflict,
+  .note-body,
+  .editor,
+  .diagram-full,
+  .preview button,
+  .preview > details.properties {
+    display: none !important;
+  }
+  .print-title {
+    display: block;
+    margin: 0 0 0.6em;
+    font: 600 1.9em/1.25 var(--font-heading);
+    color: var(--fg);
+  }
+  .preview {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .preview > * {
+    max-width: none !important;
+  }
+  .preview :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+  }
+  .preview :is(pre, table, img, .mermaid-diagram, .math-block, .callout) {
+    break-inside: avoid;
+  }
+  /* Code wraps rather than being cut at the page's edge. */
+  .preview pre {
+    white-space: pre-wrap;
+    overflow: visible;
+  }
+  .preview img {
+    max-width: 100%;
+    height: auto;
+  }
+  .preview .mermaid-diagram {
+    overflow: visible;
+  }
+  .diagram-frame {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .diagram-frame > svg {
+    position: static !important;
+    transform: none !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .preview .note-embed-body {
+    max-height: none;
+    overflow: visible;
+  }
 }
