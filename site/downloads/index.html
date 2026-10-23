@@ -41,7 +41,9 @@ code{font-family:var(--font-mono); font-size:.9em; background:var(--raised); pad
 .hero-mark{justify-self:center;}
 .hero-mark img{width:min(280px,64vw); height:auto; display:block; filter:drop-shadow(0 16px 40px rgba(0,0,0,.45));}
 .wordmark{font-size:clamp(44px,7vw,76px); line-height:1; letter-spacing:-.01em; margin:0 0 8px; font-weight:750;}
-.say{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:0 0 18px;}
+/* Written as said: the capitals mark the stressed syllable, so the line is
+   never upper-cased. */
+.say{font-size:16px; letter-spacing:.04em; color:var(--muted); margin:0 0 18px;}
 .tagline{font-size:clamp(19px,2.6vw,24px); color:var(--orange); margin:0 0 14px; font-weight:600;}
 .lede{font-size:16px; max-width:48ch; margin:0 0 26px;}
 .lede .muted{color:var(--muted);}
