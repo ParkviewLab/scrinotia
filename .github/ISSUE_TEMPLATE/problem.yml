@@ -1,0 +1,34 @@
+name: Something went wrong
+description: Scrinotia did something unexpected, showed an error, or would not start.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for telling us. A few plain answers are enough; no technical detail is needed.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, and what Scrinotia did instead of what you expected.
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Your computer
+      options:
+        - macOS
+        - Windows
+        - Ubuntu or another Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Scrinotia's version
+      description: Shown in Help, About Scrinotia (on macOS, in the Scrinotia menu). Leave it blank if you are not sure.
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: A screenshot, or whether it happens every time. Please leave out anything private from your notes.
