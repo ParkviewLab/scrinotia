@@ -164,3 +164,47 @@ describe('pasting an image', () => {
     expect(pasted).toEqual(['image/png'])
   })
 })
+
+describe('following a link from the source', () => {
+  it('Cmd/Ctrl+click follows it, with Shift in a new tab', () => {
+    const followed = []
+    const editor = createEditor(document.body.appendChild(document.createElement('div')), {
+      onUserChange: () => {},
+      onFollowLink: (link) => followed.push(link),
+    })
+    editor.setState(editor.createState('See [[Plan]] now'))
+    editor.view.posAtCoords = () => 7
+    const mod = navigator.platform.startsWith('Mac') ? { metaKey: true } : { ctrlKey: true }
+    const click = (extra) => editor.view.contentDOM.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0, ...mod, ...extra }))
+    click({})
+    click({ shiftKey: true })
+    expect(followed).toEqual([
+      { kind: 'wikilink', ref: 'Plan', newTab: false },
+      { kind: 'wikilink', ref: 'Plan', newTab: true },
+    ])
+  })
+})
+
+describe('spell checking', () => {
+  it('is on in notes by default, can be turned off, and is off for .base files', () => {
+    const editor = createEditor(document.body.appendChild(document.createElement('div')), { onUserChange: () => {} })
+    const note = editor.createState('a note')
+    editor.setState(note)
+    expect(editor.view.contentDOM.getAttribute('spellcheck')).toBe('true')
+    editor.setSpellcheck(false)
+    expect(editor.view.contentDOM.getAttribute('spellcheck')).toBe('false')
+    // A note's stored state takes the setting as it is now.
+    editor.setState(note)
+    expect(editor.view.contentDOM.getAttribute('spellcheck')).toBe('false')
+    editor.setSpellcheck(true)
+    editor.setState(editor.createState('views: []', 'yaml'))
+    expect(editor.view.contentDOM.getAttribute('spellcheck')).toBe('false')
+  })
+
+  it('replaces a misspelt word with a suggestion', () => {
+    const editor = editorWith('a mispelt word', 0)
+    expect(editor.replaceWord(4, 'mispelt', 'misspelt')).toBe(true)
+    expect(editor.text()).toBe('a misspelt word')
+    expect(editor.replaceWord(4, 'other', 'x')).toBe(false)
+  })
+})
