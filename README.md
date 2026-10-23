@@ -4,6 +4,8 @@
 
 A local-first, utilitarian Markdown notes client for macOS, Ubuntu and Windows. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
 
+Documentation: https://parkviewlab.github.io/scrinotia/
+
 ## The name
 
 Scrinotia joins two Latin words: *scrinium*, the case in which Romans kept scrolls and documents (the root of English "shrine"), and *notitia*, knowledge and also a record of it. The repeated syllable of *scri-no-ti-tia* is dropped, as Latin itself does in *nutrix* from *nutri-trix*, giving "the scroll-case of knowledge": a vault that holds writing worth keeping.
@@ -29,7 +31,7 @@ Version 0.19.0 (versions before 0.7.0 were released as granite-vaulting). The re
 
 ## Install
 
-Download the installer for your system from the repository's [Releases page](https://github.com/ParkviewLab/scrinotia/releases).
+Download the installer for your system from the [download page](https://parkviewlab.github.io/scrinotia/downloads/), or from the repository's [Releases page](https://github.com/ParkviewLab/scrinotia/releases).
 
 - **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is signed and notarised, from version 0.19.0.
 - **Ubuntu:** install the `.deb` with `sudo apt install ./scrinotia-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
