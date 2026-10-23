@@ -29,7 +29,7 @@ export default [
   },
   {
     // The editor's tests run in jsdom (their @vitest-environment docblock).
-    files: ['tests/editor.test.js'],
+    files: ['tests/editor.test.js', 'tests/editorCode.test.js'],
     languageOptions: { globals: { ...globals.browser } },
   },
 ]

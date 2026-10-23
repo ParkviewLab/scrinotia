@@ -73,3 +73,16 @@ export function lineForTop(anchors, top) {
   }
   return anchors[anchors.length - 1].line
 }
+
+// Item 14: of the blocks drawn before (`was`, their keys in order) and the
+// blocks of the note now (`now`), how many at the start (`head`) and at the
+// end (`tail`) are the same and can be kept; the blocks between are
+// redrawn. A missing key never matches.
+export function keptEnds(was, now) {
+  const same = (a, b) => a !== undefined && a === b
+  let head = 0
+  while (head < was.length && head < now.length && same(was[head], now[head])) head++
+  let tail = 0
+  while (tail < was.length - head && tail < now.length - head && same(was[was.length - 1 - tail], now[now.length - 1 - tail])) tail++
+  return { head, tail }
+}

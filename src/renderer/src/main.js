@@ -748,7 +748,7 @@ const editor = createEditor($('editor'), {
     const path = current
     entry.timer = setTimeout(() => save(path), SAVE_DELAY)
     typedSinceRender = true
-    schedulePreview()
+    schedulePreview({ incremental: true })
   },
   onScroll: syncScroll,
   // What link and tag completion reads (R4.1); the open note from the editor.
@@ -823,15 +823,23 @@ const preview = createPreview({
 
 // A base's preview is its views, computed from the saved file, so it is
 // redrawn after each save rather than on each keystroke.
-function renderPreview() {
+// A redraw after typing keeps the preview's unchanged blocks (item 14);
+// any other (another note, a change in the vault's files that may resolve
+// links differently, the theme, a reload from disk) draws it whole.
+let drawnNote = null
+function renderPreview({ incremental = false } = {}) {
   clearTimeout(previewTimer)
+  previewIncremental = null
   if (!current) return
   if (notes.get(current)?.kind === 'base') {
     typedSinceRender = false
+    drawnNote = null
     showBase(current)
     return
   }
-  preview.render(editor.text(), $('preview'), { lines: true })
+  if (incremental && drawnNote === current) preview.update(editor.text(), $('preview'))
+  else preview.render(editor.text(), $('preview'), { lines: true })
+  drawnNote = current
   // The note's Properties stay as the reader left them while the note is
   // open; the split view redraws the preview on each edit.
   if (propertiesOpen !== current) propertiesOpen = null
@@ -908,14 +916,17 @@ async function fillMermaid(host) {
   const blocks = [...host.querySelectorAll('pre.mermaid-src')]
   if (!blocks.length) return
   // Each diagram's key for its kept view (R3.8.1): the note it belongs to
-  // (this one, or an embedded one) and its order there.
+  // (this one, or an embedded one) and its order there, counting the
+  // diagrams a redraw kept (item 14) as well as those to draw.
   const counts = new Map()
-  const keys = blocks.map((pre) => {
-    const owner = pre.closest('.note-embed')?.dataset.path ?? current
+  const keyOf = new Map()
+  for (const el of host.querySelectorAll('pre.mermaid-src, .mermaid-diagram')) {
+    const owner = el.closest('.note-embed')?.dataset.path ?? current
     const n = counts.get(owner) ?? 0
     counts.set(owner, n + 1)
-    return `${owner}#${n}`
-  })
+    keyOf.set(el, `${owner}#${n}`)
+  }
+  const keys = blocks.map((pre) => keyOf.get(pre))
   if (!mermaidLib) mermaidLib = (await import('mermaid')).default
   for (const [i, pre] of blocks.entries()) {
     const box = document.createElement('div')
@@ -941,6 +952,7 @@ async function fillMermaid(host) {
     }
     if (!pre.isConnected) continue
     if (pre.hasAttribute(LINE)) box.setAttribute(LINE, pre.getAttribute(LINE))
+    preview.carryKey(pre, box)
     pre.replaceWith(box)
     const svg = box.querySelector(':scope > svg')
     if (svg) attachPanZoom(box, svg, { key: keys[i], onMenu: diagramMenu })
@@ -1098,15 +1110,20 @@ const assetUrlOf = (p) => assetBase + p.split('/').map(encodeURIComponent).join(
 
 // PDFs, audio, video, HTML and text embedded in the note shown.
 function fillAttachmentEmbeds() {
-  for (const el of $('preview').querySelectorAll('.attachment-embed')) {
+  for (const el of $('preview').querySelectorAll('.attachment-embed:not([data-filled])')) {
+    el.dataset.filled = '1'
     renderAttachment(el, { path: el.dataset.path, url: assetUrlOf(el.dataset.path), api, embedded: true, onModelMenu: modelMenu })
   }
 }
 
-function schedulePreview() {
+// Whether the pending redraw may keep unchanged blocks: only if every
+// request since the last redraw came from typing.
+let previewIncremental = null
+function schedulePreview({ incremental = false } = {}) {
   clearTimeout(previewTimer)
   if (notes.get(current)?.kind === 'base') return
-  previewTimer = setTimeout(renderPreview, 120)
+  previewIncremental = (previewIncremental ?? true) && incremental
+  previewTimer = setTimeout(() => renderPreview({ incremental: previewIncremental }), 120)
 }
 
 // ---- scroll sync (item 13): in split mode the editor and the preview show
@@ -1262,7 +1279,7 @@ $('preview').addEventListener('click', (e) => {
   if (!toggle) return
   const at = line.from + toggle.offset
   v.dispatch({ changes: { from: at, to: at + 1, insert: toggle.insert }, userEvent: 'input.toggle' })
-  renderPreview()
+  renderPreview({ incremental: true })
 })
 
 // A click in the preview, in split mode, puts the editor's cursor at the
@@ -1401,7 +1418,8 @@ async function showBase(path) {
 // referring to the note.
 async function fillBaseEmbeds() {
   const note = current
-  for (const el of $('preview').querySelectorAll('.base-embed')) {
+  for (const el of $('preview').querySelectorAll('.base-embed:not([data-filled])')) {
+    el.dataset.filled = '1'
     const out = await api.renderBase(el.dataset.base, note).catch((err) => ({ error: String(err.message ?? err), views: [] }))
     if (current !== note) return
     const want = el.dataset.view
@@ -2378,18 +2396,24 @@ $('note-area').addEventListener(
 api.onVaultChanged(async (paths) => {
   if ($('workspace').hidden) return
   await refreshTree()
-  updateResolver()
+  // The echo of our own save changes nothing that the preview shows, so
+  // only another change redraws it (item 14: the echo had doubled the
+  // redraws whilst typing).
+  let changed = false
   for (const path of paths) {
     const entry = notes.get(path)
+    changed ||= !entry
     if (!entry) continue
     let disk
     try {
       disk = await api.readNote(path)
     } catch {
+      changed = true
       forgetNotes((p) => p === path) // deleted or moved away
       continue
     }
     if (disk === entry.disk) continue // our own save, or no change
+    changed = true
     if (path !== current) {
       if (entry.dirty) continue // checked when the note is next shown (showNote)
       notes.delete(path)
@@ -2402,6 +2426,7 @@ api.onVaultChanged(async (paths) => {
       loadDiskText(entry, disk)
     }
   }
+  if (changed) updateResolver()
   if (currentBase) showBase(currentBase)
   else if (!current) renderPane()
   else renderLinks()
