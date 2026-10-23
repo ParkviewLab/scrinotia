@@ -16,8 +16,8 @@ import { compareVersions, stripTag } from '../shared/version.js'
 
 // While the repository is private, GitHub answers this unauthenticated request
 // with 404, so the answer is 'unknown' until the repository is public.
-export const LATEST_RELEASE_URL = 'https://api.github.com/repos/garycoding/scrinotia/releases/latest'
-export const DOWNLOAD_URL = 'https://github.com/garycoding/scrinotia/releases/latest'
+export const LATEST_RELEASE_URL = 'https://api.github.com/repos/ParkviewLab/scrinotia/releases/latest'
+export const DOWNLOAD_URL = 'https://github.com/ParkviewLab/scrinotia/releases/latest'
 
 /**
  * Ask GitHub for the latest release and compare it with `currentVersion`.

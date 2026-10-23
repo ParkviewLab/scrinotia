@@ -29,7 +29,7 @@ Version 0.18.0 (versions before 0.7.0 were released as granite-vaulting). The re
 
 ## Install
 
-Download the installer for your system from the repository's [Releases page](https://github.com/garycoding/scrinotia/releases).
+Download the installer for your system from the repository's [Releases page](https://github.com/ParkviewLab/scrinotia/releases).
 
 - **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is not signed, so macOS refuses the first launch; open it once with Control-click, Open, or run `xattr -dr com.apple.quarantine /Applications/Scrinotia.app`.
 - **Ubuntu:** install the `.deb` with `sudo apt install ./scrinotia-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
@@ -61,7 +61,7 @@ Scrinotia reads vaults and `.base` files in the formats used by Obsidian, a prod
 
 ## Contributing
 
-See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). The client is licensed under AGPL-3.0-or-later; see [`LICENSING.md`](LICENSING.md). The name Scrinotia and its icon identify this project and are not covered by that licence: a modified version must use another name and icon.
+See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). The client is licensed under AGPL-3.0-or-later, and a commercial licence is available; see [`LICENSING.md`](LICENSING.md). The name Scrinotia and its icon identify this project and are not covered by that licence: a modified version must use another name and icon.
 
 ---
 <sub>© 2026 Gary Frattarola · Licensed under [CC-BY-4.0](LICENSES/CC-BY-4.0.txt)</sub>
