@@ -12,7 +12,7 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.18.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.19.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree follows each folder's described order (the list in its `00 - <folder>` note; Alphabetical is a setting), lists unlisted files before subfolders, draws lines connecting each item to its folder, and hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Notes:** three modes, cycled with Cmd/Ctrl+E: a read-only rendered preview; a split view, the Markdown source on the left and the preview on the right, with a divider that can be dragged and the two panes scrolled together by source line; and the source alone. Saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened. In the preview, task boxes can be ticked, and fenced code is coloured by its language. Print (File, Print…, or Cmd/Ctrl+P) prints the open note as rendered, under its name and in the light theme's colours, without the Properties block.
@@ -31,7 +31,7 @@ Version 0.18.0 (versions before 0.7.0 were released as granite-vaulting). The re
 
 Download the installer for your system from the repository's [Releases page](https://github.com/ParkviewLab/scrinotia/releases).
 
-- **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is not signed, so macOS refuses the first launch; open it once with Control-click, Open, or run `xattr -dr com.apple.quarantine /Applications/Scrinotia.app`.
+- **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is signed and notarised, from version 0.19.0.
 - **Ubuntu:** install the `.deb` with `sudo apt install ./scrinotia-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
 - **Windows:** run `scrinotia-<version>-setup.exe`. The installer is not signed, so SmartScreen warns on first launch; choose More info, then Run anyway.
 
