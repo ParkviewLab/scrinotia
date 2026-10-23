@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { existsSync } from 'node:fs'
 import { configureSpelling, DICTIONARY } from '../src/main/spelling.js'
 
 let dir
@@ -55,5 +56,13 @@ describe('spelling dictionaries (R6.3)', () => {
     const session = fakeSession()
     await configureSpelling(session, { platform: 'win32', dictionaryDir: join(dir, 'bundled'), userDataDir: join(dir, 'user') })
     expect(session.calls).toEqual([['url', pathToFileURL(join(dir, 'bundled')).href + '/']])
+  })
+})
+
+describe('the bundled dictionary', () => {
+  // Nothing is downloaded, so a Chromium that asks for another file name
+  // would leave Linux without spell checking; this fails first.
+  it('is the file Chromium asks for', () => {
+    expect(existsSync(join(import.meta.dirname, '..', 'build', 'dictionaries', DICTIONARY))).toBe(true)
   })
 })
