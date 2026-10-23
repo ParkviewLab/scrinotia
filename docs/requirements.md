@@ -1,6 +1,6 @@
-# Scrinotia: requirements, draft 1
+# Scrinotia: requirements
 
-Status: draft for review. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Open questions").
+What the client must do. Nothing here is design; the technology question is answered only to the extent that a requirement depends on it (see "Decisions").
 
 ## Purpose
 
@@ -54,7 +54,7 @@ R3.1. A note is shown in one of three modes: a read-only rendered preview; a spl
 
 R3.2. Supported syntax in v1: headings, emphasis, strong, strikethrough, inline code, fenced code blocks, block quotes, ordered, unordered, and task lists (with clickable checkboxes), horizontal rules, tables, links, images, footnotes, inline and block comments (`%%`), highlights (`==`), callouts (`> [!type]`), and frontmatter (shown as a collapsible properties block).
 
-R3.3. Embeds of images and of other notes (`![[...]]`) render in place. Math (`$...$`, `$$...$$`) and Mermaid diagrams are deferred (see "Deferred").
+R3.3. Embeds of images and of other notes (`![[...]]`) render in place. Math and Mermaid diagrams are rendered as R3.8 describes.
 
 R3.4. Saving is automatic after a short pause in typing. Undo and redo cover the whole editing session of a note.
 
@@ -67,6 +67,7 @@ R3.6.1. Where the references are silent, the client chooses as follows. `file.na
 R3.7. An embedded note (`![[Note]]`, `![[Note#Heading]]` for the section under that heading, `![[Note#^id]]` for the paragraph or list item marked `^id`) shows in the preview as a read-only box headed by the note's name, which opens the note. A box taller than about 400 pixels scrolls inside itself and offers Show all and Show less. Only one level is shown: an embed inside an embedded note is a plain link, so a note that embeds itself, directly or through others, is never repeated. A box updates when its note changes on disk. A section or note that cannot be found is reported in the box. Block markers (`^id`) are not shown in the preview.
 
 R3.8. The preview renders math with KaTeX: `$$…$$` as a displayed block and `$…$` inline, where an inline `$` must not be followed by a space nor the closing `$` be preceded by one or followed by a digit, so that prices stay text; an invalid formula shows in red rather than failing the note. A fenced code block marked `mermaid` is drawn as a Mermaid diagram, in the theme's colours and with Mermaid's strict security level; an invalid diagram shows its error in its place. Mermaid's optional ELK layout is not included, because its library (elkjs) is EPL-2.0, outside the permissive licences the app ships; a diagram that asks for it reports so.
+
 R3.8.1. A Mermaid diagram in the preview (embedded notes included) can be panned and zoomed in place. Its frame keeps the diagram's own height. Dragging pans; the scroll wheel or a two-finger scroll over the diagram zooms about the pointer, as does a pinch; a double-click zooms in one step at the point clicked. The right-click menu offers Zoom to fit and Full screen. Each diagram keeps its pan and zoom across the preview's redraws while its note stays open, diagrams being matched by their order in the note; opening a note starts every diagram fitted.
 
 Full screen puts the window into the system's full-screen mode (native full screen on macOS) showing only that diagram, fitted, on the theme's background, with the same pan, zoom and double-click; there a scroll always zooms. Escape, or Exit full screen in the right-click menu (which also offers Zoom to fit), leaves full screen and returns the window to its state before. Closing or switching the note also leaves full screen. An STL model (R2.6), in the pane or embedded in a note, offers Zoom to fit and Full screen in the same way, on a right-click without a drag (a right-drag pans it); Zoom to fit keeps the angle of view, centres the model and brings all of it into view, and full screen shows the model alone with its usual controls. An HTML attachment, in the pane or embedded, offers Full screen on a right-click too, and shows a fresh copy of the page alone, in the same sandbox (R2.6); there the menu offers Exit full screen.
@@ -121,7 +122,7 @@ R6.9. The Settings dialog also chooses four fonts from those installed on the ma
 
 ### R7. Licence
 
-R7.1. The client is licensed under AGPL-3.0-or-later; each source file carries the licence identifier, and the repository carries the licence text.
+R7.1. The client is licensed under AGPL-3.0-or-later, and is also offered under a commercial licence (`LICENSING.md`); each source file carries the licence identifier, and the repository carries the licence text.
 
 R7.2. Every dependency's licence must be compatible with AGPL-3.0-or-later (permissive licences such as MIT, BSD, ISC, and Apache-2.0 qualify); the dependency list and licences are recorded and checked.
 
@@ -129,9 +130,11 @@ R7.3. The client is specified and written independently; no code, assets, icons,
 
 ## Deferred beyond v1
 
-Graph view, canvas, plugins and themes, publish and sync, mobile, math and Mermaid rendering, templates and daily notes, web clipper, and PDF rendering. Their absence in v1 must not break any data of theirs that is present in a vault: R1.2 covers it.
+Graph view, canvas, plugins and themes, publish and sync, mobile, templates and daily notes, web clipper, and PDF rendering. Their absence in v1 must not break any data of theirs that is present in a vault: R1.2 covers it.
 
-## Open questions
+## Decisions
+
+Questions raised whilst the requirements were drafted, each with the decision taken.
 
 Q1. Resolved: the client is not a copy, and the requirements define the behaviour themselves. Amended 2026-10-18: for `.base` only, the two MIT-licensed references in `docs/references/` are the source; Obsidian's help site, which carries no licence, is not consulted.
 
@@ -139,8 +142,8 @@ Q2. Resolved: the client neither reads nor writes `.obsidian/` or any comparable
 
 Q3. Resolved: Electron, with CodeMirror 6 for the editor; Node tooling is accepted for this exploration. The reasoning that led to it follows.
 
-Technology, stated only as it bears on the requirements. R3.1 (live preview) is the hard requirement. CodeMirror 6 is a mature web-based editor that supports it; a Rust+eframe client has no equivalent and would need a Markdown editing widget written from scratch, which is the largest single piece of work in the project. Electron (or another web-view shell) therefore makes v1 materially easier, at the cost of installed size and memory, and of introducing Node tooling into the exploration. I recommend Electron; this wants your ruling because of your standing preference against extra tooling languages.
+Technology, stated only as it bears on the requirements. R3.1 (live preview) is the hard requirement. CodeMirror 6 is a mature web-based editor that supports it; a Rust+eframe client has no equivalent and would need a Markdown editing widget written from scratch, which is the largest single piece of work in the project. Electron (or another web-view shell) therefore makes v1 materially easier, at the cost of installed size and memory, and of introducing Node tooling into the exploration. Electron was recommended and accepted, the owner's standing preference against extra tooling languages notwithstanding.
 
-Q4. Resolved: the repository is created private under garycoding and made public only on your instruction, and it follows the ParkviewLab handbook's conventions. It may later move to the ParkviewLab organisation, so it is built to transfer cleanly: nothing in it may depend on the garycoding account, and its documentation, workflows, and licence are those the handbook prescribes.
+Q4. Resolved: the repository was created private under garycoding, follows the ParkviewLab handbook's conventions, and is built to transfer cleanly: nothing in it may depend on the garycoding account, and its documentation, workflows, and licence are those the handbook prescribes. Amended 2026-10-23: it moves to the ParkviewLab organisation and is made public; its addresses name `ParkviewLab/scrinotia`.
 
-Q5. Resolved: the repository carries a synthetic vault, built to cover the cases deliberately, for automated tests. When a real corpus is needed, a copy of `/Users/gary/dev/ObsidianVaults/LibraryVault` is made outside the repository and used read-only by hand; its content is never committed.
+Q5. Resolved: the repository carries a synthetic vault, built to cover the cases deliberately, for automated tests. When a real corpus is needed, a copy of the owner's own vault is made outside the repository and used read-only by hand; its content is never committed.

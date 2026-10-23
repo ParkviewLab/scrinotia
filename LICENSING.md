@@ -4,7 +4,10 @@ Copyright © 2026 Gary Frattarola.
 
 ## How this project is licensed
 
-The code is licensed under `AGPL-3.0-or-later`. The full text is in [`LICENSE`](LICENSE) and [`LICENSES/`](LICENSES/).
+This project is dual-licensed:
+
+- **Open source:** `AGPL-3.0-or-later`. You may use, modify, and distribute it under those terms. The full text is in [`LICENSE`](LICENSE) and [`LICENSES/`](LICENSES/).
+- **Commercial:** if the open-source terms don't fit your use, a commercial license is available. Inquiries: garyf@parkviewlab.ai.
 
 ## Per-bucket licensing
 
