@@ -2,7 +2,7 @@
 
 <img src="build/icon.png" alt="The Scrinotia icon" width="128" align="right">
 
-A local-first, utilitarian Markdown notes client for macOS and Ubuntu. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
+A local-first, utilitarian Markdown notes client for macOS, Ubuntu and Windows. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
 
 ## The name
 
@@ -33,7 +33,7 @@ Download the installer for your system from the repository's [Releases page](htt
 
 - **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is not signed, so macOS refuses the first launch; open it once with Control-click, Open, or run `xattr -dr com.apple.quarantine /Applications/Scrinotia.app`.
 - **Ubuntu:** install the `.deb` with `sudo apt install ./scrinotia-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
-- **Windows:** an unsigned `.exe` installer is built as well; SmartScreen warns on first launch.
+- **Windows:** run `scrinotia-<version>-setup.exe`. The installer is not signed, so SmartScreen warns on first launch; choose More info, then Run anyway.
 
 ## Use
 
