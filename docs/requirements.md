@@ -4,7 +4,7 @@ Status: draft for review. Nothing here is design; the technology question is ans
 
 ## Purpose
 
-Version 1 is an independent notes client, not a copy of any other. It opens a local vault (a folder of Markdown notes, including the user's existing vaults) without altering it, and lets the user read and edit the notes in a live-preview Markdown editor, follow wikilinks with backlinks, and search. Its behaviour is specified by this document alone. It runs on macOS and Ubuntu. It is an exploration, not a product.
+Version 1 is an independent notes client, not a copy of any other. It opens a local vault (a folder of Markdown notes, including the user's existing vaults) without altering it, and lets the user read and edit the notes in a live-preview Markdown editor, follow wikilinks with backlinks, and search. Its behaviour is specified by this document alone. It runs on macOS, Ubuntu and Windows. It is an exploration, not a product.
 
 A second purpose is continuity: a client that the owner controls can be maintained indefinitely, whatever becomes of any commercial product. Two consequences follow for the requirements: the notes must remain plain files readable by any tool (R1.3, R6.3), and the client's own dependencies must be ones that can be kept building for many years (see Q3).
 
@@ -101,7 +101,7 @@ R5.5. Search also covers the displayed text of HTML attachments: the page's titl
 
 ### R6. Application
 
-R6.1. Runs on macOS (current and previous major release) and Ubuntu (current LTS), on Apple silicon and x86-64 where the technology allows.
+R6.1. Runs on macOS (current and previous major release), Ubuntu (current LTS) and Windows (current release), on Apple silicon and x86-64 where the technology allows. Every release ships installers for all three. (Amended 2026-10-22: Windows added.)
 
 R6.2. A dark and a light theme are provided, and the user chooses between them. The default is the dark theme, whatever the system setting; the choice is a vault-level setting (R6.4).
 
@@ -111,7 +111,7 @@ R6.4. Settings that belong to a vault and change rarely (theme, link-resolution 
 
 R6.5. State specific to one machine (recent vaults, window size and position, open tabs, scroll positions, the split view's divider position) and all caches, including the search index (R5.3), are stored outside the vault, in the platform's standard location, and are never synchronised through the vault.
 
-R6.6. Installable packages for both platforms are produced from a single build process.
+R6.6. Installable packages for all three platforms are produced from a single build process.
 
 R6.7. The left panel (files, tags, search) and the right panel (outline and links) are drawers: each opens and closes with a button at its edge of the note pane's header, the View menu, or Cmd/Ctrl+\ (left) and Cmd/Ctrl+Shift+\ (right), and the note pane takes the room. When open, each is resized by dragging the splitter beside it (160 to 600 px, leaving the note pane at least 320 px; a double click restores 280 px). Open state and widths are remembered on the machine.
 
