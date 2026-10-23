@@ -185,6 +185,20 @@ function registerIpc() {
     return was
   })
   on('note:read', (e, rel) => vault.readNote(rootOf(e), rel))
+  // The system's print dialog for the window's open note (R3.9); on macOS it
+  // also offers Save as PDF. The page's margins take the window's background,
+  // so it is white for the time the dialog is open. Resolves when it closes.
+  on('note:print', (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const background = win?.getBackgroundColor()
+    win?.setBackgroundColor('#ffffff')
+    return new Promise((resolve) =>
+      e.sender.print({ printBackground: true }, (printed) => {
+        if (win && !win.isDestroyed() && background) win.setBackgroundColor(background)
+        resolve(printed)
+      }),
+    )
+  })
   on('app:about', () => openAboutWindow())
   on('app:licenses', () => openLicensesWindow())
   on('file:stat', (e, rel) => vault.statFile(rootOf(e), rel))
@@ -338,6 +352,8 @@ function buildMenu() {
           accelerator: 'CmdOrCtrl+O',
           click: (_item, win) => win?.webContents.send('ui:quick-switcher'),
         },
+        { type: 'separator' },
+        { label: 'Print…', accelerator: 'CmdOrCtrl+P', click: (_item, win) => win?.webContents.send('ui:print') },
         { type: 'separator' },
         { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: (_item, win) => win?.webContents.send('ui:close-tab') },
         { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' },

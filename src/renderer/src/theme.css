@@ -1130,3 +1130,89 @@ body.full-view .links {
   border: 0;
   background: #fff;
 }
+
+/* ---- printing (R3.9): only the note as rendered, its name as a title, in
+   the light theme's colours (main.js switches a dark screen to light for
+   the time the print dialog is open); no panels, tabs or buttons; diagrams
+   and images fitted to the page; no page break inside a code block, a
+   table, a diagram or an image; the Properties block left out. ---- */
+.print-title {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+  html,
+  body,
+  .workspace,
+  .pane,
+  .note-area {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: var(--bg);
+  }
+  .start,
+  .sidebar,
+  .links,
+  .splitter,
+  .tabs,
+  .pane-head,
+  #pane-error,
+  .conflict,
+  .note-body,
+  .editor,
+  .diagram-full,
+  .preview button,
+  .preview > details.properties {
+    display: none !important;
+  }
+  .print-title {
+    display: block;
+    margin: 0 0 0.6em;
+    font: 600 1.9em/1.25 var(--font-heading);
+    color: var(--fg);
+  }
+  .preview {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .preview > * {
+    max-width: none !important;
+  }
+  .preview :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+  }
+  .preview :is(pre, table, img, .mermaid-diagram, .math-block, .callout) {
+    break-inside: avoid;
+  }
+  /* Code wraps rather than being cut at the page's edge. */
+  .preview pre {
+    white-space: pre-wrap;
+    overflow: visible;
+  }
+  .preview img {
+    max-width: 100%;
+    height: auto;
+  }
+  .preview .mermaid-diagram {
+    overflow: visible;
+  }
+  .diagram-frame {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .diagram-frame > svg {
+    position: static !important;
+    transform: none !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .preview .note-embed-body {
+    max-height: none;
+    overflow: visible;
+  }
+}

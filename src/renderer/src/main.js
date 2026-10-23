@@ -9,6 +9,7 @@ import { createPreview, LINE } from './preview.js'
 import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
 import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
 import { taskToggle } from './tasks.js'
+import { printTitle, printable } from './printing.js'
 import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind } from './attachments.js'
@@ -53,6 +54,29 @@ async function saveAppearance(changes) {
     showError($('pane-error'), err)
   }
 }
+// ---- printing (R3.9): the open note as rendered, through the system's
+// print dialog, in any mode. The page's print styles leave out everything
+// but the note and its name; the light theme's colours are used whatever
+// the screen's, so a dark screen is switched to light, its diagrams drawn
+// again, for the time the dialog is open. A base or an attachment in the
+// pane is not printed. ----
+let printing = false
+async function printNote() {
+  if (printing || !current || !printable(notes.get(current)?.kind) || $('note-area').hidden) return
+  printing = true
+  const theme = document.documentElement.dataset.theme
+  try {
+    if (theme !== 'light') applyTheme('light')
+    await previewSettled
+    await Promise.all([...$('preview').querySelectorAll('img')].map((img) => img.decode().catch(() => {})))
+    await api.print()
+  } finally {
+    if (theme !== 'light') applyTheme(theme)
+    printing = false
+  }
+}
+api.onPrint(printNote)
+
 function applyTheme(theme) {
   const t = theme === 'light' ? 'light' : 'dark'
   const changed = document.documentElement.dataset.theme !== t
@@ -840,12 +864,14 @@ function renderPreview({ incremental = false } = {}) {
   if (incremental && drawnNote === current) preview.update(editor.text(), $('preview'))
   else preview.render(editor.text(), $('preview'), { lines: true })
   drawnNote = current
+  // The note's name heads it on paper (R3.9).
+  $('print-title').textContent = printTitle(current)
   // The note's Properties stay as the reader left them while the note is
   // open; the split view redraws the preview on each edit.
   if (propertiesOpen !== current) propertiesOpen = null
   if (fullView.note !== current) exitDiagramFullScreen()
   if (propertiesOpen) $('preview').querySelector(':scope > details.properties')?.setAttribute('open', '')
-  fillEmbeds()
+  previewSettled = fillEmbeds()
   renderOutline()
   // The redraw keeps the preview's scroll offset, not its place in the note.
   if (noteMode === 'split' && driver === 'editor') previewFollowEditor()
@@ -895,13 +921,16 @@ function goToHeading(k, line) {
   if (editorShown()) editor.gotoLine(line)
 }
 
+// Resolves when the preview's embeds and diagrams are drawn.
+let previewSettled = Promise.resolve()
 async function fillEmbeds() {
   const note = current
   await fillNoteEmbeds($('preview'), 1, new Set([note]))
   if (current !== note) return
-  fillBaseEmbeds()
+  const bases = fillBaseEmbeds()
   fillAttachmentEmbeds()
   await fillMermaid($('preview'))
+  await bases
   // Embeds and diagrams change the preview's heights after it is drawn.
   if (current === note) scheduleFollow()
 }
