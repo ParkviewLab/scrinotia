@@ -4,6 +4,27 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.19.0] - 2026-10-23
+
+### Highlights
+
+This release adds a documentation site with a download page offering the macOS `.dmg`, Windows `.exe`, Ubuntu `.deb` and Linux AppImage of the newest release, and the About window's update notice now points there. The project has moved to the ParkviewLab organisation, so update checks, the download link and the About window's source link use the new address; installed copies of earlier versions keep the old one and rely on GitHub's redirect. The macOS build is now signed and notarised, so the Control-click workaround described in the README no longer applies, and a commercial licence is offered alongside AGPL-3.0-or-later. The repository also gains issue forms for reporting problems and requesting features and a security policy for private reports, though outside pull requests are not accepted for now.
+
+### Features
+
+- A download page on the documentation site, linked from About (#113)
+
+### Bug fixes
+
+- Show the pronunciation in its own case on the download page (#115)
+
+### Docs
+
+- Prepare the repository for the move to ParkviewLab (#112)
+- Leave Obsidian off the download page and the site's front page (#114)
+- Issue forms, a security policy, and no outside pull requests for now (#116)
+- Describe version 0.19.0 in the README (#117)
+
 ## [v0.18.0] - 2026-10-22
 
 ### Highlights
