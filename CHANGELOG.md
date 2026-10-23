@@ -4,6 +4,38 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.18.0] - 2026-10-22
+
+### Highlights
+
+_Highlights were not generated for this release._
+
+### Features
+
+- Scroll the editor and the preview together by source line (#101)
+- Wikilink and tag completion in the source editor (#102)
+- Task boxes ticked from the preview (#103)
+- Formatting commands, folding and pasted images (#104)
+- A divider and a Source mode for the split view (#105)
+- Highlighted code fences in the editor and the preview (#106)
+- A context menu and spell checking in the source editor (#108)
+- Print the open note (#109)
+
+### Bug fixes
+
+- Refuse a folder dropped into a note (#98)
+- Undo after Load from disk, and the deferred conflict check (#99)
+- Frontmatter, vault syntax and list indentation in the source editor (#100)
+
+### Performance
+
+- Redraw the preview by block (#107)
+
+### Docs
+
+- Add the family's documentation as one vault to the in-flight ideas (#97)
+- Describe version 0.18.0 in the README (#110)
+
 ## [v0.17.0] - 2026-10-19
 
 ### Highlights
