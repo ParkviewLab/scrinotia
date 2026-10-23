@@ -46,6 +46,13 @@ linux:
     - deb
   category: Utility
   maintainer: Gary Frattarola <garyf@parkviewlab.ai>
+  # Chromium checks spelling with Hunspell on Linux and would download its
+  # dictionaries from Google; the English one ships with the package instead
+  # (R6.3), and src/main/spelling.js puts it where Chromium looks.
+  extraResources:
+    - from: build/dictionaries
+      to: dictionaries
+      filter: ['*.bdic']
 npmRebuild: false
 # Ship the generated license/notice bundle (run `npm run legal` first; CI does
 # this before packaging). electron-builder deletes LICENSES.chromium.html from the

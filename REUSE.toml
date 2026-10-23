@@ -42,3 +42,15 @@ path = ["build/icon.png", "build/icon.svg", "build/icon.icns", "brand/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "LicenseRef-AllRightsReserved"
+
+# Chromium's compiled en-US Hunspell dictionary, shipped with the Linux
+# packages for spell checking without a download (src/main/spelling.js). Taken
+# unmodified from Electron 43.8.0's hunspell_dictionaries.zip. The word list is
+# SCOWL's (its README, kept verbatim as LICENSES/LicenseRef-SCOWL.txt, gives
+# the terms of every source); Chromium's hunspell_dictionaries repository,
+# which compiles it, is under the Apache License 2.0.
+[[annotations]]
+path = ["build/dictionaries/**"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2000-2018 Kevin Atkinson", "The Chromium Authors"]
+SPDX-License-Identifier = "LicenseRef-SCOWL AND Apache-2.0"
