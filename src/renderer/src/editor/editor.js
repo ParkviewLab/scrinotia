@@ -86,10 +86,15 @@ const spellAttributes = (on) => EditorView.contentAttributes.of({ spellcheck: on
 // with Shift for a new tab.
 export function createEditor(parent, { onUserChange, onScroll, vault, onPasteImage, onFollowLink }) {
   let spellcheck = true
+  // In a workspace (R2.8) every state is created read-only: no typing,
+  // formatting, list commands or pasting.
+  let readOnly = false
   // Completion of links and tags in notes (R4.1); it replaces lang-markdown's
   // own source (HTML tags).
   const completion = vault ? [autocompletion({ override: [vaultCompletions(vault)], icons: false })] : []
   const extensions = (language) => [
+    EditorState.readOnly.of(readOnly),
+    EditorView.editable.of(!readOnly),
     history(),
     drawSelection(),
     highlightActiveLine(),
@@ -171,6 +176,10 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
       return true
     },
     selectAll: () => selectAll(view),
+    // Whether states created from now on are read-only (a workspace, R2.8).
+    setReadOnly(on) {
+      readOnly = !!on
+    },
     getState: () => view.state,
     // The note's text exactly as it will be written (R1.3, R1.4).
     text: (state = view.state) => state.sliceDoc(),

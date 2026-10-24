@@ -30,9 +30,10 @@ export function createState(dir, legacyDir) {
         recentVaults: Array.isArray(data.recentVaults) ? data.recentVaults : [],
         tabs: data.tabs && typeof data.tabs === 'object' && !Array.isArray(data.tabs) ? data.tabs : {},
         layout: data.layout && typeof data.layout === 'object' && !Array.isArray(data.layout) ? data.layout : {},
+        prefs: data.prefs && typeof data.prefs === 'object' && !Array.isArray(data.prefs) ? data.prefs : {},
       }
     } catch {
-      return { recentVaults: [], tabs: {}, layout: {} }
+      return { recentVaults: [], tabs: {}, layout: {}, prefs: {} }
     }
   }
 
@@ -80,6 +81,18 @@ export function createState(dir, legacyDir) {
       const state = await load()
       state.tabs[root] = { list: tabs.list, active: tabs.active, ...(Array.isArray(tabs.hist) ? { hist: tabs.hist } : {}) }
       await save(state)
+    },
+    // Preferences of this computer rather than of a vault (R6.5): whether a
+    // folder of repositories opens as a workspace (R2.8), off by default.
+    async prefs() {
+      const p = (await load()).prefs
+      return { workspaces: p.workspaces === true }
+    },
+    async setPrefs(changes) {
+      const state = await load()
+      state.prefs = { ...state.prefs, ...changes }
+      await save(state)
+      return this.prefs()
     },
     async removeRecentVault(root) {
       const state = await load()

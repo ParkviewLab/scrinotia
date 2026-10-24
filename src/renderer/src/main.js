@@ -135,6 +135,10 @@ function openSettings() {
     })
     .catch(() => {})
   $('settings-spellcheck').value = editorPrefs.spellcheck === false ? 'off' : 'on'
+  api
+    .getPrefs()
+    .then((p) => ($('settings-workspaces').checked = p.workspaces))
+    .catch(() => {})
   drawFontChoices()
   $('settings').hidden = false
   mountPreviewModel($('settings-preview'))
@@ -254,6 +258,15 @@ $('settings-tree-order').addEventListener('change', async (e) => {
   }
 })
 
+// Workspaces (R2.8): a preference of this computer, read when a folder is opened.
+$('settings-workspaces').addEventListener('change', async (e) => {
+  try {
+    await api.setPrefs({ workspaces: e.target.checked })
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+})
+
 $('settings-spellcheck').addEventListener('change', async (e) => {
   editorPrefs = { ...editorPrefs, spellcheck: e.target.value === 'on' }
   editor.setSpellcheck(editorPrefs.spellcheck)
@@ -352,6 +365,11 @@ async function enterVault(opener) {
     $('search').value = ''
     runSearch()
     assetBase = opened.assetBase ?? ''
+    // A workspace (R2.8) is read-only: no editing, creating, renaming,
+    // moving, trashing or dropping; the main process refuses them as well.
+    readOnly = opened.readOnly === true
+    document.body.classList.toggle('read-only', readOnly)
+    editor.setReadOnly(readOnly)
     $('vault-name').textContent = opened.name
     $('vault-name').title = opened.root
     $('start').hidden = true
@@ -410,9 +428,7 @@ function renderEntry(entry) {
     const choice = await api.menu([
       ...(isFolder ? [] : [{ id: 'open', label: 'Open' }, { id: 'tab', label: 'Open in new tab' }]),
       { id: 'reveal', label: REVEAL_LABEL },
-      { type: 'separator' },
-      { id: 'rename', label: 'Rename' },
-      { id: 'trash', label: 'Move to trash' },
+      ...(readOnly ? [] : [{ type: 'separator' }, { id: 'rename', label: 'Rename' }, { id: 'trash', label: 'Move to trash' }]),
     ])
     if (choice === 'open') select(entry)
     if (choice === 'tab') select(entry, { newTab: true })
@@ -450,7 +466,7 @@ $('tree').addEventListener('drop', (e) => {
 })
 
 async function moveInto(from, folder) {
-  if (!from || parentOf(from) === folder) return
+  if (readOnly || !from || parentOf(from) === folder) return
   if (folder === from || folder.startsWith(from + '/')) return
   const name = from.slice(from.lastIndexOf('/') + 1)
   await rename(from, join(folder, name))
@@ -785,6 +801,7 @@ const editor = createEditor($('editor'), {
   // A pasted image is written to the attachment folder and embedded at the
   // cursor (R2.7), as a dropped file is.
   onPasteImage: async (file) => {
+    if (readOnly) return
     const note = current
     const ext = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp' }[file.type]
     if (!ext || notes.get(note)?.kind !== 'note') return
@@ -833,6 +850,8 @@ api.onEditMenu(async ({ x, y, misspelled, suggestions = [] }) => {
 
 // ---- preview (R3.1): read-only rendering, alone or beside the editor ----
 let assetBase = ''
+// Whether the open folder is a read-only workspace (R2.8).
+let readOnly = false
 let noteMode = 'preview'
 let previewTimer = null
 const preview = createPreview({
@@ -1300,6 +1319,7 @@ $('preview').addEventListener('click', (e) => {
   const box = e.target.closest?.('input.task-box')
   if (!box || !current || notes.get(current)?.kind !== 'note') return
   e.preventDefault()
+  if (readOnly) return
   const v = editor.view
   const n = Number(box.closest('li')?.getAttribute(LINE))
   if (!(n >= 1 && n <= v.state.doc.lines)) return
@@ -1915,6 +1935,10 @@ async function follow({ kind, ref, newTab = false }) {
     await openPath(hit, { newTab })
     return
   }
+  if (readOnly) {
+    showError($('pane-error'), `“${target}” does not exist.`)
+    return
+  }
   if (!window.confirm(`“${target}” does not exist. Create it?`)) return
   const name = target.split('/').pop()
   const rel = await run(() => api.createNote(parentOf(target), name))
@@ -2043,7 +2067,7 @@ $('rename').addEventListener('click', startRename)
 // note's .md extension is kept when the new name omits it.
 function startRename() {
   const sel = view.selected
-  if (!sel) return
+  if (!sel || readOnly) return
   const li = document.querySelector(`#tree li[data-path="${CSS.escape(sel.path)}"]`)
   if (!li) return
   const row = li.querySelector(':scope > .row')
@@ -2372,7 +2396,7 @@ function linkFor(path) {
 // even over the editor's editable text, so the pointer shows that nothing can
 // be dropped and no drop event follows.
 function canDrop(e) {
-  return current && notes.get(current)?.kind === 'note' && noteAccepts(e.dataTransfer?.types)
+  return !readOnly && current && notes.get(current)?.kind === 'note' && noteAccepts(e.dataTransfer?.types)
 }
 
 $('note-area').addEventListener(

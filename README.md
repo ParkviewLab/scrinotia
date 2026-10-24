@@ -4,6 +4,8 @@
 
 A local-first, utilitarian Markdown notes client for macOS, Ubuntu and Windows. It opens a vault (a folder of Markdown notes, such as an existing Obsidian vault) without altering it, and offers a rendered preview, a split source editor, wikilinks with backlinks, search, and table views of `.base` files.
 
+Documentation: https://parkviewlab.github.io/scrinotia/
+
 ## The name
 
 Scrinotia joins two Latin words: *scrinium*, the case in which Romans kept scrolls and documents (the root of English "shrine"), and *notitia*, knowledge and also a record of it. The repeated syllable of *scri-no-ti-tia* is dropped, as Latin itself does in *nutrix* from *nutri-trix*, giving "the scroll-case of knowledge": a vault that holds writing worth keeping.
@@ -12,9 +14,10 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.19.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.20.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree follows each folder's described order (the list in its `00 - <folder>` note; Alphabetical is a setting), lists unlisted files before subfolders, draws lines connecting each item to its folder, and hides dot-folders such as `.obsidian/`, which are never read or written.
+- **Workspaces:** with a setting turned on (off by default), a folder of repositories in the worktree layout, such as a whole GitHub organisation's clones, opens read-only, showing each repository's worktrees by name and only their notes and `docs/`.
 - **Notes:** three modes, cycled with Cmd/Ctrl+E: a read-only rendered preview; a split view, the Markdown source on the left and the preview on the right, with a divider that can be dragged and the two panes scrolled together by source line; and the source alone. Saving is automatic after an edit, keeps the note's line endings, and never happens merely because a note was opened. In the preview, task boxes can be ticked, and fenced code is coloured by its language. Print (File, Print…, or Cmd/Ctrl+P) prints the open note as rendered, under its name and in the light theme's colours, without the Properties block.
 - **Source editor:** frontmatter shown as YAML; wikilinks, highlights and comments coloured, Markdown's marks dimmed and headings sized by level; completion of notes, headings and block ids after `[[`, and of tags after `#`; Tab and Shift+Tab (or Cmd/Ctrl+] and [) nest and un-nest list items and renumber ordered lists; Cmd/Ctrl+B, I, K, Shift+C and Shift+H for bold, italic, a link, code and a highlight, and Cmd/Ctrl+Enter for a task box; folding of sections, lists and the frontmatter (Cmd/Ctrl+Alt+[ and ], or the marker on the cursor's line); a right-click menu with Cut, Copy, Paste, Follow link and spelling suggestions; Cmd/Ctrl+click follows a link; and an image pasted from the clipboard is saved to `attachments/` and embedded. Spelling is checked in notes (a setting), with the system's dictionaries on macOS and Windows and an English dictionary bundled for Ubuntu, so nothing is downloaded.
 - **Links:** wikilinks (`[[note]]`, `[[note#heading|alias]]`, `![[image.png]]`) and local Markdown links are followed on click; backlinks, unlinked mentions and outgoing links are listed beside the note; renaming or moving a note updates the links that point to it, and nothing else in those notes.
@@ -29,9 +32,9 @@ Version 0.19.0 (versions before 0.7.0 were released as granite-vaulting). The re
 
 ## Install
 
-Download the installer for your system from the repository's [Releases page](https://github.com/ParkviewLab/scrinotia/releases).
+Download the installer for your system from the [download page](https://parkviewlab.github.io/scrinotia/downloads/), or from the repository's [Releases page](https://github.com/ParkviewLab/scrinotia/releases).
 
-- **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is signed and notarised, from version 0.19.0.
+- **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is signed and notarised.
 - **Ubuntu:** install the `.deb` with `sudo apt install ./scrinotia-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
 - **Windows:** run `scrinotia-<version>-setup.exe`. The installer is not signed, so SmartScreen warns on first launch; choose More info, then Run anyway.
 
