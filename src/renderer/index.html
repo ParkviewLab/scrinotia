@@ -75,6 +75,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
           <button id="load-disk" type="button">Load the disk version</button>
         </div>
         <h1 id="print-title" class="print-title"></h1>
+        <div id="preview-find" class="preview-find" role="search" hidden>
+          <input id="find-input" type="search" placeholder="Find in this note" autocomplete="off" spellcheck="false" />
+          <span id="find-count" class="find-count muted"></span>
+          <button id="find-prev" type="button" title="Previous match (Shift+Enter)">‹</button>
+          <button id="find-next" type="button" title="Next match (Enter)">›</button>
+          <label class="find-case" title="Match case"><input id="find-case" type="checkbox" /> Aa</label>
+          <button id="find-close" type="button" title="Close (Escape)">×</button>
+        </div>
         <div id="note-area" class="note-area mode-preview" hidden>
           <div id="editor" class="editor"></div>
           <div class="splitter" id="split-note" role="separator" aria-orientation="vertical" title="Drag to resize; double-click to reset"></div>

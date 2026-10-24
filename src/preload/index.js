@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('scrinotia', {
   setPrefs: (changes) => ipcRenderer.invoke('prefs:set', changes),
   onToggleDrawer: (fn) => ipcRenderer.on('ui:toggle-drawer', (_e, side) => fn(side)),
   onCycleMode: (fn) => ipcRenderer.on('ui:cycle-mode', () => fn()),
+  onFind: (fn) => ipcRenderer.on('ui:find', () => fn()),
+  onFindVault: (fn) => ipcRenderer.on('ui:find-vault', () => fn()),
   onPrint: (fn) => ipcRenderer.on('ui:print', () => fn()),
   print: () => ipcRenderer.invoke('note:print'),
   setTabs: (tabs) => ipcRenderer.invoke('tabs:set', tabs),

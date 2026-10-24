@@ -90,9 +90,11 @@ R4.5. Tags (`#tag`, nested `#a/b`, and the frontmatter `tags` property) are reco
 
 R4.6. An outline panel lists the headings of the open note, indented by level (frontmatter and fenced code left out), and updates as the note is edited. Clicking a heading scrolls the preview to it and, in the split mode, moves the editor's cursor to its line.
 
+R4.7. Find in the open note: Edit, Find… (Cmd/Ctrl+F) opens the editor's find panel when the source editor has the focus (in the Source mode always), with next and previous, match case, whole word, regular expressions and replace (replace does nothing in a read-only workspace, R2.8); otherwise it opens a find bar above the preview, which marks every match in the rendered text, the current one distinctly, steps through them with Enter and Shift+Enter, shows the count, and closes with Escape. A selection, if any, becomes the query. The preview's find covers the note's own text and its embedded notes, not embedded PDFs, HTML pages or diagrams. (Added 2026-10-24.)
+
 ### R5. Search
 
-R5.1. Full-text search across the vault, returning matching notes with context lines and highlighted matches, updating as the vault changes.
+R5.1. Full-text search across the vault, returning matching notes with context lines and highlighted matches, updating as the vault changes. Edit, Find in Vault… (Cmd/Ctrl+Shift+F) puts the cursor in the search box, opening the left panel if it is closed.
 
 R5.2. Search supports plain words (all must match; a word matches by its prefix, and a word of five letters or more also with one or two typos), "quoted phrases" (exact), /regular expressions/ (case-insensitive unless flags say otherwise; an invalid one is reported), exclusion with `-`, and restriction by `tag:`, `file:` and `path:`.
 
