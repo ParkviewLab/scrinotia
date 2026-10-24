@@ -137,6 +137,9 @@ function openSettings() {
     .catch(() => {})
   $('settings-vault-body').hidden = !vaultOpen
   $('settings-vault-note').hidden = !vaultOpen
+  // The open vault's folder, so that it is clear which vault's settings these are.
+  $('settings-vault-path').textContent = vaultOpen ? $('vault-name').title : ''
+  $('settings-vault-path').hidden = !vaultOpen
   $('settings-no-vault').hidden = vaultOpen
   if (vaultOpen) {
     settingsColour = normaliseColour(appearance.modelColour)

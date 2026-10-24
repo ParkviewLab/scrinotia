@@ -1058,6 +1058,12 @@ button:hover {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.settings-vault-path {
+  margin: 4px 0 0;
+  font: 0.88em/1.4 var(--font-mono);
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
 #settings-no-vault {
   margin-left: 0;
 }
