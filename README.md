@@ -14,7 +14,7 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.19.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.20.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree follows each folder's described order (the list in its `00 - <folder>` note; Alphabetical is a setting), lists unlisted files before subfolders, draws lines connecting each item to its folder, and hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Workspaces:** with a setting turned on (off by default), a folder of repositories in the worktree layout, such as a whole GitHub organisation's clones, opens read-only, showing each repository's worktrees by name and only their notes and `docs/`.
@@ -34,7 +34,7 @@ Version 0.19.0 (versions before 0.7.0 were released as granite-vaulting). The re
 
 Download the installer for your system from the [download page](https://parkviewlab.github.io/scrinotia/downloads/), or from the repository's [Releases page](https://github.com/ParkviewLab/scrinotia/releases).
 
-- **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is signed and notarised, from version 0.19.0.
+- **macOS (Apple silicon):** open the `.dmg` and drag Scrinotia to Applications. The build is signed and notarised.
 - **Ubuntu:** install the `.deb` with `sudo apt install ./scrinotia-<version>-amd64.deb`, or make the `.AppImage` executable (`chmod +x`) and run it.
 - **Windows:** run `scrinotia-<version>-setup.exe`. The installer is not signed, so SmartScreen warns on first launch; choose More info, then Run anyway.
 
