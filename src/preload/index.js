@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('scrinotia', {
   getTabs: () => ipcRenderer.invoke('tabs:get'),
   getLayout: () => ipcRenderer.invoke('layout:get'),
   setLayout: (layout) => ipcRenderer.invoke('layout:set', layout),
+  getPrefs: () => ipcRenderer.invoke('prefs:get'),
+  setPrefs: (changes) => ipcRenderer.invoke('prefs:set', changes),
   onToggleDrawer: (fn) => ipcRenderer.on('ui:toggle-drawer', (_e, side) => fn(side)),
   onCycleMode: (fn) => ipcRenderer.on('ui:cycle-mode', () => fn()),
   onPrint: (fn) => ipcRenderer.on('ui:print', () => fn()),

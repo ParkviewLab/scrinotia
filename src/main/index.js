@@ -14,6 +14,7 @@ import { join, basename, sep, resolve, relative, isAbsolute } from 'node:path'
 import * as vault from './vault.js'
 import { createState } from './state.js'
 import { createIndex } from './linkIndex.js'
+import { isWorkspace, scanWorkspace, repositoriesIn, inWorkspace } from './workspace.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
 import { openAboutWindow, openLicensesWindow } from './about.js'
@@ -59,6 +60,13 @@ function rootOf(event) {
   return ctx.root
 }
 
+// The root for a write: never in a workspace (R2.8), whatever the window asks.
+function writableRoot(event) {
+  const root = rootOf(event)
+  if (ctxOf(event).workspace) throw new Error('this workspace is read-only')
+  return root
+}
+
 // External changes (R1.5): a recursive watch, debounced; the index is brought
 // up to date before the window is told which vault-relative paths changed.
 function startWatching(ctx) {
@@ -66,9 +74,7 @@ function startWatching(ctx) {
   let pending = new Set()
   let timer = null
   const root = ctx.root
-  ctx.watcher = watch(root, { recursive: true }, (_event, filename) => {
-    if (!filename) return
-    const rel = filename.split(sep).join('/')
+  const changed = (rel) => {
     if (rel.split('/').some(vault.isHidden)) return
     pending.add(rel)
     clearTimeout(timer)
@@ -76,14 +82,47 @@ function startWatching(ctx) {
       const paths = [...pending]
       pending = new Set()
       if (ctx.root !== root) return
+      if (ctx.workspace) ctx.repos = await repositoriesIn(root)
       await ctx.index.update(paths)
       if (!ctx.win.isDestroyed()) ctx.win.webContents.send('vault:changed', paths)
     }, 150)
-  })
+  }
+  if (!ctx.workspace) {
+    const w = watch(root, { recursive: true }, (_event, filename) => filename && changed(filename.split(sep).join('/')))
+    ctx.watcher = { close: () => w.close() }
+    return
+  }
+  // A workspace (R2.8) watches only what it shows: each worktree's root and
+  // its docs/ folder, never node_modules or a bare clone; the workspace and
+  // each repository folder, without recursion, notice a new repository or
+  // worktree.
+  const watchers = []
+  const add = (rel, recursive, keep) => {
+    try {
+      const w = watch(join(root, rel), { recursive }, (_event, filename) => {
+        const path = filename ? [rel, filename.split(sep).join('/')].filter(Boolean).join('/') : rel
+        if (keep(path)) changed(path)
+      })
+      w.on('error', () => {})
+      watchers.push(w)
+    } catch {
+      // the folder went away: the next change above it rebuilds the list
+    }
+  }
+  add('', false, () => true)
+  for (const repo of ctx.repos) {
+    add(repo.name, false, () => true)
+    for (const wt of repo.worktrees) {
+      add(`${repo.name}/${wt.folder}`, false, (p) => inWorkspace(p, ctx.repos))
+      add(`${repo.name}/${wt.folder}/docs`, true, (p) => inWorkspace(p, ctx.repos))
+    }
+  }
+  ctx.watcher = { close: () => watchers.forEach((w) => w.close()) }
 }
 
 // The tree in the vault's chosen order (R2.2.1): described by default.
-async function scanWithOrder(root) {
+async function scanWithOrder(root, workspace = false) {
+  if (workspace) return scanWorkspace(root)
   const { values } = await readSettings(root, 'tree')
   return vault.scanVault(root, { order: values.order === 'alphabetical' ? 'alphabetical' : 'described' })
 }
@@ -100,16 +139,20 @@ async function openVault(ctx, dir) {
   const info = await stat(full)
   if (!info.isDirectory()) throw new Error(`not a folder: ${full}`)
   ctx.root = full
+  // A folder of repositories opens as a read-only workspace (R2.8) when this
+  // computer's preference says so; otherwise every folder is a vault.
+  ctx.workspace = (await state.prefs()).workspaces && (await isWorkspace(full))
+  ctx.repos = ctx.workspace ? await repositoriesIn(full) : []
   ctx.index = createIndex({
-    list: async () => flatten(await vault.scanVault(full)),
+    list: async () => flatten(ctx.workspace ? await scanWorkspace(full) : await vault.scanVault(full)),
     read: (rel) => vault.readNote(full, rel),
     stat: (rel) => vault.statFile(full, rel),
   })
   await ctx.index.rebuild()
   startWatching(ctx)
   await state.addRecentVault(full)
-  ctx.win.setTitle(`${basename(full)} – Scrinotia`)
-  return { root: full, name: basename(full), assetBase: `scrinotia-asset://${ctx.token}/`, tree: await scanWithOrder(full) }
+  ctx.win.setTitle(`${basename(full)}${ctx.workspace ? ' (read-only)' : ''} – Scrinotia`)
+  return { root: full, name: basename(full), readOnly: ctx.workspace, assetBase: `scrinotia-asset://${ctx.token}/`, tree: await scanWithOrder(full, ctx.workspace) }
 }
 
 function filesUnder(ctx, rel) {
@@ -176,7 +219,9 @@ function registerIpc() {
     return openVault(ctx, result.filePaths[0])
   })
   on('vault:open', (e, dir) => openVault(ctxOf(e), dir))
-  on('vault:tree', (e) => scanWithOrder(rootOf(e)))
+  on('vault:tree', (e) => scanWithOrder(rootOf(e), ctxOf(e).workspace))
+  on('prefs:get', () => state.prefs())
+  on('prefs:set', (_e, changes) => state.setPrefs({ workspaces: changes?.workspaces === true }))
   on('window:new', () => void createWindow())
   on('window:fullscreen', (e, on) => {
     const win = BrowserWindow.fromWebContents(e.sender)
@@ -209,7 +254,7 @@ function registerIpc() {
     return typeof values.attachmentFolder === 'string' ? values.attachmentFolder.replace(/^\/+|\/+$/g, '') : 'attachments'
   }
   on('file:import', async (e, sourcePath) => {
-    const root = rootOf(e)
+    const root = writableRoot(e)
     const folder = await attachmentFolder(root)
     // A file already inside the vault is linked where it is, not copied.
     const inside = relative(root, resolve(sourcePath))
@@ -219,7 +264,7 @@ function registerIpc() {
   // An image pasted into a note is written to the attachment folder as
   // "Pasted image <YYYY-MM-DD HHmmss>" (numbered if taken), R2.7.
   on('file:paste', async (e, ext, bytes) => {
-    const root = rootOf(e)
+    const root = writableRoot(e)
     if (!/^\.[a-z0-9]{1,5}$/i.test(ext)) throw new Error(`not an image extension: ${ext}`)
     const d = new Date()
     const p2 = (n) => String(n).padStart(2, '0')
@@ -233,11 +278,11 @@ function registerIpc() {
     // shell.openPath returns an error message, or '' on success.
     return shell.openPath(vault.resolveInside(rootOf(e), rel))
   })
-  on('note:write', (e, rel, text) => vault.writeNote(rootOf(e), rel, text))
-  on('entry:createNote', (e, folder, base) => vault.createNote(rootOf(e), folder, base))
-  on('entry:createFolder', (e, folder) => vault.createFolder(rootOf(e), folder))
-  on('entry:move', (e, from, to) => (rootOf(e), moveEntry(ctxOf(e), from, to)))
-  on('entry:trash', (e, rel) => vault.trash(rootOf(e), rel, (p) => shell.trashItem(p)))
+  on('note:write', (e, rel, text) => vault.writeNote(writableRoot(e), rel, text))
+  on('entry:createNote', (e, folder, base) => vault.createNote(writableRoot(e), folder, base))
+  on('entry:createFolder', (e, folder) => vault.createFolder(writableRoot(e), folder))
+  on('entry:move', (e, from, to) => (writableRoot(e), moveEntry(ctxOf(e), from, to)))
+  on('entry:trash', (e, rel) => vault.trash(writableRoot(e), rel, (p) => shell.trashItem(p)))
   on('links:backlinks', (e, rel) => (rootOf(e), ctxOf(e).index.backlinks(rel)))
   on('links:unlinked', (e, rel) => (rootOf(e), ctxOf(e).index.unlinkedMentions(rel)))
   on('links:outgoing', (e, rel) => (rootOf(e), ctxOf(e).index.outgoing(rel)))

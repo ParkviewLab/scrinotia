@@ -106,7 +106,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <div id="settings" class="switcher" hidden>
       <div class="switcher-box settings-box" role="dialog" aria-labelledby="settings-title">
         <h2 id="settings-title">Settings</h2>
-        <p class="muted settings-note">For this vault, kept in its <code>.scrinotia/</code> folder.</p>
+        <p class="muted settings-note">For this vault, kept in its <code>.scrinotia/</code> folder, except the last, which is for this computer.</p>
         <h3>File tree</h3>
         <div class="settings-fonts">
           <label for="settings-tree-order">Order</label>
@@ -146,6 +146,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
           <label for="settings-font-mono">Monospace</label><select id="settings-font-mono"></select>
           <span id="settings-font-mono-sample" class="settings-sample">const note = '[[Welcome]]'</span>
         </div>
+        <h3>This computer</h3>
+        <label class="settings-check"><input id="settings-workspaces" type="checkbox"> Open a folder of repositories as a read-only workspace</label>
+        <span class="settings-sample">A folder whose subfolders are mostly repositories in the worktree layout shows their notes and docs/ only, and cannot be edited. Takes effect the next time such a folder is opened.</span>
         <div class="settings-buttons"><button id="settings-reset" type="button">Reset</button><button id="settings-done" type="button">Done</button></div>
       </div>
     </div>
