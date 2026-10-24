@@ -114,6 +114,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <div id="settings" class="switcher" hidden>
       <div class="switcher-box settings-box" role="dialog" aria-labelledby="settings-title">
         <h2 id="settings-title">Settings</h2>
+        <div class="settings-layout">
         <section class="settings-group" aria-labelledby="settings-machine-title">
           <h3 id="settings-machine-title" class="settings-group-title">This computer</h3>
           <p class="muted settings-note">Kept on this computer, for every vault.</p>
@@ -124,7 +125,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
           <h3 id="settings-vault-title" class="settings-group-title">This vault</h3>
           <p id="settings-vault-note" class="muted settings-note">Kept in the vault's <code>.scrinotia/</code> folder.</p>
           <p id="settings-no-vault" class="settings-help" hidden>Open a vault to change its settings.</p>
-          <div id="settings-vault-body">
+          <div id="settings-vault-body" class="settings-vault-cols">
+            <div class="settings-col">
             <h4>File tree</h4>
             <div class="settings-fonts">
               <label for="settings-tree-order">Order</label>
@@ -143,17 +145,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
               </select>
               <span class="settings-sample settings-wrap">Misspelt words in notes are underlined; a right-click offers corrections.</span>
             </div>
-            <h4>STL models</h4>
-            <div class="settings-colour">
-              <div class="settings-sliders">
-                <label for="settings-h">Hue</label><input id="settings-h" type="range" min="0" max="360" step="1" /><span id="settings-h-value" class="muted"></span>
-                <label for="settings-s">Saturation</label><input id="settings-s" type="range" min="0" max="100" step="1" /><span id="settings-s-value" class="muted"></span>
-                <label for="settings-l">Lightness</label><input id="settings-l" type="range" min="0" max="100" step="1" /><span id="settings-l-value" class="muted"></span>
-              </div>
-              <div id="settings-swatch" class="settings-swatch" aria-hidden="true"></div>
-            </div>
-            <div id="settings-preview" class="settings-preview"></div>
-            <div class="settings-row-end"><button id="settings-reset" type="button">Reset colour</button></div>
             <h4>Fonts</h4>
             <div class="settings-fonts">
               <label for="settings-font-ui">Interface</label><select id="settings-font-ui"></select>
@@ -165,9 +156,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
               <label for="settings-font-mono">Monospace</label><select id="settings-font-mono"></select>
               <span id="settings-font-mono-sample" class="settings-sample">const note = '[[Welcome]]'</span>
             </div>
+            </div>
+            <div class="settings-col">
+            <h4>STL models</h4>
+            <div class="settings-colour">
+              <div class="settings-sliders">
+                <label for="settings-h">Hue</label><input id="settings-h" type="range" min="0" max="360" step="1" /><span id="settings-h-value" class="muted"></span>
+                <label for="settings-s">Saturation</label><input id="settings-s" type="range" min="0" max="100" step="1" /><span id="settings-s-value" class="muted"></span>
+                <label for="settings-l">Lightness</label><input id="settings-l" type="range" min="0" max="100" step="1" /><span id="settings-l-value" class="muted"></span>
+              </div>
+              <div id="settings-swatch" class="settings-swatch" aria-hidden="true"></div>
+            </div>
+            <div id="settings-preview" class="settings-preview"></div>
+            <div class="settings-row-end"><button id="settings-reset" type="button">Reset colour</button></div>
+            </div>
           </div>
         </section>
-        <div class="settings-buttons"><button id="settings-done" type="button">Done</button></div>
+        </div>
+        <div class="settings-buttons"><button id="settings-done" type="button">Save</button></div>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>
