@@ -9,6 +9,7 @@ import { createPreview, LINE } from './preview.js'
 import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
 import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
 import { taskToggle } from './tasks.js'
+import { findMatches } from './previewFind.js'
 import { printTitle, printable } from './printing.js'
 import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
@@ -121,28 +122,40 @@ async function loadVaultSettings() {
   }
 }
 
-// ---- settings (R6.8): Cmd/Ctrl+, opens the dialog for this window's vault ----
+// ---- settings (R6.8): Cmd/Ctrl+, opens the dialog: this computer's settings,
+// then this window's vault's ----
 const SLIDERS = ['h', 's', 'l']
 let settingsColour = null
+// The settings of this computer come first and can be changed with no vault
+// open; the vault's own follow, shown only when a vault is open (R6.8).
 function openSettings() {
-  if ($('workspace').hidden || !$('settings').hidden) return
-  settingsColour = normaliseColour(appearance.modelColour)
-  drawSettings()
-  api
-    .getSettings('tree')
-    .then(({ values }) => {
-      $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
-    })
-    .catch(() => {})
-  $('settings-spellcheck').value = editorPrefs.spellcheck === false ? 'off' : 'on'
+  if (!$('settings').hidden) return
+  const vaultOpen = !$('workspace').hidden
   api
     .getPrefs()
     .then((p) => ($('settings-workspaces').checked = p.workspaces))
     .catch(() => {})
-  drawFontChoices()
+  $('settings-vault-body').hidden = !vaultOpen
+  $('settings-vault-note').hidden = !vaultOpen
+  // The open vault's folder, so that it is clear which vault's settings these are.
+  $('settings-vault-path').textContent = vaultOpen ? $('vault-name').title : ''
+  $('settings-vault-path').hidden = !vaultOpen
+  $('settings-no-vault').hidden = vaultOpen
+  if (vaultOpen) {
+    settingsColour = normaliseColour(appearance.modelColour)
+    drawSettings()
+    api
+      .getSettings('tree')
+      .then(({ values }) => {
+        $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
+      })
+      .catch(() => {})
+    $('settings-spellcheck').value = editorPrefs.spellcheck === false ? 'off' : 'on'
+    drawFontChoices()
+  }
   $('settings').hidden = false
-  mountPreviewModel($('settings-preview'))
-  $('settings-h').focus()
+  if (vaultOpen) mountPreviewModel($('settings-preview'))
+  $('settings-workspaces').focus()
 }
 function closeSettings() {
   $('settings').hidden = true
@@ -896,6 +909,8 @@ function renderPreview({ incremental = false } = {}) {
   if (noteMode === 'split' && driver === 'editor') previewFollowEditor()
   if (typedSinceRender && noteMode === 'split') keepCursorInPreview()
   typedSinceRender = false
+  // A redraw replaces the preview's text, so open matches are found again.
+  if (!$('preview-find').hidden) runPreviewFind({ keepPlace: true })
 }
 // The note whose Properties drawer the reader has opened, while that note
 // stays open; opening any note, that one included, starts it closed.
@@ -1173,6 +1188,101 @@ function schedulePreview({ incremental = false } = {}) {
   previewIncremental = (previewIncremental ?? true) && incremental
   previewTimer = setTimeout(() => renderPreview({ incremental: previewIncremental }), 120)
 }
+
+// ---- find in the open note (R4.7): Cmd/Ctrl+F opens CodeMirror's panel when
+// the editor has the focus, and otherwise a bar that finds in the preview's
+// rendered text, the matches marked with CSS highlights so that the preview's
+// DOM is never changed. Cmd/Ctrl+Shift+F puts the cursor in the vault search
+// box (R5.1). ----
+const finding = { ranges: [], at: -1 }
+
+function showPreviewMatches() {
+  const all = finding.ranges
+  const current = all[finding.at]
+  if (globalThis.CSS?.highlights && globalThis.Highlight) {
+    CSS.highlights.set('scrinotia-find', new Highlight(...all.filter((r) => r !== current)))
+    if (current) CSS.highlights.set('scrinotia-find-current', new Highlight(current))
+    else CSS.highlights.delete('scrinotia-find-current')
+  }
+  $('find-count').textContent = $('find-input').value ? (all.length ? `${finding.at + 1} of ${all.length}` : 'No matches') : ''
+  const el = current?.startContainer?.parentElement
+  if (el) {
+    const box = current.getBoundingClientRect()
+    const pv = $('preview').getBoundingClientRect()
+    if (box.top < pv.top || box.bottom > pv.bottom) el.scrollIntoView({ block: 'center' })
+  }
+}
+
+function runPreviewFind({ keepPlace = false } = {}) {
+  const was = finding.at
+  finding.ranges = findMatches($('preview'), $('find-input').value, { caseSensitive: $('find-case').checked })
+  finding.at = finding.ranges.length ? (keepPlace ? Math.min(Math.max(was, 0), finding.ranges.length - 1) : 0) : -1
+  showPreviewMatches()
+}
+
+function stepPreviewFind(by) {
+  if (!finding.ranges.length) return
+  finding.at = (finding.at + by + finding.ranges.length) % finding.ranges.length
+  showPreviewMatches()
+}
+
+function openPreviewFind() {
+  const picked = String(document.getSelection() ?? '').trim()
+  if (picked && !picked.includes('\n')) $('find-input').value = picked
+  $('preview-find').hidden = false
+  $('find-input').focus()
+  $('find-input').select()
+  runPreviewFind()
+}
+
+function closePreviewFind() {
+  $('preview-find').hidden = true
+  finding.ranges = []
+  finding.at = -1
+  globalThis.CSS?.highlights?.delete('scrinotia-find')
+  globalThis.CSS?.highlights?.delete('scrinotia-find-current')
+}
+
+$('find-input').addEventListener('input', () => runPreviewFind())
+$('find-case').addEventListener('change', () => runPreviewFind())
+$('find-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    stepPreviewFind(e.shiftKey ? -1 : 1)
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    closePreviewFind()
+  }
+})
+$('find-next').addEventListener('click', () => stepPreviewFind(1))
+$('find-prev').addEventListener('click', () => stepPreviewFind(-1))
+$('find-close').addEventListener('click', closePreviewFind)
+
+api.onFind(() => {
+  if ($('workspace').hidden || $('note-area').hidden) return
+  if (noteMode === 'source' || (noteMode === 'split' && $('editor').contains(document.activeElement))) {
+    closePreviewFind()
+    editor.openFind()
+  } else {
+    openPreviewFind()
+  }
+})
+// Find Next and Find Previous (Cmd/Ctrl+G, Shift+Cmd/Ctrl+G, R4.7) step
+// through the matches of whichever find is open: the editor's panel when it
+// is open and the editor is shown, otherwise the preview's bar.
+api.onFindStep((by) => {
+  if ($('workspace').hidden || $('note-area').hidden) return
+  if (editorShown() && editor.findOpen() && (noteMode === 'source' || $('preview-find').hidden)) editor.findStep(by)
+  else if (!$('preview-find').hidden) stepPreviewFind(by)
+})
+api.onFindVault(() => {
+  if ($('workspace').hidden) return
+  $('show-files').click()
+  if (!layout.leftOpen) toggleDrawer('left')
+  $('search').focus()
+  $('search').select()
+})
 
 // ---- scroll sync (item 13): in split mode the editor and the preview show
 // the same place in the note, matched by source line. The preview's blocks

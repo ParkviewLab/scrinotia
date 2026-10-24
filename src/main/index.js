@@ -405,7 +405,24 @@ function buildMenu() {
         ...(isMac ? [] : [{ type: 'separator' }, settings, { type: 'separator' }, { role: 'quit' }]),
       ],
     },
-    { role: 'editMenu' },
+    {
+      // The standard Edit menu with Find (R4.7) and Find in Vault (R5.1).
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        ...(isMac ? [{ role: 'pasteAndMatchStyle' }, { role: 'delete' }, { role: 'selectAll' }] : [{ role: 'delete' }, { type: 'separator' }, { role: 'selectAll' }]),
+        { type: 'separator' },
+        { label: 'Find…', accelerator: 'CmdOrCtrl+F', click: (_item, win) => win?.webContents.send('ui:find') },
+        { label: 'Find Next', accelerator: 'CmdOrCtrl+G', click: (_item, win) => win?.webContents.send('ui:find-step', 1) },
+        { label: 'Find Previous', accelerator: 'Shift+CmdOrCtrl+G', click: (_item, win) => win?.webContents.send('ui:find-step', -1) },
+        { label: 'Find in Vault…', accelerator: 'CmdOrCtrl+Shift+F', click: (_item, win) => win?.webContents.send('ui:find-vault') },
+      ],
+    },
     {
       label: 'View',
       submenu: [
