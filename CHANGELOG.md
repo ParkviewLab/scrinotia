@@ -4,6 +4,26 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.21.0] - 2026-10-24
+
+### Highlights
+
+Find now works inside the open note: Cmd/Ctrl+F opens CodeMirror's find panel in the editor (with match case, regular expressions, whole word and replace, the last disabled in a read-only workspace) or a find bar over the preview that highlights and counts matches, while Cmd/Ctrl+Shift+F jumps to the vault search box, opening the left panel if it is closed, and Cmd/Ctrl+G and Shift+Cmd/Ctrl+G step through matches of whichever find is open. The Settings dialog has been reorganised into This computer and This vault groups laid out in three columns so it no longer scrolls at a usual window size, it can now be opened with no vault open, and Done is now Save with the colour reset relabelled Reset colour. The download page's buttons also now link straight to the installers for the release the page was built from, instead of querying the GitHub API and falling back to the release page when its rate limit runs out.
+
+### Features
+
+- Find in the open note, and a shortcut to the vault search (#124)
+- Find Next and Find Previous (Cmd/Ctrl+G, Shift+Cmd/Ctrl+G) (#126)
+
+### Bug fixes
+
+- Download links built from the page's release, without the GitHub API (#123)
+- The Settings dialog, grouped, in three columns, and open with no vault (#125)
+
+### Docs
+
+- Describe version 0.21.0 in the README (#127)
+
 ## [v0.20.0] - 2026-10-24
 
 ### Highlights
