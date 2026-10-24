@@ -4,6 +4,21 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.20.0] - 2026-10-24
+
+### Highlights
+
+Scrinotia can now open a folder of repositories as a read-only workspace, enabled by a new "Open a folder of repositories as a read-only workspace" checkbox under "This computer" in Settings, off by default; such a folder is detected when at least half its visible subfolders are repositories, and the tree, index, search and links then cover each worktree's root notes and `docs/` while skipping code, bare clones, `node_modules` and loose top-level files. Everything that would write to a workspace is refused — the editor is not editable, create, rename, trash, drops and pasted images are unavailable, and the title is marked "(read-only)" — though `.scrinotia/` settings are still stored in the workspace folder itself. The README now links the documentation site and points to the download page for installs.
+
+### Features
+
+- Open a folder of repositories as a read-only workspace (#120)
+
+### Docs
+
+- Link the documentation site and download page from the README (#119)
+- Describe version 0.20.0 in the README (#121)
+
 ## [v0.19.0] - 2026-10-23
 
 ### Highlights
