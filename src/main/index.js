@@ -418,6 +418,8 @@ function buildMenu() {
         ...(isMac ? [{ role: 'pasteAndMatchStyle' }, { role: 'delete' }, { role: 'selectAll' }] : [{ role: 'delete' }, { type: 'separator' }, { role: 'selectAll' }]),
         { type: 'separator' },
         { label: 'Find…', accelerator: 'CmdOrCtrl+F', click: (_item, win) => win?.webContents.send('ui:find') },
+        { label: 'Find Next', accelerator: 'CmdOrCtrl+G', click: (_item, win) => win?.webContents.send('ui:find-step', 1) },
+        { label: 'Find Previous', accelerator: 'Shift+CmdOrCtrl+G', click: (_item, win) => win?.webContents.send('ui:find-step', -1) },
         { label: 'Find in Vault…', accelerator: 'CmdOrCtrl+Shift+F', click: (_item, win) => win?.webContents.send('ui:find-vault') },
       ],
     },

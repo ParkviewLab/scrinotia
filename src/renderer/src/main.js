@@ -1268,6 +1268,14 @@ api.onFind(() => {
     openPreviewFind()
   }
 })
+// Find Next and Find Previous (Cmd/Ctrl+G, Shift+Cmd/Ctrl+G, R4.7) step
+// through the matches of whichever find is open: the editor's panel when it
+// is open and the editor is shown, otherwise the preview's bar.
+api.onFindStep((by) => {
+  if ($('workspace').hidden || $('note-area').hidden) return
+  if (editorShown() && editor.findOpen() && (noteMode === 'source' || $('preview-find').hidden)) editor.findStep(by)
+  else if (!$('preview-find').hidden) stepPreviewFind(by)
+})
 api.onFindVault(() => {
   if ($('workspace').hidden) return
   $('show-files').click()
