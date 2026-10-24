@@ -166,28 +166,23 @@ footer a{color:var(--muted);}
 </footer>
 
 <script>
-// Points each tile straight at its installer in the newest GitHub Release,
-// matched by file extension. GitHub's unauthenticated API allows 60 calls an
-// hour per address, so the request may fail; the stamped version and the
-// tiles' /releases/latest links then stand, and still reach the same files.
+// Points each tile straight at its installer in the release this page was
+// published with. The build stamps that release's tag into the page, and the
+// installers' names follow from it (electron-builder.yml's artifactName), so
+// no request is made: GitHub's API allows a network only 60 unauthenticated
+// calls an hour, and when they ran out the tiles fell back to the release
+// page. Without JavaScript the tiles keep their /releases/latest links.
 (function(){
-  var map={ dmg:'dl-mac', exe:'dl-win', deb:'dl-deb', appimage:'dl-appimage' };
-  // A page served without the deploy step (a local preview) shows no version
-  // rather than the raw placeholder.
-  document.querySelectorAll('.ver').forEach(function(e){ if(e.textContent.indexOf('__LATEST')===0) e.textContent=''; });
-  fetch('https://api.github.com/repos/ParkviewLab/scrinotia/releases/latest', {headers:{Accept:'application/vnd.github+json'}})
-    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function(rel){
-      if(rel.tag_name) document.querySelectorAll('.ver').forEach(function(e){ e.textContent=rel.tag_name; });
-      var seen={};
-      (rel.assets||[]).forEach(function(a){
-        var m=(a.name||'').match(/\.(dmg|exe|AppImage|deb)$/i);
-        if(!m) return;
-        var ext=m[1].toLowerCase(), id=map[ext];
-        if(id && !seen[ext]){ seen[ext]=1; document.getElementById(id).href=a.browser_download_url; }
-      });
-    })
-    .catch(function(){});
+  var ver=document.querySelector('.ver');
+  var tag=ver ? ver.textContent.trim() : '';
+  if(!/^v\d+\.\d+\.\d+$/.test(tag)){
+    // A page served without the deploy step (a local preview): no version shown.
+    if(ver && tag.indexOf('__LATEST')===0) ver.textContent='';
+    return;
+  }
+  var v=tag.slice(1), base='https://github.com/ParkviewLab/scrinotia/releases/download/'+tag+'/scrinotia-'+v;
+  var files={ 'dl-mac':'-arm64.dmg', 'dl-win':'-setup.exe', 'dl-deb':'-amd64.deb', 'dl-appimage':'-x86_64.AppImage' };
+  Object.keys(files).forEach(function(id){ var el=document.getElementById(id); if(el) el.href=base+files[id]; });
 })();
 </script>
 </body>
