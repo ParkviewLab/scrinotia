@@ -122,28 +122,40 @@ async function loadVaultSettings() {
   }
 }
 
-// ---- settings (R6.8): Cmd/Ctrl+, opens the dialog for this window's vault ----
+// ---- settings (R6.8): Cmd/Ctrl+, opens the dialog: this computer's settings,
+// then this window's vault's ----
 const SLIDERS = ['h', 's', 'l']
 let settingsColour = null
+// The settings of this computer come first and can be changed with no vault
+// open; the vault's own follow, shown only when a vault is open (R6.8).
 function openSettings() {
-  if ($('workspace').hidden || !$('settings').hidden) return
-  settingsColour = normaliseColour(appearance.modelColour)
-  drawSettings()
-  api
-    .getSettings('tree')
-    .then(({ values }) => {
-      $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
-    })
-    .catch(() => {})
-  $('settings-spellcheck').value = editorPrefs.spellcheck === false ? 'off' : 'on'
+  if (!$('settings').hidden) return
+  const vaultOpen = !$('workspace').hidden
   api
     .getPrefs()
     .then((p) => ($('settings-workspaces').checked = p.workspaces))
     .catch(() => {})
-  drawFontChoices()
+  $('settings-vault-body').hidden = !vaultOpen
+  $('settings-vault-note').hidden = !vaultOpen
+  // The open vault's folder, so that it is clear which vault's settings these are.
+  $('settings-vault-path').textContent = vaultOpen ? $('vault-name').title : ''
+  $('settings-vault-path').hidden = !vaultOpen
+  $('settings-no-vault').hidden = vaultOpen
+  if (vaultOpen) {
+    settingsColour = normaliseColour(appearance.modelColour)
+    drawSettings()
+    api
+      .getSettings('tree')
+      .then(({ values }) => {
+        $('settings-tree-order').value = values.order === 'alphabetical' ? 'alphabetical' : 'described'
+      })
+      .catch(() => {})
+    $('settings-spellcheck').value = editorPrefs.spellcheck === false ? 'off' : 'on'
+    drawFontChoices()
+  }
   $('settings').hidden = false
-  mountPreviewModel($('settings-preview'))
-  $('settings-h').focus()
+  if (vaultOpen) mountPreviewModel($('settings-preview'))
+  $('settings-workspaces').focus()
 }
 function closeSettings() {
   $('settings').hidden = true

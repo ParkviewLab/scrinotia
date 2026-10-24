@@ -114,50 +114,67 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <div id="settings" class="switcher" hidden>
       <div class="switcher-box settings-box" role="dialog" aria-labelledby="settings-title">
         <h2 id="settings-title">Settings</h2>
-        <p class="muted settings-note">For this vault, kept in its <code>.scrinotia/</code> folder, except the last, which is for this computer.</p>
-        <h3>File tree</h3>
-        <div class="settings-fonts">
-          <label for="settings-tree-order">Order</label>
-          <select id="settings-tree-order">
-            <option value="described">Described order</option>
-            <option value="alphabetical">Alphabetical</option>
-          </select>
-          <span class="settings-sample">Described order follows the list in each folder's "00 - " note.</span>
-        </div>
-        <h3>Source editor</h3>
-        <div class="settings-fonts">
-          <label for="settings-spellcheck">Spelling</label>
-          <select id="settings-spellcheck">
-            <option value="on">Checked</option>
-            <option value="off">Not checked</option>
-          </select>
-          <span class="settings-sample">Misspelt words in notes are underlined; a right-click offers corrections.</span>
-        </div>
-        <h3>STL models</h3>
-        <div class="settings-colour">
-          <div class="settings-sliders">
-            <label for="settings-h">Hue</label><input id="settings-h" type="range" min="0" max="360" step="1" /><span id="settings-h-value" class="muted"></span>
-            <label for="settings-s">Saturation</label><input id="settings-s" type="range" min="0" max="100" step="1" /><span id="settings-s-value" class="muted"></span>
-            <label for="settings-l">Lightness</label><input id="settings-l" type="range" min="0" max="100" step="1" /><span id="settings-l-value" class="muted"></span>
+        <div class="settings-layout">
+        <section class="settings-group" aria-labelledby="settings-machine-title">
+          <h3 id="settings-machine-title" class="settings-group-title">This computer</h3>
+          <p class="muted settings-note">Kept on this computer, for every vault.</p>
+          <label class="settings-check"><input id="settings-workspaces" type="checkbox" /><span>Open a folder of repositories as a read-only workspace</span></label>
+          <p class="settings-help">A folder whose subfolders are mostly repositories in the worktree layout shows their notes and <code>docs/</code> only, and cannot be edited. Takes effect the next time such a folder is opened.</p>
+        </section>
+        <section id="settings-vault" class="settings-group" aria-labelledby="settings-vault-title">
+          <h3 id="settings-vault-title" class="settings-group-title">This vault</h3>
+          <p id="settings-vault-path" class="settings-vault-path" hidden></p>
+          <p id="settings-vault-note" class="muted settings-note">Kept in the vault's <code>.scrinotia/</code> folder.</p>
+          <p id="settings-no-vault" class="settings-help" hidden>Open a vault to change its settings.</p>
+          <div id="settings-vault-body" class="settings-vault-cols">
+            <div class="settings-col">
+            <h4>File tree</h4>
+            <div class="settings-fonts">
+              <label for="settings-tree-order">Order</label>
+              <select id="settings-tree-order">
+                <option value="described">Described order</option>
+                <option value="alphabetical">Alphabetical</option>
+              </select>
+              <span class="settings-sample settings-wrap">Described order follows the list in each folder's "00 - " note.</span>
+            </div>
+            <h4>Source editor</h4>
+            <div class="settings-fonts">
+              <label for="settings-spellcheck">Spelling</label>
+              <select id="settings-spellcheck">
+                <option value="on">Checked</option>
+                <option value="off">Not checked</option>
+              </select>
+              <span class="settings-sample settings-wrap">Misspelt words in notes are underlined; a right-click offers corrections.</span>
+            </div>
+            <h4>Fonts</h4>
+            <div class="settings-fonts">
+              <label for="settings-font-ui">Interface</label><select id="settings-font-ui"></select>
+              <span id="settings-font-ui-sample" class="settings-sample">Files, tags and search</span>
+              <label for="settings-font-body">Body text</label><select id="settings-font-body"></select>
+              <span id="settings-font-body-sample" class="settings-sample">The quick brown fox jumps over the lazy dog.</span>
+              <label for="settings-font-heading">Headings</label><select id="settings-font-heading"></select>
+              <span id="settings-font-heading-sample" class="settings-sample settings-sample-heading">A heading in the preview</span>
+              <label for="settings-font-mono">Monospace</label><select id="settings-font-mono"></select>
+              <span id="settings-font-mono-sample" class="settings-sample">const note = '[[Welcome]]'</span>
+            </div>
+            </div>
+            <div class="settings-col">
+            <h4>STL models</h4>
+            <div class="settings-colour">
+              <div class="settings-sliders">
+                <label for="settings-h">Hue</label><input id="settings-h" type="range" min="0" max="360" step="1" /><span id="settings-h-value" class="muted"></span>
+                <label for="settings-s">Saturation</label><input id="settings-s" type="range" min="0" max="100" step="1" /><span id="settings-s-value" class="muted"></span>
+                <label for="settings-l">Lightness</label><input id="settings-l" type="range" min="0" max="100" step="1" /><span id="settings-l-value" class="muted"></span>
+              </div>
+              <div id="settings-swatch" class="settings-swatch" aria-hidden="true"></div>
+            </div>
+            <div id="settings-preview" class="settings-preview"></div>
+            <div class="settings-row-end"><button id="settings-reset" type="button">Reset colour</button></div>
+            </div>
           </div>
-          <div id="settings-swatch" class="settings-swatch" aria-hidden="true"></div>
+        </section>
         </div>
-        <div id="settings-preview" class="settings-preview"></div>
-        <h3>Fonts</h3>
-        <div class="settings-fonts">
-          <label for="settings-font-ui">Interface</label><select id="settings-font-ui"></select>
-          <span id="settings-font-ui-sample" class="settings-sample">Files, tags and search</span>
-          <label for="settings-font-body">Body text</label><select id="settings-font-body"></select>
-          <span id="settings-font-body-sample" class="settings-sample">The quick brown fox jumps over the lazy dog.</span>
-          <label for="settings-font-heading">Headings</label><select id="settings-font-heading"></select>
-          <span id="settings-font-heading-sample" class="settings-sample settings-sample-heading">A heading in the preview</span>
-          <label for="settings-font-mono">Monospace</label><select id="settings-font-mono"></select>
-          <span id="settings-font-mono-sample" class="settings-sample">const note = '[[Welcome]]'</span>
-        </div>
-        <h3>This computer</h3>
-        <label class="settings-check"><input id="settings-workspaces" type="checkbox"> Open a folder of repositories as a read-only workspace</label>
-        <span class="settings-sample">A folder whose subfolders are mostly repositories in the worktree layout shows their notes and docs/ only, and cannot be edited. Takes effect the next time such a folder is opened.</span>
-        <div class="settings-buttons"><button id="settings-reset" type="button">Reset</button><button id="settings-done" type="button">Done</button></div>
+        <div class="settings-buttons"><button id="settings-done" type="button">Save</button></div>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>
