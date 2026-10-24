@@ -17,6 +17,13 @@ afterEach(async () => {
 })
 
 describe('machine state', () => {
+  it('keeps workspace recognition off until it is turned on (R2.8)', async () => {
+    const state = createState(dir, legacy)
+    expect(await state.prefs()).toEqual({ workspaces: false })
+    await state.setPrefs({ workspaces: true })
+    expect(await createState(dir, legacy).prefs()).toEqual({ workspaces: true })
+    expect(await state.recentVaults()).toEqual([])
+  })
   it('keeps each tab\'s history with the tabs (R2.5.1)', async () => {
     const state = createState(dir, legacy)
     const hist = [{ back: [{ path: 'a.md', scroll: 120 }], fwd: [{ path: 'c.md', scroll: 0 }] }, { back: [], fwd: [] }]

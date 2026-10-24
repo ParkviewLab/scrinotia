@@ -966,6 +966,13 @@ button:hover {
   font-weight: 600;
   color: var(--fg);
 }
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+
 .settings-buttons {
   display: flex;
   justify-content: flex-end;
@@ -1215,4 +1222,9 @@ body.full-view .links {
     max-height: none;
     overflow: visible;
   }
+}
+
+/* A read-only workspace (R2.8) offers no way to create, rename or trash. */
+body.read-only :is(#new-note, #new-folder, #rename, #delete) {
+  display: none;
 }
