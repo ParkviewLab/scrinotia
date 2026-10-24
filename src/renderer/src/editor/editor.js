@@ -6,7 +6,7 @@
 
 import { EditorState, Annotation, Transaction, Compartment } from '@codemirror/state'
 import { autocompletion } from '@codemirror/autocomplete'
-import { search, searchKeymap, openSearchPanel } from '@codemirror/search'
+import { search, searchKeymap, openSearchPanel, searchPanelOpen, findNext, findPrevious } from '@codemirror/search'
 import { EditorView, keymap, drawSelection, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab, selectAll } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -183,6 +183,9 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
     selectAll: () => selectAll(view),
     // Opens the find panel (R4.7) and focuses its field.
     openFind: () => openSearchPanel(view),
+    // Whether the find panel is open, and the next or previous match (R4.7).
+    findOpen: () => searchPanelOpen(view.state),
+    findStep: (by) => (by < 0 ? findPrevious(view) : findNext(view)),
     // Whether states created from now on are read-only (a workspace, R2.8).
     setReadOnly(on) {
       readOnly = !!on
