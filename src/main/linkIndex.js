@@ -352,7 +352,11 @@ export function createIndex({ list, read, stat = null }) {
       results.push({ path, score: scores ? scores.get(path) : null, matches: matches.sort((a, b) => a.line - b.line) })
     }
     results.sort((a, b) => (scores ? b.score - a.score : 0) || a.path.localeCompare(b.path))
-    return { results: results.slice(0, limit) }
+    // The text terms that matched, for the caller to mark in a note (R5.1).
+    const marks = terms
+      .filter((t) => !t.negate && t.field === 'text')
+      .map((t) => (t.kind === 'regex' ? { regex: t.regex.source, flags: t.regex.flags } : { text: t.value }))
+    return { results: results.slice(0, limit), terms: marks }
   }
 
   // ---- link rewriting for a rename or move (R2.4) ----

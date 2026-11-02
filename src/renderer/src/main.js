@@ -6,10 +6,10 @@
 
 import { createEditor } from './editor/editor.js'
 import { createPreview, LINE } from './preview.js'
-import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
+import { orderedAnchors, topForLine, lineForTop, blockForLine } from './sourceLines.js'
 import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
 import { taskToggle } from './tasks.js'
-import { findMatches } from './previewFind.js'
+import { findMatches, findTermMatches } from './previewFind.js'
 import { printTitle, printable } from './printing.js'
 import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
@@ -1966,6 +1966,7 @@ async function runSearch() {
   try {
     const out = await api.search(q)
     results = out.results
+    resultTerms = out.terms ?? []
     problem = out.error ?? null
   } catch (err) {
     showError($('pane-error'), err)
@@ -2027,7 +2028,7 @@ function renderResults(results) {
     li.setAttribute('role', 'treeitem')
     li.dataset.path = path
     const name = path.slice(path.lastIndexOf('/') + 1)
-    const row = resultRow(r, type === 'note' ? name.replace(/\.md$/i, '') : name, (newTab) => openPath(path, { newTab }))
+    const row = resultRow(r, type === 'note' ? name.replace(/\.md$/i, '') : name, (newTab) => openPath(path, { newTab, line: r.matches[0]?.line }))
     row.draggable = true
     row.addEventListener('dragstart', (e) => {
       for (const [t, v] of Object.entries(dragData(path, false))) e.dataTransfer.setData(t, v)
@@ -2040,7 +2041,7 @@ function renderResults(results) {
       for (const m of r.matches) {
         const hit = document.createElement('li')
         hit.className = 'hit'
-        hit.append(resultRow(r, m.context, (newTab) => openPath(path, { newTab })))
+        hit.append(resultRow(r, m.context, (newTab) => openPath(path, { newTab, line: m.line })))
         ul.append(hit)
       }
       li.append(ul)
@@ -2107,7 +2108,75 @@ function revealInTree(path) {
 }
 
 // ---- following links ----
-async function openPath(path, { newTab = false } = {}) {
+// R5.1: a click on a search result scrolls the note to the matching line and
+// marks the matched text in yellow. The note settles for a moment after it
+// opens (images, diagrams and embeds change its height), so the scroll is
+// repeated for about a second and a half, unless the reader scrolls or keys
+// first. The mark holds for 0.9 s and then fades out over 1.3 s, in steps
+// (a highlight cannot be animated), or goes at a click or key press in the
+// note. In the source mode the editor scrolls to the line.
+const RESULT_STEPS = 11
+let resultTerms = []
+let reveal = null
+function clearReveal() {
+  if (!reveal) return
+  for (const t of reveal.timers) clearTimeout(t)
+  for (const [target, type, fn] of reveal.listeners) target.removeEventListener(type, fn)
+  for (let i = 0; i < RESULT_STEPS; i++) globalThis.CSS?.highlights?.delete(`scrinotia-result-${i}`)
+  reveal = null
+}
+
+function revealLine(line) {
+  clearReveal()
+  if (!line || !current) return
+  if (noteMode === 'source') {
+    scrollEditorToLine(line)
+    return
+  }
+  const pv = $('preview')
+  let pinned = true
+  let step = 0
+  let ranges = []
+  const paint = () => {
+    if (!ranges.length || !globalThis.CSS?.highlights || !globalThis.Highlight) return
+    for (let i = 0; i < RESULT_STEPS; i++) CSS.highlights.delete(`scrinotia-result-${i}`)
+    CSS.highlights.set(`scrinotia-result-${step}`, new Highlight(...ranges))
+  }
+  const place = () => {
+    const els = [...pv.querySelectorAll(`[${LINE}]`)].filter((el) => !el.parentElement?.closest('details:not([open])'))
+    const el = els[blockForLine(els.map((e) => Number(e.getAttribute(LINE))), line)]
+    if (!el) return
+    if (pinned) el.scrollIntoView({ block: 'center' })
+    ranges = findTermMatches(el, resultTerms)
+    paint()
+  }
+  const state = { timers: [], listeners: [] }
+  reveal = state
+  const listen = (target, type, fn) => {
+    target.addEventListener(type, fn)
+    state.listeners.push([target, type, fn])
+  }
+  for (const type of ['wheel', 'touchstart']) listen(pv, type, () => (pinned = false))
+  for (const type of ['keydown', 'pointerdown']) {
+    listen($('note-area'), type, () => {
+      pinned = false
+      clearReveal()
+    })
+  }
+  place()
+  for (let t = 120; t <= 1500; t += 190) state.timers.push(setTimeout(place, t))
+  for (let k = 1; k < RESULT_STEPS; k++) {
+    state.timers.push(
+      setTimeout(() => {
+        step = k
+        paint()
+      }, 900 + (k - 1) * 130),
+    )
+  }
+  state.timers.push(setTimeout(clearReveal, 2300))
+}
+
+async function openPath(path, { newTab = false, line = 0 } = {}) {
   view.selected = { path, type: findEntry(view.tree, path)?.type ?? 'note' }
   showInTab(path, { newTab })
   let folder = parentOf(path)
@@ -2117,6 +2186,7 @@ async function openPath(path, { newTab = false } = {}) {
   }
   renderTree()
   await renderPane()
+  if (line) revealLine(line)
 }
 
 async function follow({ kind, ref, newTab = false }) {

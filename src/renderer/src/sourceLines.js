@@ -74,6 +74,17 @@ export function lineForTop(anchors, top) {
   return anchors[anchors.length - 1].line
 }
 
+// The block that holds a source line (R5.1): of the stamped lines in document
+// order, the index of the last that is at or before `line`; the first when
+// the line comes before all of them, -1 when there are none.
+export function blockForLine(lines, line) {
+  let found = lines.length ? 0 : -1
+  lines.forEach((l, i) => {
+    if (l <= line) found = i
+  })
+  return found
+}
+
 // Item 14: of the blocks drawn before (`was`, their keys in order) and the
 // blocks of the note now (`now`), how many at the start (`head`) and at the
 // end (`tail`) are the same and can be kept; the blocks between are
