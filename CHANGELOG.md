@@ -4,6 +4,26 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.23.0] - 2026-11-02
+
+### Highlights
+
+Vault search results now appear as a tree of the folders that contain them, mirroring the file tree in ordering, selection, right-click and drag behaviour, with each note's matching lines as child rows; best-match ranking still selects the 200 results kept and is shown as a tooltip. Clicking a matching line opens the note scrolled to that line, briefly tinting the surrounding block in the preview or scrolling the editor to it in source mode. A folder's right-click menu gains New Note and New Sub Folder, each creating the entry and starting a rename, except in read-only workspaces and the search tree. The find bar now reports that find is not available for files it cannot search, such as HTML and PDF, instead of reporting no matches.
+
+### Features
+
+- Show the search results as a tree of the folders that hold them (#132)
+- A click on a search result scrolls to the matching line and marks it (#134)
+- New Note and New Sub Folder in a folder's right-click menu (#135)
+
+### Bug fixes
+
+- Say that find is not available for a file it cannot search (#133)
+
+### Docs
+
+- Describe version 0.23.0 in the README (#136)
+
 ## [v0.22.0] - 2026-11-02
 
 ### Highlights
