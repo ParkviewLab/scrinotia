@@ -24,6 +24,13 @@ export function attachmentKind(path) {
   return KINDS.find(([, re]) => re.test(path))?.[0] ?? 'other'
 }
 
+// Whether the find bar (R4.7) can search a file shown in the pane: a note's
+// preview and a text file, not a frame or viewer (HTML, PDF, images, audio,
+// video, models, other files).
+export function findable(path) {
+  return attachmentKind(path) === 'text'
+}
+
 const TEXT_LIMIT = 2 * 1024 * 1024
 
 function formatSize(bytes) {
