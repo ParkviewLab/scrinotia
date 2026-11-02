@@ -2109,15 +2109,17 @@ function revealInTree(path) {
 // marks the matched text in yellow. The note settles for a moment after it
 // opens (images, diagrams and embeds change its height), so the scroll is
 // repeated for about a second and a half, unless the reader scrolls or keys
-// first. The mark stays until a click or key press in the note, or 10 s. In
-// the source mode the editor scrolls to the line.
+// first. The mark holds for 0.9 s and then fades out over 1.3 s, in steps
+// (a highlight cannot be animated), or goes at a click or key press in the
+// note. In the source mode the editor scrolls to the line.
+const RESULT_STEPS = 11
 let resultTerms = []
 let reveal = null
 function clearReveal() {
   if (!reveal) return
   for (const t of reveal.timers) clearTimeout(t)
   for (const [target, type, fn] of reveal.listeners) target.removeEventListener(type, fn)
-  globalThis.CSS?.highlights?.delete('scrinotia-result')
+  for (let i = 0; i < RESULT_STEPS; i++) globalThis.CSS?.highlights?.delete(`scrinotia-result-${i}`)
   reveal = null
 }
 
@@ -2130,13 +2132,20 @@ function revealLine(line) {
   }
   const pv = $('preview')
   let pinned = true
+  let step = 0
+  let ranges = []
+  const paint = () => {
+    if (!ranges.length || !globalThis.CSS?.highlights || !globalThis.Highlight) return
+    for (let i = 0; i < RESULT_STEPS; i++) CSS.highlights.delete(`scrinotia-result-${i}`)
+    CSS.highlights.set(`scrinotia-result-${step}`, new Highlight(...ranges))
+  }
   const place = () => {
     const els = [...pv.querySelectorAll(`[${LINE}]`)].filter((el) => !el.parentElement?.closest('details:not([open])'))
     const el = els[blockForLine(els.map((e) => Number(e.getAttribute(LINE))), line)]
     if (!el) return
     if (pinned) el.scrollIntoView({ block: 'center' })
-    const ranges = findTermMatches(el, resultTerms)
-    if (ranges.length && globalThis.CSS?.highlights && globalThis.Highlight) CSS.highlights.set('scrinotia-result', new Highlight(...ranges))
+    ranges = findTermMatches(el, resultTerms)
+    paint()
   }
   const state = { timers: [], listeners: [] }
   reveal = state
@@ -2153,7 +2162,15 @@ function revealLine(line) {
   }
   place()
   for (let t = 120; t <= 1500; t += 190) state.timers.push(setTimeout(place, t))
-  state.timers.push(setTimeout(clearReveal, 10000))
+  for (let k = 1; k < RESULT_STEPS; k++) {
+    state.timers.push(
+      setTimeout(() => {
+        step = k
+        paint()
+      }, 900 + (k - 1) * 130),
+    )
+  }
+  state.timers.push(setTimeout(clearReveal, 2300))
 }
 
 async function openPath(path, { newTab = false, line = 0 } = {}) {
