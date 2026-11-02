@@ -465,6 +465,8 @@ button:hover {
 .preview-find .find-count { font-size: 12px; min-width: 5em; text-align: right; }
 .preview-find .find-case { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
 ::highlight(scrinotia-find) { background-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+/* The text a clicked search result matched (R5.1). */
+::highlight(scrinotia-result) { background-color: #ffe14d; color: #111; }
 ::highlight(scrinotia-find-current) { background-color: color-mix(in srgb, #e0b23a 70%, transparent); color: #111; }
 
 /* CodeMirror's find panel (R4.7), in the theme's colours. */
@@ -1182,21 +1184,6 @@ button:hover {
 }
 .tag-count {
   font-variant-numeric: tabular-nums;
-}
-
-/* A search result's line, flashed for two seconds after a click (R5.1). */
-.preview .result-flash {
-  animation: result-flash 2.2s ease-out;
-  border-radius: 4px;
-}
-@keyframes result-flash {
-  0%,
-  40% {
-    background-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  }
-  100% {
-    background-color: transparent;
-  }
 }
 
 /* ---- math and diagrams ---- */

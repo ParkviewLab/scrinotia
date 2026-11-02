@@ -9,7 +9,7 @@ import { createPreview, LINE } from './preview.js'
 import { orderedAnchors, topForLine, lineForTop, blockForLine } from './sourceLines.js'
 import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
 import { taskToggle } from './tasks.js'
-import { findMatches } from './previewFind.js'
+import { findMatches, findTermMatches } from './previewFind.js'
 import { printTitle, printable } from './printing.js'
 import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
@@ -1963,6 +1963,7 @@ async function runSearch() {
   try {
     const out = await api.search(q)
     results = out.results
+    resultTerms = out.terms ?? []
     problem = out.error ?? null
   } catch (err) {
     showError($('pane-error'), err)
@@ -2105,25 +2106,54 @@ function revealInTree(path) {
 
 // ---- following links ----
 // R5.1: a click on a search result scrolls the note to the matching line and
-// flashes the block that holds it; the tint fades by itself. In the source
-// mode the editor scrolls to the line.
-let flashTimer = null
+// marks the matched text in yellow. The note settles for a moment after it
+// opens (images, diagrams and embeds change its height), so the scroll is
+// repeated for about a second and a half, unless the reader scrolls or keys
+// first. The mark stays until a click or key press in the note, or 10 s. In
+// the source mode the editor scrolls to the line.
+let resultTerms = []
+let reveal = null
+function clearReveal() {
+  if (!reveal) return
+  for (const t of reveal.timers) clearTimeout(t)
+  for (const [target, type, fn] of reveal.listeners) target.removeEventListener(type, fn)
+  globalThis.CSS?.highlights?.delete('scrinotia-result')
+  reveal = null
+}
+
 function revealLine(line) {
+  clearReveal()
   if (!line || !current) return
   if (noteMode === 'source') {
     scrollEditorToLine(line)
     return
   }
   const pv = $('preview')
-  const els = [...pv.querySelectorAll(`[${LINE}]`)].filter((el) => !el.parentElement?.closest('details:not([open])'))
-  const el = els[blockForLine(els.map((e) => Number(e.getAttribute(LINE))), line)]
-  if (!el) return
-  el.scrollIntoView({ block: 'center' })
-  for (const old of pv.querySelectorAll('.result-flash')) old.classList.remove('result-flash')
-  // Restarting the animation: the class goes on in the next frame.
-  requestAnimationFrame(() => el.classList.add('result-flash'))
-  clearTimeout(flashTimer)
-  flashTimer = setTimeout(() => el.classList.remove('result-flash'), 2200)
+  let pinned = true
+  const place = () => {
+    const els = [...pv.querySelectorAll(`[${LINE}]`)].filter((el) => !el.parentElement?.closest('details:not([open])'))
+    const el = els[blockForLine(els.map((e) => Number(e.getAttribute(LINE))), line)]
+    if (!el) return
+    if (pinned) el.scrollIntoView({ block: 'center' })
+    const ranges = findTermMatches(el, resultTerms)
+    if (ranges.length && globalThis.CSS?.highlights && globalThis.Highlight) CSS.highlights.set('scrinotia-result', new Highlight(...ranges))
+  }
+  const state = { timers: [], listeners: [] }
+  reveal = state
+  const listen = (target, type, fn) => {
+    target.addEventListener(type, fn)
+    state.listeners.push([target, type, fn])
+  }
+  for (const type of ['wheel', 'touchstart']) listen(pv, type, () => (pinned = false))
+  for (const type of ['keydown', 'pointerdown']) {
+    listen($('note-area'), type, () => {
+      pinned = false
+      clearReveal()
+    })
+  }
+  place()
+  for (let t = 120; t <= 1500; t += 190) state.timers.push(setTimeout(place, t))
+  state.timers.push(setTimeout(clearReveal, 10000))
 }
 
 async function openPath(path, { newTab = false, line = 0 } = {}) {
@@ -2136,7 +2166,7 @@ async function openPath(path, { newTab = false, line = 0 } = {}) {
   }
   renderTree()
   await renderPane()
-  if (line) setTimeout(() => revealLine(line), 60)
+  if (line) revealLine(line)
 }
 
 async function follow({ kind, ref, newTab = false }) {
