@@ -288,6 +288,8 @@ function registerIpc() {
   on('links:outgoing', (e, rel) => (rootOf(e), ctxOf(e).index.outgoing(rel)))
   on('search', (e, query) => (rootOf(e), ctxOf(e).index.search(query)))
   on('tags', (e) => (rootOf(e), ctxOf(e).index.tags()))
+  on('fields', (e) => (rootOf(e), ctxOf(e).index.fields()))
+  on('field-values', (e, field) => (rootOf(e), ctxOf(e).index.fieldValues(field)))
   on('settings:get', (e, name) => readSettings(rootOf(e), name))
   on('settings:set', (e, name, values) => writeSettings(rootOf(e), name, values))
   on('base:render', async (e, rel, thisPath = null) => {

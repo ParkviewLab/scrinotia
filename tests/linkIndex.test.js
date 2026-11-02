@@ -192,3 +192,54 @@ describe('planRename', () => {
     expect(index.planRename([['attachments/diagram.png', 'attachments/d.png']])).toEqual([])
   })
 })
+
+describe('listed fields (R4.5)', () => {
+  const NOTES = {
+    'A.md': '---\nkeywords:\n  - flint\n  - "slating"\naliases: [Scrin, Scrinotia]\nstatus: "open"\ntarget: handbook\nsingle:\n  - one\n---\n# A #idea\n',
+    'B.md': '---\nkeywords: [flint, 2026, true, "", null]\ntags: process\nsources:\n  - title: X\n    url: u\nnested:\n  - [a, b]\n  - c\n---\nColour #ff8800 and #bad\n',
+  }
+
+  it('indexes every list, block or flow, with one or more items', async () => {
+    const { index } = memoryVault(NOTES)
+    await index.rebuild()
+    expect(index.fields()).toEqual([
+      ['tags', 2],
+      ['aliases', 1],
+      ['keywords', 2],
+      ['nested', 1],
+      ['single', 1],
+    ])
+    expect(index.fieldValues('keywords')).toEqual([['2026', 1], ['flint', 2], ['slating', 1], ['true', 1]])
+    expect(index.fieldValues('aliases')).toEqual([['Scrin', 1], ['Scrinotia', 1]])
+    expect(index.fieldValues('single')).toEqual([['one', 1]])
+    expect(index.fieldValues('nested')).toEqual([['c', 1]])
+  })
+
+  it('leaves single values, maps and empty items out', async () => {
+    const { index } = memoryVault(NOTES)
+    await index.rebuild()
+    const names = index.fields().map(([f]) => f)
+    expect(names).not.toContain('status')
+    expect(names).not.toContain('target')
+    expect(names).not.toContain('sources')
+  })
+
+  it('takes tags from the text and the frontmatter, a single value too, and not colours', async () => {
+    const { index } = memoryVault(NOTES)
+    await index.rebuild()
+    expect(index.tags()).toEqual([['bad', 1], ['idea', 1], ['process', 1]])
+  })
+
+  it('searches by field:value, ignoring case, and keeps file: and path: reserved', async () => {
+    const { index } = memoryVault(NOTES)
+    await index.rebuild()
+    const paths = (out) => out.results.map((r) => r.path)
+    expect(paths(index.search('keywords:FLINT'))).toEqual(['A.md', 'B.md'])
+    expect(paths(index.search('aliases:scrin'))).toEqual(['A.md'])
+    expect(paths(index.search('keywords:slating tags:idea'))).toEqual(['A.md'])
+    expect(paths(index.search('tag:process'))).toEqual(['B.md'])
+    expect(paths(index.search('file:A'))).toEqual(['A.md'])
+    // An unknown prefix is a plain word, as in a time.
+    expect(paths(index.search('12:30'))).toEqual([])
+  })
+})
