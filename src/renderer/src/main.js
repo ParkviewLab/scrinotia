@@ -13,7 +13,7 @@ import { findMatches } from './previewFind.js'
 import { printTitle, printable } from './printing.js'
 import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
-import { renderAttachment, attachmentKind } from './attachments.js'
+import { renderAttachment, attachmentKind, findable } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
 import { diskConflict } from './conflicts.js'
@@ -1205,7 +1205,8 @@ function showPreviewMatches() {
     if (current) CSS.highlights.set('scrinotia-find-current', new Highlight(current))
     else CSS.highlights.delete('scrinotia-find-current')
   }
-  $('find-count').textContent = $('find-input').value ? (all.length ? `${finding.at + 1} of ${all.length}` : 'No matches') : ''
+  const none = findUnavailable() ? 'Find is not available for this file' : 'No matches'
+  $('find-count').textContent = $('find-input').value ? (all.length ? `${finding.at + 1} of ${all.length}` : none) : findUnavailable() ? none : ''
   const el = current?.startContainer?.parentElement
   if (el) {
     const box = current.getBoundingClientRect()
@@ -1214,7 +1215,17 @@ function showPreviewMatches() {
   }
 }
 
+// A file other than a note shown in the pane (current is then null) can be
+// searched only if it is text (R4.7).
+const findUnavailable = () => !current && !currentBase && tabs.active >= 0 && !findable(tabs.list[tabs.active])
+
 function runPreviewFind({ keepPlace = false } = {}) {
+  if (findUnavailable()) {
+    finding.ranges = []
+    finding.at = -1
+    showPreviewMatches()
+    return
+  }
   const was = finding.at
   finding.ranges = findMatches($('preview'), $('find-input').value, { caseSensitive: $('find-case').checked })
   finding.at = finding.ranges.length ? (keepPlace ? Math.min(Math.max(was, 0), finding.ranges.length - 1) : 0) : -1
