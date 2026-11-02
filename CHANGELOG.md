@@ -4,6 +4,20 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.22.0] - 2026-11-02
+
+### Highlights
+
+Any frontmatter property whose value is a list is now indexed the way `tags` always was: a pull-down above the file tree, replacing the Files and Tags buttons, lets you pick a field and browse its values with per-value note counts, and each value can be searched as `field:value`. Single-valued properties are not indexed, apart from `tags`, and list items that are maps or nested lists are skipped. Tags are displayed without a leading `#`, and a `#rrggbb` or `#rrggbbaa` colour written in a note's text is no longer treated as a tag. The README has been updated to describe this behaviour.
+
+### Features
+
+- Index every listed frontmatter field, chosen from a pull-down above the file tree (#129)
+
+### Docs
+
+- Describe version 0.22.0 in the README (#130)
+
 ## [v0.21.0] - 2026-10-24
 
 ### Highlights
