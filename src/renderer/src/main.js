@@ -6,7 +6,7 @@
 
 import { createEditor } from './editor/editor.js'
 import { createPreview, LINE } from './preview.js'
-import { orderedAnchors, topForLine, lineForTop } from './sourceLines.js'
+import { orderedAnchors, topForLine, lineForTop, blockForLine } from './sourceLines.js'
 import { NOTE_MODES, nextMode, clampShare, DEFAULT_SHARE } from './noteModes.js'
 import { taskToggle } from './tasks.js'
 import { findMatches } from './previewFind.js'
@@ -2024,7 +2024,7 @@ function renderResults(results) {
     li.setAttribute('role', 'treeitem')
     li.dataset.path = path
     const name = path.slice(path.lastIndexOf('/') + 1)
-    const row = resultRow(r, type === 'note' ? name.replace(/\.md$/i, '') : name, (newTab) => openPath(path, { newTab }))
+    const row = resultRow(r, type === 'note' ? name.replace(/\.md$/i, '') : name, (newTab) => openPath(path, { newTab, line: r.matches[0]?.line }))
     row.draggable = true
     row.addEventListener('dragstart', (e) => {
       for (const [t, v] of Object.entries(dragData(path, false))) e.dataTransfer.setData(t, v)
@@ -2037,7 +2037,7 @@ function renderResults(results) {
       for (const m of r.matches) {
         const hit = document.createElement('li')
         hit.className = 'hit'
-        hit.append(resultRow(r, m.context, (newTab) => openPath(path, { newTab })))
+        hit.append(resultRow(r, m.context, (newTab) => openPath(path, { newTab, line: m.line })))
         ul.append(hit)
       }
       li.append(ul)
@@ -2104,7 +2104,29 @@ function revealInTree(path) {
 }
 
 // ---- following links ----
-async function openPath(path, { newTab = false } = {}) {
+// R5.1: a click on a search result scrolls the note to the matching line and
+// flashes the block that holds it; the tint fades by itself. In the source
+// mode the editor scrolls to the line.
+let flashTimer = null
+function revealLine(line) {
+  if (!line || !current) return
+  if (noteMode === 'source') {
+    scrollEditorToLine(line)
+    return
+  }
+  const pv = $('preview')
+  const els = [...pv.querySelectorAll(`[${LINE}]`)].filter((el) => !el.parentElement?.closest('details:not([open])'))
+  const el = els[blockForLine(els.map((e) => Number(e.getAttribute(LINE))), line)]
+  if (!el) return
+  el.scrollIntoView({ block: 'center' })
+  for (const old of pv.querySelectorAll('.result-flash')) old.classList.remove('result-flash')
+  // Restarting the animation: the class goes on in the next frame.
+  requestAnimationFrame(() => el.classList.add('result-flash'))
+  clearTimeout(flashTimer)
+  flashTimer = setTimeout(() => el.classList.remove('result-flash'), 2200)
+}
+
+async function openPath(path, { newTab = false, line = 0 } = {}) {
   view.selected = { path, type: findEntry(view.tree, path)?.type ?? 'note' }
   showInTab(path, { newTab })
   let folder = parentOf(path)
@@ -2114,6 +2136,7 @@ async function openPath(path, { newTab = false } = {}) {
   }
   renderTree()
   await renderPane()
+  if (line) setTimeout(() => revealLine(line), 60)
 }
 
 async function follow({ kind, ref, newTab = false }) {

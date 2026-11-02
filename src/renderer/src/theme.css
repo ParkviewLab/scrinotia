@@ -1184,6 +1184,21 @@ button:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* A search result's line, flashed for two seconds after a click (R5.1). */
+.preview .result-flash {
+  animation: result-flash 2.2s ease-out;
+  border-radius: 4px;
+}
+@keyframes result-flash {
+  0%,
+  40% {
+    background-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 /* ---- math and diagrams ---- */
 .preview .math-block {
   overflow-x: auto;
