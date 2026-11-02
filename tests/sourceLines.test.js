@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { createPreview, splitFrontmatter } from '../src/renderer/src/preview.js'
-import { listItemLines, orderedAnchors, topForLine, lineForTop, keptEnds } from '../src/renderer/src/sourceLines.js'
+import { listItemLines, orderedAnchors, topForLine, lineForTop, keptEnds, blockForLine } from '../src/renderer/src/sourceLines.js'
 
 const VAULT = join(import.meta.dirname, 'fixtures', 'vault')
 const preview = createPreview({ assetUrl: () => null, resolves: () => true })
@@ -164,5 +164,19 @@ describe('keeping unchanged blocks (item 14)', () => {
     expect(keptEnds([undefined, 'b'], [undefined, 'b'])).toEqual({ head: 0, tail: 1 })
     expect(keptEnds(['a'], ['b'])).toEqual({ head: 0, tail: 0 })
     expect(keptEnds([], ['a'])).toEqual({ head: 0, tail: 0 })
+  })
+})
+
+describe('blockForLine (R5.1)', () => {
+  it('finds the last block at or before a line', () => {
+    const lines = [1, 4, 6, 7, 12]
+    expect(blockForLine(lines, 1)).toBe(0)
+    expect(blockForLine(lines, 5)).toBe(1)
+    expect(blockForLine(lines, 7)).toBe(3)
+    expect(blockForLine(lines, 99)).toBe(4)
+  })
+  it('takes the first block for a line before all, and -1 for none', () => {
+    expect(blockForLine([3, 8], 1)).toBe(0)
+    expect(blockForLine([], 5)).toBe(-1)
   })
 })

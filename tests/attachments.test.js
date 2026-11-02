@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { STLLoader } from 'three/addons/loaders/STLLoader.js'
-import { attachmentKind } from '../src/renderer/src/attachments.js'
+import { attachmentKind, findable } from '../src/renderer/src/attachments.js'
 import { parseStl } from '../src/renderer/src/modelViewer.js'
 
 describe('attachmentKind', () => {
@@ -18,6 +18,13 @@ describe('attachmentKind', () => {
     expect(attachmentKind('PART.STL')).toBe('model')
     expect(attachmentKind('data.json')).toBe('text')
     expect(attachmentKind('archive.zip')).toBe('other')
+  })
+})
+
+describe('findable (R4.7)', () => {
+  it('is true for text files only', () => {
+    expect(findable('data.json')).toBe(true)
+    for (const f of ['page.html', 'doc.pdf', 'a.png', 'tone.wav', 'clip.mp4', 'part.stl', 'archive.zip']) expect(findable(f)).toBe(false)
   })
 })
 

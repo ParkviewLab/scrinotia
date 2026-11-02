@@ -62,3 +62,38 @@ export function findMatches(root, query, { caseSensitive = false } = {}) {
   }
   return ranges
 }
+
+// The matches under root of a search's text terms (R5.1), each { text } found
+// ignoring case or { regex, flags }, as Ranges.
+export function findTermMatches(root, terms) {
+  const { text, parts } = textOf(root)
+  if (!parts.length) return []
+  const hay = text.toLowerCase()
+  const doc = root.ownerDocument
+  const ranges = []
+  const add = (from, to) => {
+    const a = locate(parts, from, false)
+    const b = locate(parts, to, true)
+    const range = doc.createRange()
+    range.setStart(a.node, a.offset)
+    range.setEnd(b.node, b.offset)
+    ranges.push(range)
+  }
+  for (const t of terms) {
+    if (t.regex !== undefined) {
+      let re
+      try {
+        re = new RegExp(t.regex, t.flags.includes('g') ? t.flags : t.flags + 'g')
+      } catch {
+        continue
+      }
+      for (const m of text.matchAll(re)) {
+        if (m[0] === '') break
+        add(m.index, m.index + m[0].length)
+      }
+    } else if (t.text) {
+      for (let at = hay.indexOf(t.text); at >= 0; at = hay.indexOf(t.text, at + t.text.length)) add(at, at + t.text.length)
+    }
+  }
+  return ranges
+}

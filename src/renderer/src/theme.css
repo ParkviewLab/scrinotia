@@ -465,6 +465,18 @@ button:hover {
 .preview-find .find-count { font-size: 12px; min-width: 5em; text-align: right; }
 .preview-find .find-case { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
 ::highlight(scrinotia-find) { background-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+/* The text a clicked search result matched (R5.1): yellow at 75% opacity, held and then faded out in steps. */
+::highlight(scrinotia-result-0) { background-color: rgb(255 225 77 / 0.75); color: #111; }
+::highlight(scrinotia-result-1) { background-color: rgb(255 225 77 / 0.75); color: #111; }
+::highlight(scrinotia-result-2) { background-color: rgb(255 225 77 / 0.75); color: #111; }
+::highlight(scrinotia-result-3) { background-color: rgb(255 225 77 / 0.75); color: #111; }
+::highlight(scrinotia-result-4) { background-color: rgb(255 225 77 / 0.637); color: #111; }
+::highlight(scrinotia-result-5) { background-color: rgb(255 225 77 / 0.525); color: #111; }
+::highlight(scrinotia-result-6) { background-color: rgb(255 225 77 / 0.413); color: #111; }
+::highlight(scrinotia-result-7) { background-color: rgb(255 225 77 / 0.3); }
+::highlight(scrinotia-result-8) { background-color: rgb(255 225 77 / 0.21); }
+::highlight(scrinotia-result-9) { background-color: rgb(255 225 77 / 0.12); }
+::highlight(scrinotia-result-10) { background-color: rgb(255 225 77 / 0.06); }
 ::highlight(scrinotia-find-current) { background-color: color-mix(in srgb, #e0b23a 70%, transparent); color: #111; }
 
 /* CodeMirror's find panel (R4.7), in the theme's colours. */
@@ -555,16 +567,13 @@ button:hover {
 .results[hidden] {
   display: none;
 }
-.results li,
 .link-list li {
   padding: 3px 12px;
   cursor: pointer;
 }
-.results li:hover,
 .link-list li:hover {
   background: var(--select);
 }
-.results .hit-path,
 .link-list .hit-path {
   display: block;
   color: var(--accent);
@@ -572,7 +581,6 @@ button:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.results .hit-line,
 .link-list .hit-line {
   display: block;
   color: var(--muted);
@@ -580,6 +588,17 @@ button:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* The results are a tree (R5.1); a note's matching lines are muted rows. */
+.results .hit > .row {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+.results .hit > .row.selected {
+  color: var(--accent);
+}
+.results > .info {
+  padding: 3px 12px;
 }
 .links {
   background: var(--bg-panel);

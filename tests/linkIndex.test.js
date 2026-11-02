@@ -243,3 +243,12 @@ describe('listed fields (R4.5)', () => {
     expect(paths(index.search('12:30'))).toEqual([])
   })
 })
+
+describe('search terms (R5.1)', () => {
+  it('returns the text terms that matched, not exclusions or filters', async () => {
+    const { index } = memoryVault(VAULT)
+    await index.rebuild()
+    const out = index.search('Ideas "back to" /wel+/ -nothing tag:idea')
+    expect(out.terms).toEqual([{ text: 'ideas' }, { text: 'back to' }, { regex: 'wel+', flags: 'i' }])
+  })
+})

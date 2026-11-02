@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
-import { findMatches } from '../src/renderer/src/previewFind.js'
+import { findMatches, findTermMatches } from '../src/renderer/src/previewFind.js'
 import { createEditor } from '../src/renderer/src/editor/editor.js'
 import { searchPanelOpen, SearchQuery, setSearchQuery, replaceAll } from '@codemirror/search'
 
@@ -12,6 +12,18 @@ function preview(html) {
   document.body.replaceChildren(div)
   return div
 }
+
+describe('the terms of a search marked in a block (R5.1)', () => {
+  it('marks words and phrases ignoring case, and regular expressions', () => {
+    const root = preview('<p>Plant peas in Spring, then spring onions; v12 and v7.</p>')
+    expect(findTermMatches(root, [{ text: 'spring' }]).map((r) => r.toString())).toEqual(['Spring', 'spring'])
+    expect(findTermMatches(root, [{ text: 'peas in' }, { regex: 'v\\d+', flags: 'i' }]).map((r) => r.toString())).toEqual(['peas in', 'v12', 'v7'])
+  })
+  it('ignores an invalid regular expression and an empty block', () => {
+    expect(findTermMatches(preview('<p>a</p>'), [{ regex: '(', flags: 'i' }])).toEqual([])
+    expect(findTermMatches(preview(''), [{ text: 'a' }])).toEqual([])
+  })
+})
 
 describe('find in the preview (R4.7)', () => {
   it('finds every match, ignoring case by default', () => {
