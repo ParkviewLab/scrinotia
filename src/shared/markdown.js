@@ -240,6 +240,8 @@ export function parseTags(text) {
   for (const m of text.matchAll(re)) {
     const at = m.index + m[1].length
     if (skip.some(([a, b]) => at >= a && at < b)) continue
+    // A colour (#rrggbb, #rrggbbaa) is not a tag (R4.5).
+    if (/^(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(m[2])) continue
     tags.push(m[2])
   }
   return tags

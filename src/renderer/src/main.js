@@ -387,6 +387,7 @@ async function enterVault(opener) {
     $('vault-name').title = opened.root
     $('start').hidden = true
     $('workspace').hidden = false
+    await refreshFields()
     await restoreTabs()
     renderTree()
     await renderPane()
@@ -1278,7 +1279,7 @@ api.onFindStep((by) => {
 })
 api.onFindVault(() => {
   if ($('workspace').hidden) return
-  $('show-files').click()
+  setSidePane('files')
   if (!layout.leftOpen) toggleDrawer('left')
   $('search').focus()
   $('search').select()
@@ -1937,7 +1938,7 @@ $('search').addEventListener('keydown', (e) => {
 })
 
 async function runSearch() {
-  if (sidePane === 'tags') return
+  if (sidePane === 'field') return
   const q = $('search').value.trim()
   const seq = ++searchSeq
   if (!q) {
@@ -2001,7 +2002,7 @@ function revealInTree(path) {
     view.expanded.add(folder)
     folder = parentOf(folder)
   }
-  $('show-files').click()
+  setSidePane('files')
   if (!layout.leftOpen) toggleDrawer('left')
   renderTree()
   document.querySelector(`#tree li[data-path="${CSS.escape(path)}"] > .row`)?.scrollIntoView({ block: 'center' })
@@ -2284,22 +2285,50 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
-// ---- tags pane (R4.5): every tag with the number of notes carrying it,
-// nested tags under their parents; a click searches for the tag ----
-let sidePane = 'files'
-function setSidePane(which) {
+// ---- the left panel's pull-down (R4.5): Files, or one of the vault's listed
+// fields (tags first), each with its values and the number of notes that have
+// them, a tag's nested under its parents; a click searches for the value ----
+let sidePane = 'files' // 'files' or 'field'
+let sideField = null
+function setSidePane(which, field = null) {
   sidePane = which
-  $('show-files').classList.toggle('active', which === 'files')
-  $('show-tags').classList.toggle('active', which === 'tags')
-  $('tag-list').hidden = which !== 'tags'
-  if (which === 'tags') {
+  sideField = which === 'field' ? field : null
+  $('side-pane').value = which === 'field' ? `f:${field}` : ''
+  $('tag-list').hidden = which !== 'field'
+  if (which === 'field') {
     $('tree').hidden = true
     $('results').hidden = true
-    renderTags()
+    renderFieldValues()
   } else runSearch()
 }
-$('show-files').addEventListener('click', () => setSidePane('files'))
-$('show-tags').addEventListener('click', () => setSidePane('tags'))
+$('side-pane').addEventListener('change', () => {
+  const v = $('side-pane').value
+  if (v.startsWith('f:')) setSidePane('field', v.slice(2))
+  else setSidePane('files')
+})
+
+// The pull-down lists the fields the vault has now; a field that has gone
+// returns the panel to Files.
+async function refreshFields() {
+  let fields
+  try {
+    fields = await api.fields()
+  } catch {
+    fields = []
+  }
+  const select = $('side-pane')
+  const options = [['', 'Files'], ...fields.map(([f]) => [`f:${f}`, f])]
+  select.replaceChildren(
+    ...options.map(([value, label]) => {
+      const o = document.createElement('option')
+      o.value = value
+      o.textContent = label
+      return o
+    }),
+  )
+  if (sidePane === 'field' && !fields.some(([f]) => f === sideField)) setSidePane('files')
+  else select.value = sidePane === 'field' ? `f:${sideField}` : ''
+}
 
 // A tag's count is the notes carrying it or any tag nested under it.
 function tagRows(pairs, notesByTag) {
@@ -2313,22 +2342,27 @@ function tagRows(pairs, notesByTag) {
     .map((name) => ({ name, depth: name.split('/').length - 1, label: name.split('/').pop(), count: notesByTag(name) }))
 }
 
-async function renderTags() {
+async function renderFieldValues() {
+  const field = sideField
   let pairs = []
   try {
-    pairs = await api.tags()
+    pairs = await api.fieldValues(field)
   } catch (err) {
     showError($('pane-error'), err)
   }
-  if (sidePane !== 'tags') return
-  // pairs: [tag, notes carrying it or a tag nested under it], parents included.
+  if (sidePane !== 'field' || sideField !== field) return
+  // pairs: [value, notes that have it]; for tags, a parent's count includes
+  // the tags nested under it, and parents are included.
   const counts = new Map(pairs)
-  const rows = tagRows(pairs, (name) => counts.get(name) ?? 0)
+  const rows =
+    field === 'tags'
+      ? tagRows(pairs, (name) => counts.get(name) ?? 0)
+      : pairs.map(([name, count]) => ({ name, depth: 0, label: name, count }))
   const list = $('tag-list')
   if (!rows.length) {
     const li = document.createElement('li')
     li.className = 'info'
-    li.textContent = 'No tags in this vault.'
+    li.textContent = `No ${field} in this vault.`
     list.replaceChildren(li)
     return
   }
@@ -2337,14 +2371,15 @@ async function renderTags() {
       const li = document.createElement('li')
       li.style.paddingLeft = `${12 + r.depth * 14}px`
       const name = document.createElement('span')
-      name.textContent = `#${r.label}`
+      name.textContent = r.label
       const count = document.createElement('span')
       count.className = 'muted tag-count'
       count.textContent = String(r.count)
       li.append(name, count)
-      li.title = `#${r.name}`
+      li.title = r.name
       li.addEventListener('click', () => {
-        $('search').value = `tag:${r.name}`
+        const prefix = field === 'tags' ? 'tag' : field
+        $('search').value = /[\s"]/.test(r.name) ? `${prefix}:"${r.name}"` : `${prefix}:${r.name}`
         setSidePane('files')
       })
       return li
@@ -2594,7 +2629,8 @@ api.onVaultChanged(async (paths) => {
   else if (!current) renderPane()
   else renderLinks()
   if ($('search').value.trim()) runSearch()
-  if (sidePane === 'tags') renderTags()
+  refreshFields()
+  if (sidePane === 'field') renderFieldValues()
 })
 
 $('version').textContent = `version ${api.version}`
