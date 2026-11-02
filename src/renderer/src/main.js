@@ -442,11 +442,14 @@ function renderEntry(entry) {
     const isFolder = entry.type === 'folder'
     const choice = await api.menu([
       ...(isFolder ? [] : [{ id: 'open', label: 'Open' }, { id: 'tab', label: 'Open in new tab' }]),
+      ...(isFolder && !readOnly ? [{ id: 'new-note', label: 'New Note' }, { id: 'new-folder', label: 'New Sub Folder' }, { type: 'separator' }] : []),
       { id: 'reveal', label: REVEAL_LABEL },
       ...(readOnly ? [] : [{ type: 'separator' }, { id: 'rename', label: 'Rename' }, { id: 'trash', label: 'Move to trash' }]),
     ])
     if (choice === 'open') select(entry)
     if (choice === 'tab') select(entry, { newTab: true })
+    if (choice === 'new-note') createNoteIn(entry.path)
+    if (choice === 'new-folder') createFolderIn(entry.path)
     if (choice === 'reveal') api.showPath(entry.path).catch((err) => showError($('pane-error'), err))
     if (choice === 'rename' || choice === 'trash') {
       view.selected = { path: entry.path, type: entry.type }
@@ -2297,8 +2300,10 @@ async function rename(from, to) {
   renderPane()
 }
 
-$('new-note').addEventListener('click', async () => {
-  const folder = targetFolder()
+// New note and new folder (R2.3): in the folder the + buttons target, or, from
+// a folder's right-click menu, in that folder. The new entry's name is edited
+// at once.
+async function createNoteIn(folder) {
   const rel = await run(() => api.createNote(folder))
   if (!rel) return
   if (folder) view.expanded.add(folder)
@@ -2307,10 +2312,9 @@ $('new-note').addEventListener('click', async () => {
   await refreshTree()
   renderPane()
   startRename()
-})
+}
 
-$('new-folder').addEventListener('click', async () => {
-  const folder = targetFolder()
+async function createFolderIn(folder) {
   const rel = await run(() => api.createFolder(folder))
   if (!rel) return
   if (folder) view.expanded.add(folder)
@@ -2318,7 +2322,10 @@ $('new-folder').addEventListener('click', async () => {
   await refreshTree()
   renderPane()
   startRename()
-})
+}
+
+$('new-note').addEventListener('click', () => createNoteIn(targetFolder()))
+$('new-folder').addEventListener('click', () => createFolderIn(targetFolder()))
 
 $('delete').addEventListener('click', async () => {
   const sel = view.selected
