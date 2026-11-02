@@ -465,18 +465,18 @@ button:hover {
 .preview-find .find-count { font-size: 12px; min-width: 5em; text-align: right; }
 .preview-find .find-case { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
 ::highlight(scrinotia-find) { background-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-/* The text a clicked search result matched (R5.1): yellow, held and then faded out in steps. */
-::highlight(scrinotia-result-0) { background-color: rgb(255 225 77 / 1); color: #111; }
-::highlight(scrinotia-result-1) { background-color: rgb(255 225 77 / 1); color: #111; }
-::highlight(scrinotia-result-2) { background-color: rgb(255 225 77 / 1); color: #111; }
-::highlight(scrinotia-result-3) { background-color: rgb(255 225 77 / 1); color: #111; }
-::highlight(scrinotia-result-4) { background-color: rgb(255 225 77 / 0.85); color: #111; }
-::highlight(scrinotia-result-5) { background-color: rgb(255 225 77 / 0.7); color: #111; }
-::highlight(scrinotia-result-6) { background-color: rgb(255 225 77 / 0.55); color: #111; }
-::highlight(scrinotia-result-7) { background-color: rgb(255 225 77 / 0.4); }
-::highlight(scrinotia-result-8) { background-color: rgb(255 225 77 / 0.28); }
-::highlight(scrinotia-result-9) { background-color: rgb(255 225 77 / 0.16); }
-::highlight(scrinotia-result-10) { background-color: rgb(255 225 77 / 0.08); }
+/* The text a clicked search result matched (R5.1): yellow at 60% opacity, held and then faded out in steps. */
+::highlight(scrinotia-result-0) { background-color: rgb(255 225 77 / 0.6); color: #111; }
+::highlight(scrinotia-result-1) { background-color: rgb(255 225 77 / 0.6); color: #111; }
+::highlight(scrinotia-result-2) { background-color: rgb(255 225 77 / 0.6); color: #111; }
+::highlight(scrinotia-result-3) { background-color: rgb(255 225 77 / 0.6); color: #111; }
+::highlight(scrinotia-result-4) { background-color: rgb(255 225 77 / 0.51); color: #111; }
+::highlight(scrinotia-result-5) { background-color: rgb(255 225 77 / 0.42); color: #111; }
+::highlight(scrinotia-result-6) { background-color: rgb(255 225 77 / 0.33); color: #111; }
+::highlight(scrinotia-result-7) { background-color: rgb(255 225 77 / 0.24); }
+::highlight(scrinotia-result-8) { background-color: rgb(255 225 77 / 0.168); }
+::highlight(scrinotia-result-9) { background-color: rgb(255 225 77 / 0.096); }
+::highlight(scrinotia-result-10) { background-color: rgb(255 225 77 / 0.048); }
 ::highlight(scrinotia-find-current) { background-color: color-mix(in srgb, #e0b23a 70%, transparent); color: #111; }
 
 /* CodeMirror's find panel (R4.7), in the theme's colours. */
