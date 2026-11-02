@@ -555,16 +555,13 @@ button:hover {
 .results[hidden] {
   display: none;
 }
-.results li,
 .link-list li {
   padding: 3px 12px;
   cursor: pointer;
 }
-.results li:hover,
 .link-list li:hover {
   background: var(--select);
 }
-.results .hit-path,
 .link-list .hit-path {
   display: block;
   color: var(--accent);
@@ -572,7 +569,6 @@ button:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.results .hit-line,
 .link-list .hit-line {
   display: block;
   color: var(--muted);
@@ -580,6 +576,17 @@ button:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* The results are a tree (R5.1); a note's matching lines are muted rows. */
+.results .hit > .row {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+.results .hit > .row.selected {
+  color: var(--accent);
+}
+.results > .info {
+  padding: 3px 12px;
 }
 .links {
   background: var(--bg-panel);
