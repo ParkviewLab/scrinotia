@@ -94,13 +94,13 @@ R4.7. Find in the open note: Edit, Find… (Cmd/Ctrl+F) opens the editor's find 
 
 ### R5. Search
 
-R5.1. Full-text search across the vault, returning matching notes with context lines and highlighted matches, updating as the vault changes. Edit, Find in Vault… (Cmd/Ctrl+Shift+F) puts the cursor in the search box, opening the left panel if it is closed.
+R5.1. Full-text search across the vault, returning matching notes with context lines and highlighted matches, updating as the vault changes. The results are shown as a tree like the file tree (R2.2): only the folders that hold a result, and the folders above them, all expanded at first (a click on a folder folds or unfolds it, until the query changes), in the file tree's order; each note is a row by its name, with its matching lines (up to five) as child rows beneath it. Clicking a note or one of its lines opens the note, with the same new-tab, right-click and drag behaviour as in the file tree, and the clicked row is highlighted. A result the file tree does not list is shown after the tree. Edit, Find in Vault… (Cmd/Ctrl+Shift+F) puts the cursor in the search box, opening the left panel if it is closed.
 
 R5.2. Search supports plain words (all must match; a word matches by its prefix, and a word of five letters or more also with one or two typos), "quoted phrases" (exact), /regular expressions/ (case-insensitive unless flags say otherwise; an invalid one is reported), exclusion with `-`, and restriction by `tag:`, `file:` and `path:`, and by `<field>:value` for any listed field (R4.5), matching a note that has the value in that field, ignoring case; `file` and `path` are reserved for file names and paths, so a listed field of either name is not searchable by prefix. A `tag:` search also matches the tags nested under the value.
 
 R5.3. The search index is a cache outside the vault, rebuildable at any time from the files, and never the source of truth.
 
-R5.4. Results are ranked by BM25+ (MiniSearch, MIT) over each note's name, tags and text, with the name weighted three times and tags twice the body, best match first; a search without plain words lists its results in path order. The ranked index is kept up to date one note at a time as the vault changes.
+R5.4. Results are ranked by BM25+ (MiniSearch, MIT) over each note's name, tags and text, with the name weighted three times and tags twice the body, best match first, which decides which results are kept (the best 200) and is shown as a tooltip on each result; the tree of R5.1 lists them in the file tree's order. The ranked index is kept up to date one note at a time as the vault changes.
 
 R5.5. Search also covers the displayed text of HTML attachments: the page's title and the text of its body, without scripts, styles or markup. Text a page's scripts would add when it runs is not searched, since the page is not run. HTML pages take no part in links, backlinks, tags or `.base` views, and open in the attachment viewer from the results.
 

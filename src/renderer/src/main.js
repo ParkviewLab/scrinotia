@@ -18,6 +18,7 @@ import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
 import { diskConflict } from './conflicts.js'
 import { PATH_TYPE, FOLDER_TYPE, dragData, noteAccepts } from './dragTypes.js'
+import { resultsTree } from './resultsTree.js'
 import { attachPanZoom, keepViewsFor } from './diagramView.js'
 import { mountModel } from './modelViewer.js'
 import { setModelColour, mountPreviewModel, normaliseColour, colourCss, DEFAULT_MODEL_COLOUR } from './modelViewer.js'
@@ -1969,13 +1970,9 @@ async function runSearch() {
   if (seq !== searchSeq) return
   $('tree').hidden = true
   $('results').hidden = false
-  const items = results.map((r) =>
-    draggableItem(r.path, hitItem(
-      r.path.replace(/\.md$/i, ''),
-      r.matches.map((m) => m.context).join(' · '),
-      (newTab) => openPath(r.path, { newTab }),
-    )),
-  )
+  if (q !== resultsQuery) resultsFolded.clear()
+  resultsQuery = q
+  const items = renderResults(results)
   if (items.length === 0) {
     const li = document.createElement('li')
     li.className = 'info'
@@ -1983,6 +1980,93 @@ async function runSearch() {
     items.push(li)
   }
   $('results').replaceChildren(...items)
+}
+
+// The results as a tree (R5.1): the file tree's order and look, holding only
+// the folders that have a result, all open until folded (until the query
+// changes); a note's matching lines are its child rows.
+let resultsQuery = null
+const resultsFolded = new Set()
+
+function selectResultRow(row) {
+  for (const r of $('results').querySelectorAll('.row.selected')) r.classList.remove('selected')
+  row.classList.add('selected')
+}
+
+function renderResults(results) {
+  const { nodes, unplaced } = resultsTree(view.tree, results)
+  const resultRow = (r, label, openIt) => {
+    const row = document.createElement('span')
+    row.className = 'row'
+    row.textContent = label
+    row.title = r.score == null ? r.path : `${r.path}\nscore ${r.score.toFixed(1)}`
+    row.addEventListener('click', (e) => {
+      selectResultRow(row)
+      openIt(e.metaKey || e.ctrlKey)
+    })
+    row.addEventListener('auxclick', (e) => {
+      if (e.button === 1) openIt(true)
+    })
+    row.addEventListener('contextmenu', async (e) => {
+      e.preventDefault()
+      const choice = await api.menu([
+        { id: 'open', label: 'Open' },
+        { id: 'tab', label: 'Open in new tab' },
+      ])
+      if (choice) openIt(choice === 'tab')
+    })
+    return row
+  }
+  const noteItem = (r, type) => {
+    const path = r.path
+    const li = document.createElement('li')
+    li.className = type
+    li.setAttribute('role', 'treeitem')
+    li.dataset.path = path
+    const name = path.slice(path.lastIndexOf('/') + 1)
+    const row = resultRow(r, type === 'note' ? name.replace(/\.md$/i, '') : name, (newTab) => openPath(path, { newTab }))
+    row.draggable = true
+    row.addEventListener('dragstart', (e) => {
+      for (const [t, v] of Object.entries(dragData(path, false))) e.dataTransfer.setData(t, v)
+    })
+    if (view.selected?.path === path) row.classList.add('selected')
+    li.append(row)
+    if (r.matches.length) {
+      const ul = document.createElement('ul')
+      ul.setAttribute('role', 'group')
+      for (const m of r.matches) {
+        const hit = document.createElement('li')
+        hit.className = 'hit'
+        hit.append(resultRow(r, m.context, (newTab) => openPath(path, { newTab })))
+        ul.append(hit)
+      }
+      li.append(ul)
+    }
+    return li
+  }
+  const build = ({ entry, children, result }) => {
+    if (!children) return noteItem(result, entry.type)
+    const li = document.createElement('li')
+    li.className = 'folder'
+    li.setAttribute('role', 'treeitem')
+    if (!resultsFolded.has(entry.path)) li.classList.add('open')
+    const row = document.createElement('span')
+    row.className = 'row'
+    row.textContent = entry.name
+    row.title = entry.path
+    row.addEventListener('click', () => {
+      const open = li.classList.toggle('open')
+      if (open) resultsFolded.delete(entry.path)
+      else resultsFolded.add(entry.path)
+    })
+    const ul = document.createElement('ul')
+    ul.setAttribute('role', 'group')
+    ul.append(...children.map(build))
+    li.append(row, ul)
+    return li
+  }
+  // A result the file tree does not list (a stale tree) follows the tree.
+  return [...nodes.map(build), ...unplaced.map((r) => noteItem(r, /\.md$/i.test(r.path) ? 'note' : 'attachment'))]
 }
 
 function forgetNotes(match) {
@@ -2532,12 +2616,6 @@ api
 // results are already in the vault. Either way a link goes into the note:
 // an embed for what the preview shows inline, a plain link otherwise. In the
 // split editor it goes where the file is dropped; in the preview, at the end.
-function draggableItem(path, li) {
-  li.draggable = true
-  li.addEventListener('dragstart', (e) => e.dataTransfer.setData(PATH_TYPE, path))
-  return li
-}
-
 function linkFor(path) {
   const name = path.slice(path.lastIndexOf('/') + 1)
   const isNote = /\.md$/i.test(name)
