@@ -86,7 +86,7 @@ R4.3. A backlinks panel for the open note lists every note that links to it, wit
 
 R4.4. An outgoing-links panel lists the links of the open note.
 
-R4.5. Tags (`#tag`, nested `#a/b`, and the frontmatter `tags` property) are recognised. A Tags pane, switched with Files above the file tree, lists every tag with the number of notes carrying it or a tag nested under it (a note counts once for a parent), nested tags indented under their parents; clicking a tag searches for it.
+R4.5. Tags and listed fields. A tag is a name written `#tag` in a note's text (nested `#a/b`; at least one letter, so `#2024` is not a tag; not inside code, a link or a comment; and not a colour, a `#` followed by exactly 6 or exactly 8 hexadecimal digits) or listed in the frontmatter `tags` property (a list, or a single value). Beyond `tags`, every frontmatter property whose value is a list is a listed field, whether written as a block list (`- item` lines) or a flow list (`[a, b]`) and even with one item, so that `keywords` and `aliases` are indexed as `tags` is. A property with a single value (`status: "open"`) is not. Each item that is text, a number or a boolean is a value of the field, trimmed, and counted once per note; an empty item, an item that is itself a map and a list inside a list are skipped, and a property with no value left is not a listed field. Field names are taken as written. A pull-down above the file tree, in place of the Files and Tags buttons, chooses what the left panel shows: Files, `tags`, then each listed field of the vault in name order. For a field it lists every value, without any `#`, with the number of notes carrying it; for `tags` the values are nested under their parents and a note counts once for a parent. Clicking a value searches for it (R5.2). The choice is kept while the window is open.
 
 R4.6. An outline panel lists the headings of the open note, indented by level (frontmatter and fenced code left out), and updates as the note is edited. Clicking a heading scrolls the preview to it and, in the split mode, moves the editor's cursor to its line.
 
@@ -96,7 +96,7 @@ R4.7. Find in the open note: Edit, Find… (Cmd/Ctrl+F) opens the editor's find 
 
 R5.1. Full-text search across the vault, returning matching notes with context lines and highlighted matches, updating as the vault changes. Edit, Find in Vault… (Cmd/Ctrl+Shift+F) puts the cursor in the search box, opening the left panel if it is closed.
 
-R5.2. Search supports plain words (all must match; a word matches by its prefix, and a word of five letters or more also with one or two typos), "quoted phrases" (exact), /regular expressions/ (case-insensitive unless flags say otherwise; an invalid one is reported), exclusion with `-`, and restriction by `tag:`, `file:` and `path:`.
+R5.2. Search supports plain words (all must match; a word matches by its prefix, and a word of five letters or more also with one or two typos), "quoted phrases" (exact), /regular expressions/ (case-insensitive unless flags say otherwise; an invalid one is reported), exclusion with `-`, and restriction by `tag:`, `file:` and `path:`, and by `<field>:value` for any listed field (R4.5), matching a note that has the value in that field, ignoring case; `file` and `path` are reserved for file names and paths, so a listed field of either name is not searchable by prefix. A `tag:` search also matches the tags nested under the value.
 
 R5.3. The search index is a cache outside the vault, rebuildable at any time from the files, and never the source of truth.
 

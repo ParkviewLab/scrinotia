@@ -1143,18 +1143,15 @@ button:hover {
   color: var(--fg);
 }
 
-/* ---- files / tags switch and tags pane ---- */
+/* ---- the left panel's pull-down (files or a listed field) and its values ---- */
 .side-switch {
   display: flex;
   gap: 4px;
   margin: 0 12px 6px;
 }
-.side-switch button {
+.side-switch select {
   flex: 1;
-}
-.side-switch button.active {
-  border-color: var(--accent);
-  color: var(--accent);
+  min-width: 0;
 }
 .tag-list {
   flex: 1;

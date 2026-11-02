@@ -31,6 +31,25 @@ function resolveEntry(link, from, files) {
   return resolveLink(link.target, from, files)
 }
 
+// The listed fields of a note's frontmatter (R4.5): every property whose
+// value is a list, as field -> values. An item counts if it is text, a number
+// or a boolean; empty items, maps and nested lists are skipped. `tags` alone
+// also takes a single value.
+export function listedFields(frontmatter) {
+  const out = new Map()
+  for (const [field, value] of Object.entries(frontmatter ?? {})) {
+    if (!Array.isArray(value) && field !== 'tags') continue
+    const values = []
+    for (const item of [value].flat(1)) {
+      if (!['string', 'number', 'boolean'].includes(typeof item)) continue
+      const v = String(item).trim()
+      if (v && !values.includes(v)) values.push(v)
+    }
+    if (values.length) out.set(field, values)
+  }
+  return out
+}
+
 export function createIndex({ list, read, stat = null }) {
   // list(): every vault-relative file path; read(path): a note's text;
   // stat(path): { size, ctime, mtime } in bytes and milliseconds (optional).
@@ -90,8 +109,10 @@ export function createIndex({ list, read, stat = null }) {
 
   function indexText(path, text) {
     const frontmatter = frontmatterOf(text)
-    const fmTags = [frontmatter.tags ?? []].flat().map((t) => String(t).replace(/^#/, ''))
-    const note = { text, links: parseLinks(text), tags: [...new Set([...parseTags(text), ...fmTags])], frontmatter }
+    const lists = listedFields(frontmatter)
+    const fmTags = (lists.get('tags') ?? []).map((t) => t.replace(/^#/, ''))
+    lists.delete('tags')
+    const note = { text, links: parseLinks(text), tags: [...new Set([...parseTags(text), ...fmTags])], lists, frontmatter }
     notes.set(path, note)
     rankedPut(path, note)
   }
@@ -206,6 +227,27 @@ export function createIndex({ list, read, stat = null }) {
     return [...counts].sort((a, b) => a[0].localeCompare(b[0]))
   }
 
+  // The listed fields of the vault (R4.5), each with the number of notes
+  // that have it: `tags` first when any note has a tag, then the others.
+  function fields() {
+    const counts = new Map()
+    let tagged = 0
+    for (const note of notes.values()) {
+      if (note.tags.length) tagged++
+      for (const f of note.lists.keys()) counts.set(f, (counts.get(f) ?? 0) + 1)
+    }
+    const rest = [...counts].sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base', numeric: true }))
+    return tagged ? [['tags', tagged], ...rest] : rest
+  }
+
+  // Each value of a listed field with the number of notes that have it.
+  function fieldValues(field) {
+    if (field === 'tags') return tags()
+    const counts = new Map()
+    for (const note of notes.values()) for (const v of note.lists.get(field) ?? []) counts.set(v, (counts.get(v) ?? 0) + 1)
+    return [...counts].sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base', numeric: true }))
+  }
+
   // ---- search (R5) ----
   // Plain words are ranked by BM25+ (all must match; a word matches by its
   // prefix, and words of five letters or more also with one or two typos).
@@ -214,10 +256,19 @@ export function createIndex({ list, read, stat = null }) {
   // words are in path order; with them, best match first.
   function parseQuery(q) {
     const terms = []
-    const re = /(-?)(?:(tag|file|path):)?(?:"([^"]*)"|\/((?:\\.|[^/\\])+)\/([a-z]*)|(\S+))/g
+    const re = /(-?)(?:([^\s:"/]+):)?(?:"([^"]*)"|\/((?:\\.|[^/\\])+)\/([a-z]*)|(\S+))/g
+    let known = null
     for (const m of q.matchAll(re)) {
       const negate = m[1] === '-'
-      const field = m[2] ?? 'text'
+      // A prefix is a field only if it is one the vault has (or tag, file,
+      // path); otherwise the whole token is a plain word, as in a time 12:30.
+      const isField = m[2] !== undefined && (['tag', 'file', 'path'].includes(m[2]) || (known ??= new Set(fields().map(([f]) => f))).has(m[2]))
+      if (m[2] !== undefined && !isField && m[3] === undefined && m[4] === undefined) {
+        const value = `${m[2]}:${m[6] ?? ''}`.toLowerCase()
+        terms.push({ negate, field: 'text', kind: 'word', value })
+        continue
+      }
+      const field = isField ? m[2] : 'text'
       if (m[4] !== undefined) {
         let regex
         try {
@@ -259,7 +310,11 @@ export function createIndex({ list, read, stat = null }) {
       const lowerPath = path.toLowerCase()
       const test = (t) => {
         const subject = t.field === 'file' ? baseName(path) : t.field === 'path' ? path : null
-        if (t.field === 'tag') {
+        if (t.field !== 'text' && t.field !== 'file' && t.field !== 'path' && t.field !== 'tag' && t.field !== 'tags') {
+          const mine = note.lists?.get(t.field) ?? []
+          return mine.some((g) => (t.kind === 'regex' ? t.regex.test(g) : g.toLowerCase() === t.value))
+        }
+        if (t.field === 'tag' || t.field === 'tags') {
           const want = (t.value ?? '').replace(/^#/, '')
           return note.tags.some((g) => (t.kind === 'regex' ? t.regex.test(g) : g.toLowerCase() === want || g.toLowerCase().startsWith(want + '/')))
         }
@@ -384,6 +439,8 @@ export function createIndex({ list, read, stat = null }) {
     unlinkedMentions,
     outgoing,
     tags,
+    fields,
+    fieldValues,
     search,
     planRename,
     files: () => files,

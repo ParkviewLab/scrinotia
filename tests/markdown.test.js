@@ -47,6 +47,9 @@ describe('parseTags', () => {
   it('finds tags outside code and links, not headings', () => {
     expect(parseTags('# Heading\n\n#idea and #a/b, `#no`, [[#Sub]], #2024')).toEqual(['idea', 'a/b'])
   })
+  it('ignores 6 and 8 digit hexadecimal colours, not shorthand', () => {
+    expect(parseTags('#ff8800 #FF880080 #fff #f80a #bad #cafe #ff88001 #ff88000011')).toEqual(['fff', 'f80a', 'bad', 'cafe', 'ff88001', 'ff88000011'])
+  })
 })
 
 describe('helpers', () => {
