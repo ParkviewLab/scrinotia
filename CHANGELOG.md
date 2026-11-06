@@ -4,6 +4,20 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.23.1] - 2026-11-06
+
+### Highlights
+
+This release fixes the application icon on Linux: the Debian package previously installed the icon only at 1024x1024, a size the hicolor theme does not list, so desktop environments fell back to the default icon. The icon is now installed at sizes from 16 to 512 px, and the launcher entry sets StartupWMClass to scrinotia so it matches the window's app_id.
+
+### Bug fixes
+
+- Install the icon in the sizes the Linux icon theme lists, and name the window (#138)
+
+### Docs
+
+- Describe version 0.23.1 in the README (#139)
+
 ## [v0.23.0] - 2026-11-02
 
 ### Highlights
