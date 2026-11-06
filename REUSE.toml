@@ -36,9 +36,10 @@ SPDX-FileCopyrightText = "2026 Steph Ango"
 SPDX-License-Identifier = "MIT"
 
 # The app icon and the brand kit it comes from are a mark: all rights
-# reserved, not relicensed by the repository.
+# reserved, not relicensed by the repository. build/icons/ holds build/icon.png
+# resized to the sizes the Linux icon theme lists (16 to 512 px).
 [[annotations]]
-path = ["build/icon.png", "build/icon.svg", "build/icon.icns", "brand/**", "site/assets/icon.svg"]
+path = ["build/icon.png", "build/icons/**", "build/icon.svg", "build/icon.icns", "brand/**", "site/assets/icon.svg"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Gary Frattarola <garyf@parkviewlab.ai>"
 SPDX-License-Identifier = "LicenseRef-AllRightsReserved"

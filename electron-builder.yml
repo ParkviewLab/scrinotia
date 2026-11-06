@@ -45,6 +45,9 @@ linux:
     - AppImage
     - deb
   category: Utility
+  # The window's app_id is the package's desktopName, so the launcher matches
+  # a running window to this entry (and so to its icon) on Wayland.
+  syncDesktopName: true
   maintainer: Gary Frattarola <garyf@parkviewlab.ai>
   # Chromium checks spelling with Hunspell on Linux and would download its
   # dictionaries from Google; the English one ships with the package instead
