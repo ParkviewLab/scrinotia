@@ -14,7 +14,7 @@ It is pronounced skri-NO-tee-a (/skrɪˈnoʊ.ti.ə/), with a hard *t* as in clas
 
 ## Status
 
-Version 0.23.0 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
+Version 0.23.1 (versions before 0.7.0 were released as granite-vaulting). The requirements are in [`docs/requirements.md`](docs/requirements.md); what this version covers of them:
 
 - **Vaults:** open a folder, recent vaults, several vaults at once with one window each; the file tree follows each folder's described order (the list in its `00 - <folder>` note; Alphabetical is a setting), lists unlisted files before subfolders, draws lines connecting each item to its folder, and hides dot-folders such as `.obsidian/`, which are never read or written.
 - **Workspaces:** with a setting turned on (off by default), a folder of repositories in the worktree layout, such as a whole GitHub organisation's clones, opens read-only, showing each repository's worktrees by name and only their notes and `docs/`.
