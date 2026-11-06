@@ -1,6 +1,6 @@
 {
   "name": "scrinotia",
-  "version": "0.23.1-dev0",
+  "version": "0.23.1",
   "description": "A local-first, utilitarian Markdown notes client",
   "desktopName": "scrinotia.desktop",
   "author": "Gary Frattarola <garyf@parkviewlab.ai>",
