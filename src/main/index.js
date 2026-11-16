@@ -261,6 +261,9 @@ function registerIpc() {
     if (inside && !inside.startsWith('..') && !isAbsolute(inside)) return inside.split(sep).join('/')
     return vault.importFile(root, sourcePath, folder)
   })
+  // A file dropped on a folder of the file tree is copied into that folder,
+  // whatever its type, and never moved (R2.9).
+  on('file:copyInto', (e, sourcePath, folder) => vault.importFile(writableRoot(e), sourcePath, folder))
   // An image pasted into a note is written to the attachment folder as
   // "Pasted image <YYYY-MM-DD HHmmss>" (numbered if taken), R2.7.
   on('file:paste', async (e, ext, bytes) => {

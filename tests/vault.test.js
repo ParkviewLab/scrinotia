@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { cp, mkdtemp, rm, readFile, readdir, stat } from 'node:fs/promises'
+import { cp, mkdtemp, rm, readFile, readdir, stat, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -11,6 +11,7 @@ import {
   writeNote,
   createNote,
   writeAttachment,
+  importFile,
   createFolder,
   move,
   trash,
@@ -104,5 +105,56 @@ describe('note operations', () => {
     const trashed = []
     await trash(root, 'Ideas.md', async (p) => trashed.push(p))
     expect(trashed).toEqual([join(root, 'Ideas.md')])
+  })
+})
+
+describe('files dropped on a folder (R2.9)', () => {
+  let outside
+  beforeEach(async () => {
+    outside = await mkdtemp(join(tmpdir(), 'scrinotia-outside-'))
+  })
+  afterEach(async () => {
+    await rm(outside, { recursive: true, force: true })
+  })
+
+  it('copies a file of any type into the folder, leaving the original', async () => {
+    const pdf = join(outside, 'Report.pdf')
+    const zip = join(outside, 'data.zip')
+    await writeFile(pdf, 'pdf bytes')
+    await writeFile(zip, 'zip bytes')
+    expect(await importFile(root, pdf, 'Projects')).toBe('Projects/Report.pdf')
+    expect(await importFile(root, zip, 'Projects')).toBe('Projects/data.zip')
+    expect(await readFile(join(root, 'Projects', 'Report.pdf'), 'utf8')).toBe('pdf bytes')
+    expect(await readFile(pdf, 'utf8')).toBe('pdf bytes')
+  })
+
+  it('numbers the name when it is taken, never overwriting', async () => {
+    const note = join(outside, 'Plan.md')
+    await writeFile(note, 'fresh')
+    const rel = await importFile(root, note, 'Projects/Archive')
+    expect(rel).not.toBe('Projects/Archive/Plan.md')
+    expect(rel.startsWith('Projects/Archive/Plan')).toBe(true)
+    expect(await readFile(join(root, 'Projects', 'Archive', 'Plan.md'), 'utf8')).not.toBe('fresh')
+    expect(await readFile(join(root, rel), 'utf8')).toBe('fresh')
+  })
+
+  it('copies to the vault root when the folder is empty', async () => {
+    const file = join(outside, 'loose.txt')
+    await writeFile(file, 'x')
+    expect(await importFile(root, file, '')).toBe('loose.txt')
+  })
+
+  it('refuses a folder by name, copying nothing', async () => {
+    const dir = join(outside, 'Photos')
+    await mkdir(dir)
+    await writeFile(join(dir, 'a.png'), 'x')
+    await expect(importFile(root, dir, 'Projects')).rejects.toThrow('"Photos" is a folder; only files are copied')
+    expect(flatten(await scanVault(root))).not.toContain('Projects/Photos')
+  })
+
+  it('refuses a destination outside the vault', async () => {
+    const file = join(outside, 'x.txt')
+    await writeFile(file, 'x')
+    await expect(importFile(root, file, '../elsewhere')).rejects.toThrow(/outside the vault/)
   })
 })

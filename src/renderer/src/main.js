@@ -17,7 +17,7 @@ import { renderAttachment, attachmentKind, findable } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
 import { fuzzyRank } from './fuzzy.js'
 import { diskConflict } from './conflicts.js'
-import { PATH_TYPE, FOLDER_TYPE, dragData, noteAccepts } from './dragTypes.js'
+import { PATH_TYPE, FOLDER_TYPE, dragData, noteAccepts, treeDrop } from './dragTypes.js'
 import { resultsTree } from './resultsTree.js'
 import { attachPanZoom, keepViewsFor } from './diagramView.js'
 import { mountModel } from './modelViewer.js'
@@ -318,8 +318,11 @@ function findEntry(entries, path) {
   }
   return null
 }
+function errorText(err) {
+  return String(err.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+}
 function showError(el, err) {
-  el.textContent = err ? String(err.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : ''
+  el.textContent = err ? errorText(err) : ''
 }
 // The folder new entries go into: the selected folder, or the selected file's folder.
 function targetFolder() {
@@ -462,11 +465,20 @@ function renderEntry(entry) {
   li.append(row)
   if (entry.type === 'folder') {
     if (view.expanded.has(entry.path)) li.classList.add('open')
-    row.addEventListener('dragover', (e) => e.preventDefault())
+    // The folder under the pointer is highlighted (R2.9); files from outside
+    // the vault are copied into it, a row from the tree is moved into it.
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      const kind = treeDrop(e.dataTransfer?.types)
+      e.dataTransfer.dropEffect = readOnly || !kind ? 'none' : kind
+      row.classList.toggle('drop-target', !readOnly && !!kind)
+    })
+    row.addEventListener('dragleave', () => row.classList.remove('drop-target'))
     row.addEventListener('drop', (e) => {
       e.preventDefault()
       e.stopPropagation()
-      moveInto(e.dataTransfer.getData(PATH_TYPE), entry.path)
+      row.classList.remove('drop-target')
+      dropOnFolder(e.dataTransfer, entry.path)
     })
     const ul = document.createElement('ul')
     ul.setAttribute('role', 'group')
@@ -476,12 +488,45 @@ function renderEntry(entry) {
   return li
 }
 
-// Dropping on the empty part of the tree moves to the vault root.
-$('tree').addEventListener('dragover', (e) => e.preventDefault())
+// Dropping on the empty part of the tree acts on the vault root.
+$('tree').addEventListener('dragover', (e) => {
+  e.preventDefault()
+  e.dataTransfer.dropEffect = readOnly || !treeDrop(e.dataTransfer?.types) ? 'none' : treeDrop(e.dataTransfer.types)
+})
 $('tree').addEventListener('drop', (e) => {
   e.preventDefault()
-  moveInto(e.dataTransfer.getData(PATH_TYPE), '')
+  dropOnFolder(e.dataTransfer, '')
 })
+
+// A drop on a folder ('' is the vault root): files from outside the vault are
+// copied in (R2.9), a row dragged within the tree is moved (R2.3).
+function dropOnFolder(data, folder) {
+  if (treeDrop(data.types) === 'copy') return copyFilesInto(data.files, folder)
+  return moveInto(data.getData(PATH_TYPE), folder)
+}
+
+// Copies each dropped file into the folder whatever its type (a numbered name
+// if the name is taken), refuses a dropped folder by name, and carries on with
+// the others; the folder is opened to show what arrived (R2.9).
+async function copyFilesInto(files, folder) {
+  if (readOnly) return
+  const sources = Array.from(files)
+    .map((file) => api.pathForFile(file))
+    .filter(Boolean)
+  if (!sources.length) return
+  showError($('pane-error'), null)
+  const problems = []
+  for (const source of sources) {
+    try {
+      await api.copyInto(source, folder)
+    } catch (err) {
+      problems.push(errorText(err))
+    }
+  }
+  if (folder) view.expanded.add(folder)
+  await refreshTree()
+  if (problems.length) showError($('pane-error'), problems.join(' '))
+}
 
 async function moveInto(from, folder) {
   if (readOnly || !from || parentOf(from) === folder) return
