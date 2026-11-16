@@ -213,6 +213,7 @@ export async function writeAttachment(root, folderRel, base, ext, bytes) {
 export async function importFile(root, sourcePath, folderRel) {
   const src = resolve(sourcePath)
   const info = await stat(src)
+  if (info.isDirectory()) throw new Error(`"${basename(src)}" is a folder; only files are copied`)
   if (!info.isFile()) throw new Error(`not a file: ${sourcePath}`)
   if (folderRel) await mkdir(resolveInside(root, folderRel), { recursive: true })
   const name = basename(src)
