@@ -14,6 +14,16 @@ export function dragData(path, isFolder) {
   return isFolder ? { [PATH_TYPE]: path, [FOLDER_TYPE]: path } : { [PATH_TYPE]: path }
 }
 
+// What a drop on the file tree does with a drag of these types (R2.9, R2.3):
+// 'move' for a row dragged within the tree, 'copy' for files from outside
+// the vault, and null for anything else.
+export function treeDrop(types) {
+  const t = Array.from(types ?? [])
+  if (t.includes(PATH_TYPE)) return 'move'
+  if (t.includes('Files')) return 'copy'
+  return null
+}
+
 // Whether a drag with these types may be dropped on a note: files from
 // outside the vault, or a file from inside it, but not a folder.
 export function noteAccepts(types) {

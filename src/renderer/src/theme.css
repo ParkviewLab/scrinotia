@@ -239,11 +239,23 @@ button:hover {
   color: var(--accent);
 }
 .tree .folder > .row::before {
-  content: '▸ ';
-  color: var(--muted);
+  content: '▸';
+  display: inline-block;
+  width: 1.4em;
+  margin-right: 0.15em;
+  font-size: 1.5em;
+  line-height: 0.6;
+  vertical-align: -0.1em;
+  text-align: center;
+  color: var(--fg);
 }
 .tree .folder.open > .row::before {
-  content: '▾ ';
+  content: '▾';
+}
+.tree .row.drop-target {
+  background: var(--select);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
 .tree .folder:not(.open) > ul {
   display: none;
