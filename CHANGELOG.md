@@ -4,6 +4,20 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.24.0] - 2026-11-16
+
+### Highlights
+
+Files dragged in from outside the vault can now be dropped onto a folder in the file tree to copy them into it — originals are left in place, name clashes get a numbered suffix, and files dropped on empty space land in the vault root; the target folder is highlighted during the drag and opens to show what arrived. Dropped folders are refused with a message naming them, though any files alongside them are still copied, and nothing is copied in a read-only workspace. Dragging rows within the tree still moves them, and dragging a row onto a note still links it. Folder triangles are drawn about 1.5 times larger, in the text colour, at a fixed width.
+
+### Features
+
+- Copy files dropped on a folder into it, and larger folder triangles (#141)
+
+### Docs
+
+- README for v0.24.0 (#142)
+
 ## [v0.23.1] - 2026-11-06
 
 ### Highlights
