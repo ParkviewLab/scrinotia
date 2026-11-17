@@ -32,19 +32,8 @@ Open questions: whether the mapping should also cover the documentation sites (`
 
 Raised 2026-10-19; reduced 2026-10-24 when the workspace shipped.
 
-## Bookmarks: places in a note, remembered by several locators
+## Bookmarks in HTML files
 
-A bookmark remembers a place inside a file, not just the file: text is selected in a note (in the preview or the source), and a right click offers Bookmark selection. A click on the bookmark later opens the file, scrolls to the remembered words and marks them, as a click on a search result does (R5.1). The selected words also serve as the bookmark's label.
+Bookmarks of a selected passage shipped for Markdown notes (R2.10, 2026-11-16). What remains is HTML: an HTML file is shown read-only in a sandboxed frame (R2.6), so nothing may be written into it, and a bookmark there could keep only the selected words, the nearest element `id` already in the page, and the heading above. Two things are untested: whether a selection made inside the frame can be read at all, since the sandbox hides it from the app (a script inside the frame may be needed, as for find in HTML, above); and whether the browser engine's text fragments (`#:~:text=`) scroll to and mark the words inside this frame.
 
-Settled so far:
-
-- A bookmark keeps several locators, and the strongest that still works is used: markers written into the note (where that is safe), the selected words with a few words before and after them (to tell repeats apart), the heading path (such as Plan › Migration), and the position, as a last resort. A bookmark found by a weaker locator can be repaired.
-- In a Markdown note, where it is safe, the bookmark writes two markers: a comment pair around the selected words (`%%bm:<name>%%` before, `%%/bm:<name>%%` after), which pins the exact words and survives edits around them; and a block id (`^<name>`) at the end of the paragraph or list item that holds them, reusing one the block already has, which also makes the place a link target for any note (`[[Note#^<name>]]`, `![[Note#^<name>]]`) in Scrinotia and Obsidian alike. Both are hidden in each application's reading view and shown dimmed in Obsidian's editing view (checked in a demo vault, 2026-11-16).
-- A marker is not safe, and is not written, inside code (fenced or inline), frontmatter, math, a link or wikilink, or table syntax; a block id is not written where a line cannot end with one (a code block, a table, a heading). There, and in HTML files (read-only, sandboxed, R2.6) and read-only workspaces (R2.8), the bookmark keeps the words, heading and position only. A selection made in the preview is found in the source first; where it crosses formatting, the markers widen to the nearest safe boundary or are skipped.
-- The name is derived from the selection, readable rather than random: the first three or four significant words, lower-case letters, digits and hyphens only (the characters both applications accept in a block id), accents removed, under about 30 characters, made unique within the note with `-2`, `-3`; a short random id where nothing usable remains. The comment pair and the block id share the name.
-- Deleting a bookmark removes its markers, so that orphaned comments do not accumulate; a marker with no bookmark is ignored.
-- A known risk of writing markers: deleting a single `%` of a marker leaves an unclosed `%%`, which hides the text that follows, in both applications.
-
-Open questions: where the bookmark list is kept (proposed: `.scrinotia/bookmarks.json` in the vault, so that bookmarks follow the vault between machines, updated when notes are renamed or moved, as links are, R2.4); how the list is shown (proposed: a Bookmarks choice in the left panel's pull-down beside Files and Tags); whether the mark on opening fades as a search result's does or stays; and whether HTML can be bookmarked and marked at all, since the sandbox hides a selection inside the frame from the page, which the browser engine's text fragments (`#:~:text=`) might work around, untested in this frame. Whether to read Obsidian's own bookmarks file is also open; neither vault in use has one.
-
-Raised 2026-11-16.
+Raised 2026-11-16; reduced the same day when the Markdown stage was planned.

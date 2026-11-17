@@ -17,6 +17,7 @@ import { createIndex } from './linkIndex.js'
 import { isWorkspace, scanWorkspace, repositoriesIn, inWorkspace } from './workspace.js'
 import { renderBase } from './bases.js'
 import { readSettings, writeSettings } from './vaultSettings.js'
+import { normaliseStore, moveInStore } from '../shared/bookmarks.js'
 import { openAboutWindow, openLicensesWindow } from './about.js'
 import { configureSpelling } from './spelling.js'
 import appIcon from '../../build/icon.png?asset'
@@ -159,12 +160,26 @@ function filesUnder(ctx, rel) {
   return ctx.index.files().filter((f) => f === rel || f.startsWith(rel + '/'))
 }
 
+// The bookmarks of notes that moved follow them (R2.4, R2.10). The file is
+// written only when a bookmark changed, so a vault without bookmarks gets no
+// bookmarks file (R1.1).
+async function moveBookmarks(root, moves) {
+  try {
+    const store = normaliseStore((await readSettings(root, 'bookmarks')).values)
+    const next = moveInStore(store, moves)
+    if (next !== store) await writeSettings(root, 'bookmarks', next)
+  } catch (err) {
+    console.error('bookmarks not updated after a move:', err)
+  }
+}
+
 // Rename or move, then rewrite the links that pointed at what moved (R2.4).
 // A note whose text changed since it was indexed is left alone and reported.
 async function moveEntry(ctx, from, to) {
   const moves = filesUnder(ctx, from).map((f) => [f, to + f.slice(from.length)])
   const edits = ctx.index.planRename(moves)
   await vault.move(ctx.root, from, to)
+  await moveBookmarks(ctx.root, moves)
   const updated = []
   const skipped = []
   for (const edit of edits) {
@@ -426,6 +441,8 @@ function buildMenu() {
         { label: 'Find Next', accelerator: 'CmdOrCtrl+G', click: (_item, win) => win?.webContents.send('ui:find-step', 1) },
         { label: 'Find Previous', accelerator: 'Shift+CmdOrCtrl+G', click: (_item, win) => win?.webContents.send('ui:find-step', -1) },
         { label: 'Find in Vault…', accelerator: 'CmdOrCtrl+Shift+F', click: (_item, win) => win?.webContents.send('ui:find-vault') },
+        { type: 'separator' },
+        { label: 'Bookmark Selection', click: (_item, win) => win?.webContents.send('ui:bookmark') },
       ],
     },
     {

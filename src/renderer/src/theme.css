@@ -1356,3 +1356,52 @@ body.full-view .links {
 body.read-only :is(#new-note, #new-folder, #rename, #delete) {
   display: none;
 }
+
+/* Bookmarks (R2.10): the selected words, or the nickname above them, then
+   the note and heading; a missing note dimmed; the row a drag would land
+   before marked by a line. */
+.bookmark-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+}
+.bookmark-list li.bm {
+  padding: 4px 12px;
+  cursor: pointer;
+  border-top: 2px solid transparent;
+}
+.bookmark-list li.bm:hover,
+.bookmark-list li.bm.selected {
+  background: var(--select);
+}
+.bookmark-list li.bm.selected .bm-label {
+  color: var(--accent);
+}
+.bookmark-list .bm-label,
+.bookmark-list .bm-where {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bookmark-list .bm-where {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+.bookmark-list .bm-words {
+  font-style: italic;
+}
+.bookmark-list li.bm.missing {
+  opacity: 0.55;
+}
+.bookmark-list li.bm.drop-before {
+  border-top-color: var(--accent);
+}
+.bookmark-list li.info {
+  padding: 6px 12px;
+  color: var(--muted);
+}
+.bookmark-list input {
+  width: 100%;
+}

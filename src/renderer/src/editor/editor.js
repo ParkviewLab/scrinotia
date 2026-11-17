@@ -205,6 +205,27 @@ export function createEditor(parent, { onUserChange, onScroll, vault, onPasteIma
       const at = pos ?? view.state.doc.length
       view.dispatch({ changes: { from: at, insert: text }, selection: { anchor: at + text.length }, userEvent: 'input.drop' })
     },
+    // The main selection, as positions in the note, and whether the editor
+    // has the keyboard focus.
+    selectionRange: () => ({ from: view.state.selection.main.from, to: view.state.selection.main.to }),
+    hasFocus: () => view.hasFocus,
+    // Inserts at several positions of the current text at once, as one edit
+    // of the user's (so it saves and can be undone): [{ from, insert }].
+    applyInserts(inserts) {
+      if (!inserts.length) return
+      view.dispatch({ changes: inserts.map((c) => ({ from: c.from, insert: c.insert })), userEvent: 'input.bookmark' })
+    },
+    // Replaces the text with text, as one edit of the user's that changes
+    // only the part between what the two share at either end.
+    replaceText(text) {
+      const old = view.state.doc.toString()
+      if (old === text) return
+      let a = 0
+      while (a < old.length && a < text.length && old[a] === text[a]) a++
+      let b = 0
+      while (b < old.length - a && b < text.length - a && old[old.length - 1 - b] === text[text.length - 1 - b]) b++
+      view.dispatch({ changes: { from: a, to: old.length - b, insert: text.slice(a, text.length - b) }, userEvent: 'delete.bookmark' })
+    },
     // Replaces the selection with text, as a paste of the user's.
     paste(text) {
       view.dispatch(view.state.replaceSelection(text), { userEvent: 'input.paste', scrollIntoView: true })
