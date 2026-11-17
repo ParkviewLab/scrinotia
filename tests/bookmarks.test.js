@@ -206,3 +206,15 @@ describe('the stored list (R2.10)', () => {
     expect(moveInStore(store, [['Other.md', 'X.md']])).toBe(store)
   })
 })
+
+describe('markers as an editor applies them (R2.10)', () => {
+  it('gives inserts in the original positions that make the same text', () => {
+    const [from] = span(NOTE, 'rollback ready')
+    const [, to] = span(NOTE, 'if the checks fail.')
+    const out = insertMarkers(NOTE, from, to, 'end')
+    let text = NOTE
+    for (const c of [...out.inserts].reverse()) text = text.slice(0, c.from) + c.insert + text.slice(c.from)
+    expect(text).toBe(out.text)
+    expect(out.text).toContain('fail.%%/bm:end%% ^end\n')
+  })
+})

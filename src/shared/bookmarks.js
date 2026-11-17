@@ -140,7 +140,7 @@ export function markerPlan(text, from, to) {
 }
 
 // The note with a bookmark's markers written, and what was written:
-// { text, marker: name | null, blockId: id | null, blockIdCreated }.
+// { text, inserts, marker: name | null, blockId: id | null, blockIdCreated }.
 export function insertMarkers(text, from, to, name) {
   const { pair, block } = markerPlan(text, from, to)
   const changes = []
@@ -158,12 +158,14 @@ export function insertMarkers(text, from, to, name) {
       changes.push({ at: block.at, insert: ` ^${name}` })
     }
   }
-  // Applied from the end, so earlier positions stay valid; at one position the
-  // pair's end comes before the block id.
-  changes.sort((x, y) => y.at - x.at || (x.insert.startsWith(' ^') ? -1 : 1))
+  // In order of position; at one position the pair's end comes before the
+  // block id. `inserts` are positions in the text as it was, as an editor
+  // takes them.
+  changes.sort((x, y) => x.at - y.at || (x.insert.startsWith(' ^') ? 1 : -1))
   let out = text
-  for (const c of changes) out = out.slice(0, c.at) + c.insert + out.slice(c.at)
-  return { text: out, marker: pair ? name : null, blockId, blockIdCreated }
+  for (const c of [...changes].reverse()) out = out.slice(0, c.at) + c.insert + out.slice(c.at)
+  const inserts = changes.map((c) => ({ from: c.at, insert: c.insert }))
+  return { text: out, inserts, marker: pair ? name : null, blockId, blockIdCreated }
 }
 
 // The note without a bookmark's comment pair, and without its block id when
