@@ -4,6 +4,21 @@ All notable changes to this project are recorded here.
 
 ## [Unreleased]
 
+## [v0.25.0] - 2026-11-16
+
+### Highlights
+
+You can now bookmark a selected passage in a note: select text in the preview or the source and use the right-click menu or Edit, Bookmark Selection. In writable Markdown notes, and only where it is safe to do so, the bookmark is recorded in the file itself as a comment pair around the words plus a block id on the block where they start, and the surrounding text, heading path and line are also stored in `.scrinotia/bookmarks.json` so the passage can still be found if the file changes; opening a bookmark highlights the words the way a search result is highlighted. Bookmarks appear newest-first in a pull-down in the left panel, where rows can be reordered by dragging and given a nickname, deleting one also removes the markers it added, and bookmarks pointing at a missing note are dimmed; renaming or moving a note carries its bookmarks with it.
+
+### Features
+
+- Bookmarks of a selected passage in a note (#145)
+
+### Docs
+
+- In-flight idea, bookmarks of places in a note (#144)
+- README for v0.25.0 (#146)
+
 ## [v0.24.0] - 2026-11-16
 
 ### Highlights
