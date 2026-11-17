@@ -31,3 +31,9 @@ The rest of this idea, opening the directory of every repository as one read-onl
 Open questions: whether the mapping should also cover the documentation sites (`<owner>.github.io/<repo>/...`); which worktree a link to a branch the workspace lacks should open, if any.
 
 Raised 2026-10-19; reduced 2026-10-24 when the workspace shipped.
+
+## Bookmarks in HTML files
+
+Bookmarks of a selected passage shipped for Markdown notes (R2.10, 2026-11-16). What remains is HTML: an HTML file is shown read-only in a sandboxed frame (R2.6), so nothing may be written into it, and a bookmark there could keep only the selected words, the nearest element `id` already in the page, and the heading above. Two things are untested: whether a selection made inside the frame can be read at all, since the sandbox hides it from the app (a script inside the frame may be needed, as for find in HTML, above); and whether the browser engine's text fragments (`#:~:text=`) scroll to and mark the words inside this frame.
+
+Raised 2026-11-16; reduced the same day when the Markdown stage was planned.

@@ -15,6 +15,18 @@ import { EditorView } from '@codemirror/view'
 import { renderCell } from './baseCells.js'
 import { renderAttachment, attachmentKind, findable } from './attachments.js'
 import { extractSection, listHeadings } from '../../shared/sections.js'
+import {
+  bookmarkName,
+  namesInNote,
+  insertMarkers,
+  removeMarkers,
+  captureLocators,
+  renderedWords,
+  locateRendered,
+  resolveBookmark,
+  headingPath,
+  normaliseStore,
+} from '../../shared/bookmarks.js'
 import { fuzzyRank } from './fuzzy.js'
 import { diskConflict } from './conflicts.js'
 import { PATH_TYPE, FOLDER_TYPE, dragData, noteAccepts, treeDrop } from './dragTypes.js'
@@ -396,6 +408,7 @@ async function enterVault(opener) {
     renderTree()
     await renderPane()
     await loadVaultSettings()
+    await loadBookmarks()
   } catch (err) {
     showError($('start-error'), err)
   }
@@ -891,6 +904,7 @@ api.onEditMenu(async ({ x, y, misspelled, suggestions = [] }) => {
     items.push({ id: 'learn', label: 'Add to dictionary' }, { type: 'separator' })
   }
   if (here.link) items.push({ id: 'follow', label: 'Follow link' }, { id: 'follow-tab', label: 'Open link in new tab' }, { type: 'separator' })
+  if (here.selection && notes.get(current)?.kind === 'note') items.push({ id: 'bookmark', label: 'Bookmark selection' }, { type: 'separator' })
   items.push(
     { id: 'cut', label: 'Cut', enabled: here.selection },
     { id: 'copy', label: 'Copy', enabled: here.selection },
@@ -908,6 +922,7 @@ api.onEditMenu(async ({ x, y, misspelled, suggestions = [] }) => {
   else if (choice === 'learn') api.addToDictionary(misspelled)
   else if (choice === 'follow' || choice === 'follow-tab') follow({ kind: here.link.kind, ref: here.link.ref, newTab: choice === 'follow-tab' })
   else if (choice === 'select-all') editor.selectAll()
+  else if (choice === 'bookmark') bookmarkFromEditor()
   else if (['cut', 'copy', 'paste'].includes(choice)) api.editCommand(choice)
 })
 
@@ -1337,6 +1352,11 @@ api.onFindStep((by) => {
   if (editorShown() && editor.findOpen() && (noteMode === 'source' || $('preview-find').hidden)) editor.findStep(by)
   else if (!$('preview-find').hidden) stepPreviewFind(by)
 })
+api.onBookmark(() => {
+  if ($('workspace').hidden || !current || notes.get(current)?.kind !== 'note') return
+  if (editorShown() && editor.hasFocus()) bookmarkFromEditor()
+  else bookmarkFromPreview()
+})
 api.onFindVault(() => {
   if ($('workspace').hidden) return
   setSidePane('files')
@@ -1561,13 +1581,17 @@ $('preview').addEventListener('auxclick', (e) => {
 })
 $('preview').addEventListener('contextmenu', async (e) => {
   const el = e.target.closest('[data-wikilink], [data-href]')
-  if (!el) return
+  const selected = notes.get(current)?.kind === 'note' ? previewSelection() : null
+  if (!el && !selected) return
   e.preventDefault()
-  const choice = await api.menu([
-    { id: 'open', label: 'Open' },
-    { id: 'tab', label: 'Open in new tab' },
-  ])
-  if (choice) previewLink({ target: el, preventDefault() {} }, choice === 'tab')
+  const items = []
+  if (el) items.push({ id: 'open', label: 'Open' }, { id: 'tab', label: 'Open in new tab' })
+  if (el && selected) items.push({ type: 'separator' })
+  if (selected) items.push({ id: 'copy', label: 'Copy' }, { id: 'bookmark', label: 'Bookmark selection' })
+  const choice = await api.menu(items)
+  if (choice === 'open' || choice === 'tab') previewLink({ target: el, preventDefault() {} }, choice === 'tab')
+  else if (choice === 'copy') api.editCommand('copy')
+  else if (choice === 'bookmark') bookmarkFromPreview(selected)
 })
 
 // Each system's own name for showing a file in its file manager.
@@ -1998,7 +2022,7 @@ $('search').addEventListener('keydown', (e) => {
 })
 
 async function runSearch() {
-  if (sidePane === 'field') return
+  if (sidePane !== 'files') return
   const q = $('search').value.trim()
   const seq = ++searchSeq
   if (!q) {
@@ -2171,7 +2195,7 @@ function clearReveal() {
   reveal = null
 }
 
-function revealLine(line) {
+function revealLine(line, { terms = resultTerms, endLine = line } = {}) {
   clearReveal()
   if (!line || !current) return
   if (noteMode === 'source') {
@@ -2189,10 +2213,14 @@ function revealLine(line) {
   }
   const place = () => {
     const els = [...pv.querySelectorAll(`[${LINE}]`)].filter((el) => !el.parentElement?.closest('details:not([open])'))
-    const el = els[blockForLine(els.map((e) => Number(e.getAttribute(LINE))), line)]
+    const lines = els.map((e) => Number(e.getAttribute(LINE)))
+    const first = blockForLine(lines, line)
+    const el = els[first]
     if (!el) return
     if (pinned) el.scrollIntoView({ block: 'center' })
-    ranges = findTermMatches(el, resultTerms)
+    // A bookmark's words may run over several blocks (R2.10).
+    const last = Math.max(first, blockForLine(lines, endLine))
+    ranges = els.slice(first, last + 1).flatMap((e) => findTermMatches(e, terms))
     paint()
   }
   const state = { timers: [], listeners: [] }
@@ -2342,6 +2370,7 @@ async function rename(from, to) {
   }
   if (current) current = remap(current)
   await refreshTree()
+  await loadBookmarks()
   renderPane()
 }
 
@@ -2505,22 +2534,28 @@ window.addEventListener('keydown', (e) => {
 // ---- the left panel's pull-down (R4.5): Files, or one of the vault's listed
 // fields (tags first), each with its values and the number of notes that have
 // them, a tag's nested under its parents; a click searches for the value ----
-let sidePane = 'files' // 'files' or 'field'
+let sidePane = 'files' // 'files', 'bookmarks' (R2.10) or 'field'
 let sideField = null
 function setSidePane(which, field = null) {
   sidePane = which
   sideField = which === 'field' ? field : null
-  $('side-pane').value = which === 'field' ? `f:${field}` : ''
+  $('side-pane').value = which === 'field' ? `f:${field}` : which === 'bookmarks' ? 'bm' : ''
   $('tag-list').hidden = which !== 'field'
+  $('bookmark-list').hidden = which !== 'bookmarks'
   if (which === 'field') {
     $('tree').hidden = true
     $('results').hidden = true
     renderFieldValues()
+  } else if (which === 'bookmarks') {
+    $('tree').hidden = true
+    $('results').hidden = true
+    renderBookmarks()
   } else runSearch()
 }
 $('side-pane').addEventListener('change', () => {
   const v = $('side-pane').value
   if (v.startsWith('f:')) setSidePane('field', v.slice(2))
+  else if (v === 'bm') setSidePane('bookmarks')
   else setSidePane('files')
 })
 
@@ -2534,7 +2569,7 @@ async function refreshFields() {
     fields = []
   }
   const select = $('side-pane')
-  const options = [['', 'Files'], ...fields.map(([f]) => [`f:${f}`, f])]
+  const options = [['', 'Files'], ['bm', 'Bookmarks'], ...fields.map(([f]) => [`f:${f}`, f])]
   select.replaceChildren(
     ...options.map(([value, label]) => {
       const o = document.createElement('option')
@@ -2544,7 +2579,310 @@ async function refreshFields() {
     }),
   )
   if (sidePane === 'field' && !fields.some(([f]) => f === sideField)) setSidePane('files')
-  else select.value = sidePane === 'field' ? `f:${sideField}` : ''
+  else select.value = sidePane === 'field' ? `f:${sideField}` : sidePane === 'bookmarks' ? 'bm' : ''
+}
+
+// ---- bookmarks (R2.10): a selected passage of a note, kept in
+// .scrinotia/bookmarks.json with the markers and words that find it again ----
+const BOOKMARK_TYPE = 'text/x-scrinotia-bookmark'
+let bookmarks = normaliseStore({})
+let selectedBookmark = null
+// How each bookmark was last found ('marker', 'block', 'quote', 'heading',
+// 'line'), for the row of one found only by its heading or line.
+const bookmarkFoundBy = new Map()
+
+async function loadBookmarks() {
+  try {
+    bookmarks = normaliseStore((await api.getSettings('bookmarks'))?.values ?? {})
+  } catch {
+    bookmarks = normaliseStore({})
+  }
+  if (sidePane === 'bookmarks') renderBookmarks()
+}
+
+async function saveBookmarks(next) {
+  bookmarks = next
+  if (sidePane === 'bookmarks') renderBookmarks()
+  try {
+    await api.setSettings('bookmarks', bookmarks)
+  } catch (err) {
+    showError($('pane-error'), err)
+  }
+}
+
+// The selection in the preview, with the source lines it lies between: the
+// line of the block it starts in, and the line before the block after the
+// one it ends in.
+function previewSelection() {
+  const sel = window.getSelection()
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return null
+  const range = sel.getRangeAt(0)
+  const pv = $('preview')
+  if (!pv.contains(range.commonAncestorContainer)) return null
+  const text = sel.toString().replace(/\s+/g, ' ').trim()
+  if (!text) return null
+  const stampOf = (node) => (node.nodeType === 1 ? node : node.parentElement)?.closest(`[${LINE}]`)
+  const a = stampOf(range.startContainer)
+  if (!a) return null
+  const b = stampOf(range.endContainer) ?? a
+  const startLine = Number(a.getAttribute(LINE))
+  const endStart = Math.max(startLine, Number(b.getAttribute(LINE)))
+  const after = [...pv.querySelectorAll(`[${LINE}]`)].map((e) => Number(e.getAttribute(LINE))).filter((l) => l > endStart)
+  const endLine = after.length ? Math.min(...after) - 1 : Number.MAX_SAFE_INTEGER
+  return { text, startLine, endLine }
+}
+
+function bookmarkFromEditor() {
+  if (!current || notes.get(current)?.kind !== 'note') return
+  const { from, to } = editor.selectionRange()
+  if (to > from) createBookmark({ from, to })
+}
+
+function bookmarkFromPreview(selected = previewSelection()) {
+  if (!current || !selected || notes.get(current)?.kind !== 'note') return
+  const range = locateRendered(editor.text(), selected.startLine, selected.endLine, selected.text)
+  createBookmark(range, selected)
+}
+
+// Bookmarks the open note's text[range.from, range.to], or, where the words
+// were not found in the source, the selected words alone (R2.10).
+function createBookmark(range, selected = null) {
+  const path = current
+  const text = editor.text()
+  const label = selected?.text ?? renderedWords(text.slice(range.from, range.to))
+  if (!label) return
+  const name = bookmarkName(label, new Set([...namesInNote(text), ...Object.keys(bookmarks.items)]))
+  const record = { path, created: new Date().toISOString(), label }
+  if (range) {
+    Object.assign(record, captureLocators(text, range.from, range.to))
+    if (!readOnly) {
+      const out = insertMarkers(text, range.from, range.to, name)
+      editor.applyInserts(out.inserts)
+      if (out.marker) record.marker = out.marker
+      if (out.blockId) Object.assign(record, { blockId: out.blockId, blockIdCreated: out.blockIdCreated })
+    }
+  } else {
+    const lineStart = text.split('\n').slice(0, selected.startLine - 1).join('\n').length
+    Object.assign(record, {
+      quote: { exact: selected.text, prefix: '', suffix: '' },
+      heading: headingPath(text, lineStart),
+      line: selected.startLine,
+    })
+  }
+  selectedBookmark = name
+  saveBookmarks({ order: [name, ...bookmarks.order], items: { ...bookmarks.items, [name]: record } })
+}
+
+const noteTitle = (path) => path.slice(path.lastIndexOf('/') + 1).replace(/\.md$/i, '')
+
+function renderBookmarks() {
+  const list = $('bookmark-list')
+  if (!bookmarks.order.length) {
+    const li = document.createElement('li')
+    li.className = 'info'
+    li.textContent = 'No bookmarks. Select text in a note, right-click it, and choose Bookmark selection.'
+    list.replaceChildren(li)
+    return
+  }
+  const present = new Set(files())
+  list.replaceChildren(
+    ...bookmarks.order.map((key) => {
+      const bm = bookmarks.items[key]
+      const li = document.createElement('li')
+      li.className = 'bm'
+      li.dataset.key = key
+      const missing = !present.has(bm.path)
+      li.classList.toggle('missing', missing)
+      li.classList.toggle('selected', selectedBookmark === key)
+      const label = document.createElement('span')
+      label.className = 'bm-label'
+      label.textContent = bm.nickname || `“${bm.label}”`
+      const where = document.createElement('span')
+      where.className = 'bm-where'
+      if (bm.nickname) {
+        const words = document.createElement('span')
+        words.className = 'bm-words'
+        words.textContent = `“${bm.label}”`
+        where.append(words, ' · ')
+      }
+      const heading = (bm.heading ?? []).at(-1)
+      let place = heading && heading !== noteTitle(bm.path) ? `${noteTitle(bm.path)} › ${heading}` : noteTitle(bm.path)
+      if (missing) place = `${place} · note not found`
+      else if (bookmarkFoundBy.get(key) === 'heading') place = `${place} · found by heading only`
+      else if (bookmarkFoundBy.get(key) === 'line') place = `${place} · found by line only`
+      where.append(place)
+      li.append(label, where)
+      li.title = `${bm.path}${heading ? ` › ${heading}` : ''}\n“${bm.label}”`
+      li.draggable = true
+      li.addEventListener('click', (e) => openBookmark(key, { newTab: e.metaKey || e.ctrlKey }))
+      li.addEventListener('auxclick', (e) => {
+        if (e.button === 1) openBookmark(key, { newTab: true })
+      })
+      li.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+        bookmarkMenu(key, li)
+      })
+      // Dragging a row onto another puts it before that one.
+      li.addEventListener('dragstart', (e) => e.dataTransfer.setData(BOOKMARK_TYPE, key))
+      li.addEventListener('dragover', (e) => {
+        if (!e.dataTransfer.types.includes(BOOKMARK_TYPE)) return
+        e.preventDefault()
+        e.stopPropagation()
+        li.classList.add('drop-before')
+      })
+      li.addEventListener('dragleave', () => li.classList.remove('drop-before'))
+      li.addEventListener('drop', (e) => {
+        li.classList.remove('drop-before')
+        const moved = e.dataTransfer.getData(BOOKMARK_TYPE)
+        if (!moved) return
+        e.preventDefault()
+        e.stopPropagation()
+        reorderBookmark(moved, key)
+      })
+      return li
+    }),
+  )
+}
+
+// Moves a bookmark before another, or to the end when `before` is null.
+function reorderBookmark(key, before) {
+  if (key === before || !bookmarks.items[key]) return
+  const order = bookmarks.order.filter((k) => k !== key)
+  const at = before ? order.indexOf(before) : -1
+  order.splice(at < 0 ? order.length : at, 0, key)
+  saveBookmarks({ ...bookmarks, order })
+}
+$('bookmark-list').addEventListener('dragover', (e) => {
+  if (e.dataTransfer.types.includes(BOOKMARK_TYPE)) e.preventDefault()
+})
+$('bookmark-list').addEventListener('drop', (e) => {
+  const moved = e.dataTransfer.getData(BOOKMARK_TYPE)
+  if (!moved) return
+  e.preventDefault()
+  reorderBookmark(moved, null)
+})
+
+async function bookmarkMenu(key, li) {
+  const bm = bookmarks.items[key]
+  if (!bm) return
+  const choice = await api.menu([
+    { id: 'open', label: 'Open' },
+    { id: 'tab', label: 'Open in new tab' },
+    { type: 'separator' },
+    { id: 'nickname', label: 'Set nickname…' },
+    { id: 'clear', label: 'Clear nickname', enabled: Boolean(bm.nickname) },
+    { type: 'separator' },
+    { id: 'delete', label: 'Delete bookmark' },
+  ])
+  if (choice === 'open' || choice === 'tab') openBookmark(key, { newTab: choice === 'tab' })
+  else if (choice === 'nickname') editNickname(key, li)
+  else if (choice === 'clear') setNickname(key, '')
+  else if (choice === 'delete') deleteBookmark(key)
+}
+
+// The nickname is edited in its row; Enter or leaving the field keeps it,
+// Escape does not. It never changes the note.
+function editNickname(key, li) {
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.value = bookmarks.items[key]?.nickname ?? ''
+  input.placeholder = 'Nickname'
+  li.querySelector('.bm-label').replaceWith(input)
+  li.draggable = false
+  input.focus()
+  let done = false
+  const finish = (keep) => {
+    if (done) return
+    done = true
+    if (keep) setNickname(key, input.value)
+    else renderBookmarks()
+  }
+  input.addEventListener('click', (e) => e.stopPropagation())
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') finish(true)
+    if (e.key === 'Escape') finish(false)
+  })
+  input.addEventListener('blur', () => finish(true))
+}
+
+function setNickname(key, value) {
+  const bm = bookmarks.items[key]
+  if (!bm) return
+  const rest = { ...bm }
+  delete rest.nickname
+  const nickname = value.trim()
+  saveBookmarks({ ...bookmarks, items: { ...bookmarks.items, [key]: nickname ? { ...rest, nickname } : rest } })
+}
+
+async function openBookmark(key, { newTab = false } = {}) {
+  const bm = bookmarks.items[key]
+  if (!bm) return
+  if (!findEntry(view.tree, bm.path)) {
+    showError($('pane-error'), `The note of this bookmark is not found: ${bm.path}`)
+    return
+  }
+  selectedBookmark = key
+  await openPath(bm.path, { newTab })
+  if (current !== bm.path) return
+  const text = editor.text()
+  const found = resolveBookmark(text, bm)
+  if (!found) return
+  bookmarkFoundBy.set(key, found.by)
+  const terms =
+    found.to > found.from
+      ? text
+          .slice(found.from, found.to)
+          .split('\n')
+          .map(renderedWords)
+          .filter(Boolean)
+          .map((t) => ({ text: t.toLowerCase() }))
+      : []
+  revealLine(found.line, { terms, endLine: found.endLine })
+  // Found by a weaker locator than its markers, the bookmark's words, heading
+  // and line are taken afresh; the markers are never rewritten.
+  if (found.to > found.from) {
+    const fresh = captureLocators(text, found.from, found.to)
+    if (JSON.stringify(fresh) !== JSON.stringify({ quote: bm.quote, heading: bm.heading, line: bm.line })) {
+      saveBookmarks({ ...bookmarks, items: { ...bookmarks.items, [key]: { ...bm, ...fresh } } })
+      return
+    }
+  }
+  if (sidePane === 'bookmarks') renderBookmarks()
+}
+
+// Whether another note links to this block id of the note.
+async function blockLinked(path, id) {
+  try {
+    const links = await api.backlinks(path)
+    return links.some((l) => (l.context ?? '').toLowerCase().includes(`#^${id.toLowerCase()}`))
+  } catch {
+    return true
+  }
+}
+
+// Deleting removes the bookmark's comment pair, and its block id if the
+// bookmark wrote it, no other bookmark uses it and no note links to it.
+async function deleteBookmark(key) {
+  const bm = bookmarks.items[key]
+  if (!bm) return
+  if (!readOnly && findEntry(view.tree, bm.path) && (bm.marker || bm.blockIdCreated)) {
+    const shared = Object.entries(bookmarks.items).some(([k, b]) => k !== key && b.path === bm.path && b.blockId === bm.blockId)
+    const removeBlockId = Boolean(bm.blockIdCreated) && !shared && !(await blockLinked(bm.path, bm.blockId))
+    if (bm.path === current) editor.replaceText(removeMarkers(editor.text(), key, { removeBlockId }))
+    else {
+      await flushAll()
+      const text = await run(() => api.readNote(bm.path))
+      if (text !== null) {
+        const next = removeMarkers(text, key, { removeBlockId })
+        if (next !== text) await run(() => api.writeNote(bm.path, next))
+      }
+    }
+  }
+  const items = { ...bookmarks.items }
+  delete items[key]
+  if (selectedBookmark === key) selectedBookmark = null
+  bookmarkFoundBy.delete(key)
+  saveBookmarks({ order: bookmarks.order.filter((k) => k !== key), items })
 }
 
 // A tag's count is the notes carrying it or any tag nested under it.
@@ -2842,6 +3180,7 @@ api.onVaultChanged(async (paths) => {
   if ($('search').value.trim()) runSearch()
   refreshFields()
   if (sidePane === 'field') renderFieldValues()
+  if (sidePane === 'bookmarks') renderBookmarks()
 })
 
 $('version').textContent = `version ${api.version}`
